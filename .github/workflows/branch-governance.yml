@@ -60,3 +60,4 @@ jobs:
         run: |
           git log -1 --pretty=%B | grep -E '^(feat|fix|refactor|test|chore|docs|perf|ci)(\(.+\))?: .+' \
           || (echo "Commit message does not follow Conventional Commits" && exit 1)
+
