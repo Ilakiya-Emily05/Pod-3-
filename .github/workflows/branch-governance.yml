@@ -1,8 +1,8 @@
 name: branch-governance
 
 on:
-  pull_request:
   push:
+  pull_request:
 
 jobs:
   governance:
@@ -15,9 +15,20 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Determine correct branch name depending on event
+      - name: Determine branch
+        id: branch
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "branch=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+          else
+            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      # Branch naming validation
       - name: Validate branch naming
         run: |
-          BRANCH="${{ github.ref_name }}"
+          BRANCH="${{ steps.branch.outputs.branch }}"
           echo "Checking branch: $BRANCH"
 
           if [[ "$BRANCH" =~ ^feature\/.* ]] || \
@@ -35,6 +46,7 @@ jobs:
             exit 1
           fi
 
+      # PR flow validation
       - name: Validate PR flow
         if: github.event_name == 'pull_request'
         run: |
@@ -43,20 +55,13 @@ jobs:
 
           echo "PR Flow: $HEAD -> $BASE"
 
-          # Allowed prefixes
-          if [[ "$HEAD" =~ ^feature\/.* ]] || \
-             [[ "$HEAD" =~ ^feat\/.* ]] || \
-             [[ "$HEAD" =~ ^bugfix\/.* ]] || \
-             [[ "$HEAD" =~ ^hotfix\/.* ]] || \
-             [[ "$HEAD" =~ ^chore\/.* ]]; then
-            PREFIX_OK=true
-          else
-            PREFIX_OK=false
-          fi
-
           # development target
           if [[ "$BASE" == "development" ]]; then
-            if [[ "$PREFIX_OK" != true ]]; then
+            if [[ ! "$HEAD" =~ ^feature\/.* ]] && \
+               [[ ! "$HEAD" =~ ^feat\/.* ]] && \
+               [[ ! "$HEAD" =~ ^bugfix\/.* ]] && \
+               [[ ! "$HEAD" =~ ^hotfix\/.* ]] && \
+               [[ ! "$HEAD" =~ ^chore\/.* ]]; then
               echo "Only feature/bugfix/hotfix/chore branches can merge into development"
               exit 1
             fi
@@ -65,11 +70,15 @@ jobs:
           # qa target
           if [[ "$BASE" == "qa" || "$BASE" == "QA" ]]; then
             if [[ "$HEAD" == "development" ]]; then
-              echo "Direct development -> qa merge not allowed"
+              echo "Direct development -> qa merge is not allowed"
               exit 1
             fi
 
-            if [[ "$PREFIX_OK" != true ]]; then
+            if [[ ! "$HEAD" =~ ^feature\/.* ]] && \
+               [[ ! "$HEAD" =~ ^feat\/.* ]] && \
+               [[ ! "$HEAD" =~ ^bugfix\/.* ]] && \
+               [[ ! "$HEAD" =~ ^hotfix\/.* ]] && \
+               [[ ! "$HEAD" =~ ^chore\/.* ]]; then
               echo "Only feature/bugfix/hotfix/chore branches can merge into qa"
               exit 1
             fi
@@ -77,7 +86,6 @@ jobs:
 
           # main target
           if [[ "$BASE" == "main" ]]; then
-
             if [[ "$HEAD" == "qa" || "$HEAD" == "QA" ]]; then
               echo "QA release allowed"
               exit 0
@@ -92,6 +100,7 @@ jobs:
             exit 1
           fi
 
+      # Commit message validation
       - name: Validate commit messages
         if: github.event_name == 'pull_request'
         run: |
