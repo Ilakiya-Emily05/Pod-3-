@@ -6,6 +6,7 @@ __pycache__/
 CLAUDE.md
 .claude/*
 rule.md
+deployments/*
 
 # C extensions
 *.so

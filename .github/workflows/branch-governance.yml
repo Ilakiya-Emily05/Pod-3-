@@ -1,0 +1,62 @@
+name: branch-governance
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  branch-policy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate branch naming
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+
+          if [[ "$BRANCH" =~ ^feature\/.* ]] || \
+             [[ "$BRANCH" =~ ^bugfix\/.* ]] || \
+             [[ "$BRANCH" =~ ^hotfix\/.* ]] || \
+             [[ "$BRANCH" =~ ^chore\/.* ]] || \
+             [[ "$BRANCH" == "qa" ]] || \
+             [[ "$BRANCH" == "QA" ]] || \
+             [[ "$BRANCH" == "development" ]] || \
+             [[ "$BRANCH" == "main" ]]; then
+            echo "Branch name valid"
+          else
+            echo "Invalid branch name"
+            exit 1
+          fi
+
+      - name: Validate PR flow
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE="${{ github.base_ref }}"
+          HEAD="${{ github.head_ref }}"
+
+          echo "PR: $HEAD -> $BASE"
+
+          if [[ "$BASE" == "development" ]]; then
+            if [[ "$HEAD" != feature/* && "$HEAD" != bugfix/* && "$HEAD" != hotfix/* && "$HEAD" != chore/* ]]; then
+              echo "Only feature/bugfix/hotfix/chore branches can merge into development"
+              exit 1
+            fi
+          fi
+
+          if [[ "$BASE" == "qa" || "$BASE" == "QA" ]]; then
+            if [[ "$HEAD" == "development" ]]; then
+              echo "Direct development -> qa merge not allowed"
+              exit 1
+            fi
+          fi
+
+          if [[ "$BASE" == "main" ]]; then
+            if [[ "$HEAD" != "qa" && "$HEAD" != "QA" ]]; then
+              echo "Only qa can merge into main"
+              exit 1
+            fi
+          fi
+
+      - name: Validate commit messages
+        run: |
+          git log -1 --pretty=%B | grep -E '^(feat|fix|refactor|test|chore|docs|perf|ci)(\(.+\))?: .+' \
+          || (echo "Commit message does not follow Conventional Commits" && exit 1)
