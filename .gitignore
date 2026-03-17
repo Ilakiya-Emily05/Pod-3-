@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 CLAUDE.md
+copilot-instructions.md
 .claude/*
 rule.md
 deployments/*
