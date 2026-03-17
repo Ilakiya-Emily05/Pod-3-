@@ -65,7 +65,6 @@ Auth endpoints:
 
 ```json
 {
-  "name": "Vaaheesan S",
   "email": "vaahee21@gmail.com",
   "password": "Password123",
   "confirm_password": "Password123",
@@ -87,7 +86,6 @@ Auth endpoints:
 
 ```json
 {
-  "name": "Vaaheesan S",
   "email": "vaahee21@gmail.com",
   "oauth_code": "<google-oauth-code>",
   "oauth_redirect_uri": "<redirect-uri>",
@@ -99,7 +97,6 @@ Auth endpoints:
 
 ```json
 {
-  "name": "Vaaheesan S",
   "email": "vaahee21@gmail.com",
   "oauth_id_token": "<google-id-token>"
 }

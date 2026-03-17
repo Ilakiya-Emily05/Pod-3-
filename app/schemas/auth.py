@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class SignupRequest(BaseModel):
-    name: str = Field(min_length=2, max_length=255)
     email: EmailStr
     password: str | None = Field(default=None, min_length=8, max_length=72)
     confirm_password: str | None = Field(default=None, min_length=8, max_length=72)
@@ -56,7 +55,6 @@ class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    name: str
     email: EmailStr
     oauth_provider: str | None
     created_at: datetime

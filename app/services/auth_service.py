@@ -171,7 +171,6 @@ async def signup_user(db: AsyncSession, signup_payload: SignupRequest) -> AuthRe
         password_hash = hash_password(signup_payload.password)
 
     new_user = User(
-        name=signup_payload.name,
         email=normalized_email,
         password_hash=password_hash,
         oauth_provider=oauth_provider,
@@ -212,7 +211,6 @@ async def login_user(db: AsyncSession, login_payload: LoginRequest) -> AuthRespo
 
         if not user:
             user = User(
-                name=str(google_data.get("name") or normalized_email.split("@")[0]),
                 email=normalized_email,
                 password_hash=None,
                 oauth_provider="google",
