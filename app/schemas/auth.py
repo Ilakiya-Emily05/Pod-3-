@@ -65,4 +65,5 @@ class AuthResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     remember_me: bool
+    profile_completed: bool
     user: UserResponse

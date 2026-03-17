@@ -187,6 +187,7 @@ async def signup_user(db: AsyncSession, signup_payload: SignupRequest) -> AuthRe
         access_token=access_token,
         expires_in=expires_in,
         remember_me=remember_me,
+        profile_completed=new_user.profile_completed,
         user=UserResponse.model_validate(new_user),
     )
 
@@ -225,6 +226,7 @@ async def login_user(db: AsyncSession, login_payload: LoginRequest) -> AuthRespo
             access_token=access_token,
             expires_in=expires_in,
             remember_me=remember_me,
+            profile_completed=user.profile_completed,
             user=UserResponse.model_validate(user),
         )
 
@@ -256,5 +258,6 @@ async def login_user(db: AsyncSession, login_payload: LoginRequest) -> AuthRespo
         access_token=access_token,
         expires_in=expires_in,
         remember_me=remember_me,
+        profile_completed=user.profile_completed,
         user=UserResponse.model_validate(user),
     )
