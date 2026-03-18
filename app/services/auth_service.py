@@ -1,5 +1,5 @@
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import bcrypt
@@ -113,7 +113,7 @@ def get_expiration_delta(remember_me: bool) -> timedelta:
 def create_access_token(subject: str, email: str, remember_me: bool) -> tuple[str, int]:
     expiration_delta = get_expiration_delta(remember_me)
     expires_in = int(expiration_delta.total_seconds())
-    expires_at = datetime.now(timezone.utc) + expiration_delta
+    expires_at = datetime.now(UTC) + expiration_delta
 
     payload = {
         "sub": subject,

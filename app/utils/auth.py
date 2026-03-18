@@ -36,9 +36,9 @@ async def get_current_user_id(
                 detail="Invalid token",
             )
         return user_id
-    except JWTError:
+    except JWTError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from err

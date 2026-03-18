@@ -63,6 +63,12 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+"app/config/settings.py" = [
+    "S105",   # placeholder defaults in settings are not secrets
+]
+"app/schemas/auth.py" = [
+    "S105",   # token_type literal "bearer" is not a credential
+]
 "tests/**/*.py" = [
     "S101",   # assert statements are fine in tests
     "ANN",    # skip annotations in tests
