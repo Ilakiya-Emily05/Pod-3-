@@ -17,8 +17,6 @@ class GrammarAssessment(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
     topic: Mapped[str | None] = mapped_column(String(255), nullable=True)
     total_questions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     time_limit_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
