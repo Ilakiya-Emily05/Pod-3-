@@ -28,8 +28,8 @@ cp .env.example .env
 
 Update these values in `.env`:
 
-- `DATABASE_URL=postgresql+asyncpg://vaaheesan:password@localhost:5432/powerup_db`
-- `DATABASE_URL_SYNC=postgresql+psycopg2://vaaheesan:password@localhost:5432/powerup_db`
+- `DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/powerup_db`
+- `DATABASE_URL_SYNC=postgresql+psycopg2://user:password@localhost:5432/powerup_db`
 - `SECRET_KEY=<your-strong-random-secret>`
 - `API_V1_PREFIX=/api/v1`
 
@@ -65,9 +65,9 @@ Auth endpoints:
 
 ```json
 {
-  "email": "vaahee21@gmail.com",
-  "password": "Password123",
-  "confirm_password": "Password123",
+  "email": "your_email@example.com",
+  "password": "YourStrongPassword123",
+  "confirm_password": "YourStrongPassword123",
   "remember_me": true
 }
 ```
@@ -76,8 +76,8 @@ Auth endpoints:
 
 ```json
 {
-  "email": "vaahee21@gmail.com",
-  "password": "Password123",
+  "email": "your_email@example.com",
+  "password": "YourStrongPassword123",
   "remember_me": true
 }
 ```
@@ -86,7 +86,7 @@ Auth endpoints:
 
 ```json
 {
-  "email": "vaahee21@gmail.com",
+  "email": "your_email@example.com",
   "oauth_code": "<google-oauth-code>",
   "oauth_redirect_uri": "<redirect-uri>",
   "oauth_code_verifier": "<pkce-code-verifier>"
@@ -97,7 +97,7 @@ Auth endpoints:
 
 ```json
 {
-  "email": "vaahee21@gmail.com",
+  "email": "your_email@example.com",
   "oauth_id_token": "<google-id-token>"
 }
 ```
