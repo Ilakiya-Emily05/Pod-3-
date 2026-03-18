@@ -4,6 +4,7 @@ from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from app.config.database import init_db
 from app.config.settings import get_settings
 from app.controllers.router import api_router
 
@@ -74,6 +75,10 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["health"], summary="Liveness probe")
     async def health() -> JSONResponse:
         return JSONResponse({"status": "ok", "version": app.version})
+
+    @app.on_event("startup")
+    async def startup_event() -> None:
+        await init_db()
 
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(api_router, prefix=settings.api_v1_prefix)

@@ -21,7 +21,7 @@ from app.models.reading import (
     ReadingQuestion,
     ReadingQuestionOption,
 )
-from app.models.user import User
+from app.models.user import User, UserProfile
 
 __all__ = [
     "AttemptStatus",
@@ -42,5 +42,7 @@ __all__ = [
     "ReadingQuestion",
     "ReadingQuestionOption",
     "TimestampMixin",
-    "User",
+    "User", "UserProfile"
 ]
+
+
