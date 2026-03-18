@@ -13,6 +13,7 @@ from app.schemas.reading import (
     ReadingAttemptRead,
 )
 from app.services.reading_service import ReadingService
+from app.utils.auth import get_current_user_id
 
 router = APIRouter(prefix="/reading", tags=["reading"])
 
@@ -74,6 +75,7 @@ async def update_reading_assessment(
 async def create_reading_attempt(
     payload: ReadingAttemptCreate,
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ) -> ReadingAttemptRead:
     service = ReadingService(db)
     try:
@@ -88,6 +90,7 @@ async def submit_reading_attempt(
     attempt_id: UUID,
     answers: list[ReadingAttemptAnswerCreate],
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ) -> ReadingAttemptRead:
     service = ReadingService(db)
     try:

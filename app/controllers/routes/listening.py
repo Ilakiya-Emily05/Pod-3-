@@ -13,6 +13,7 @@ from app.schemas.listening import (
     ListeningAttemptRead,
 )
 from app.services.listening_service import ListeningService
+from app.utils.auth import get_current_user_id
 
 router = APIRouter(prefix="/listening", tags=["listening"])
 
@@ -76,6 +77,7 @@ async def update_listening_assessment(
 async def create_listening_attempt(
     payload: ListeningAttemptCreate,
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ) -> ListeningAttemptRead:
     service = ListeningService(db)
     try:
@@ -90,6 +92,7 @@ async def submit_listening_attempt(
     attempt_id: UUID,
     answers: list[ListeningAttemptAnswerCreate],
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ) -> ListeningAttemptRead:
     service = ListeningService(db)
     try:

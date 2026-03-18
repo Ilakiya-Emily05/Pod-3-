@@ -13,6 +13,7 @@ from app.schemas.grammar import (
     GrammarAttemptRead,
 )
 from app.services.grammar_service import GrammarService
+from app.utils.auth import get_current_user_id
 
 router = APIRouter(prefix="/grammar", tags=["grammar"])
 
@@ -74,6 +75,7 @@ async def update_grammar_assessment(
 async def create_grammar_attempt(
     payload: GrammarAttemptCreate,
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ) -> GrammarAttemptRead:
     service = GrammarService(db)
     try:
@@ -88,6 +90,7 @@ async def submit_grammar_attempt(
     attempt_id: UUID,
     answers: list[GrammarAttemptAnswerCreate],
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ) -> GrammarAttemptRead:
     service = GrammarService(db)
     try:
