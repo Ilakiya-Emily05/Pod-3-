@@ -143,6 +143,7 @@ class ReadingService:
         self,
         attempt_id: UUID,
         answers: list[ReadingAttemptAnswerCreate],
+        user_id: UUID,
     ) -> ReadingAttempt | None:
         result = await self.db.execute(
             select(ReadingAttempt)
@@ -158,9 +159,24 @@ class ReadingService:
         if attempt is None:
             return None
 
+        if attempt.user_id != user_id:
+            msg = "Attempt does not belong to the current user"
+            raise ValueError(msg)
+
+        if attempt.status != AttemptStatus.IN_PROGRESS:
+            msg = f"Cannot submit attempt with status '{attempt.status}'. Only attempts with status 'in_progress' can be submitted."
+            raise ValueError(msg)
+
         for existing_answer in attempt.answers:
             await self.db.delete(existing_answer)
         await self.db.flush()
+
+        seen_question_ids: set[UUID] = set()
+        for submitted in answers:
+            if submitted.question_id in seen_question_ids:
+                msg = f"Question {submitted.question_id} appears multiple times in submitted answers"
+                raise ValueError(msg)
+            seen_question_ids.add(submitted.question_id)
 
         questions = attempt.assessment.questions
         question_map = {question.id: question for question in questions}

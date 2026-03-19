@@ -79,6 +79,7 @@ async def create_listening_attempt(
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ) -> ListeningAttemptRead:
+    payload = payload.model_copy(update={"user_id": UUID(user_id)})
     service = ListeningService(db)
     try:
         attempt = await service.create_attempt(payload)
@@ -96,7 +97,7 @@ async def submit_listening_attempt(
 ) -> ListeningAttemptRead:
     service = ListeningService(db)
     try:
-        attempt = await service.submit_attempt(attempt_id, answers)
+        attempt = await service.submit_attempt(attempt_id, answers, UUID(user_id))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

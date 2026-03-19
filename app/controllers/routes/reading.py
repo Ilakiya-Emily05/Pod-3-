@@ -77,6 +77,7 @@ async def create_reading_attempt(
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ) -> ReadingAttemptRead:
+    payload = payload.model_copy(update={"user_id": UUID(user_id)})
     service = ReadingService(db)
     try:
         attempt = await service.create_attempt(payload)
@@ -94,7 +95,7 @@ async def submit_reading_attempt(
 ) -> ReadingAttemptRead:
     service = ReadingService(db)
     try:
-        attempt = await service.submit_attempt(attempt_id, answers)
+        attempt = await service.submit_attempt(attempt_id, answers, UUID(user_id))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

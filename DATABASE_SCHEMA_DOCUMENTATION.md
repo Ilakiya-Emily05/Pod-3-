@@ -48,7 +48,7 @@ Each assessment domain follows the same hierarchical pattern:
 | `email`             | VARCHAR(255) | UNIQUE, NOT NULL, INDEXED | User's email address, used for login and authentication                     |
 | `password_hash`     | VARCHAR(255) | NULLABLE                  | Bcrypt/Argon2 hash of password. NULL if using OAuth                         |
 | `oauth_provider`    | VARCHAR(50)  | NULLABLE                  | OAuth provider name (e.g., 'google', 'github'). NULL if using password auth |
-| `oauth_sub`         | VARCHAR(255) | NULLABLE                  | OAuth subject/ID from provider, unique per provider                         |
+| `oauth_sub`         | VARCHAR(255) | NULLABLE                  | OAuth subject/ID from provider. Multiple users can share same oauth_sub     |
 | `is_active`         | BOOLEAN      | NOT NULL, DEFAULT=TRUE    | Soft delete flag; false indicates deactivated account                       |
 | `profile_completed` | BOOLEAN      | NOT NULL, DEFAULT=FALSE   | Whether user has completed onboarding profile                               |
 | `created_at`        | TIMESTAMP    | NOT NULL, DEFAULT=NOW()   | Account creation timestamp                                                  |
