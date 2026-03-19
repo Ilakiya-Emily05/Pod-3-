@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +9,7 @@ from app.schemas.onboarding import OnboardingRequest, OnboardingResponse
 
 
 async def complete_onboarding(
-    user_id: str, db: AsyncSession, onboarding_payload: OnboardingRequest
+    user_id: UUID, db: AsyncSession, onboarding_payload: OnboardingRequest
 ) -> OnboardingResponse:
     user_stmt = select(User).where(User.id == user_id)
     user = await db.scalar(user_stmt)

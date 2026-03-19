@@ -13,7 +13,7 @@ from app.schemas.reading import (
     ReadingAttemptRead,
 )
 from app.services.reading_service import ReadingService
-from app.utils.auth import get_current_user_id
+from app.utils.auth import CurrentUser, get_current_user, get_current_user_id
 
 router = APIRouter(prefix="/reading", tags=["reading"])
 
@@ -75,8 +75,15 @@ async def update_reading_assessment(
 async def create_reading_attempt(
     payload: ReadingAttemptCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    current_user: CurrentUser = Depends(get_current_user),
 ) -> ReadingAttemptRead:
+    # Override user_id and user_email from the authenticated user context
+    payload = payload.model_copy(
+        update={
+            "user_id": current_user.user_id,
+            "user_email": current_user.email,
+        }
+    )
     service = ReadingService(db)
     try:
         attempt = await service.create_attempt(payload)
@@ -90,11 +97,11 @@ async def submit_reading_attempt(
     attempt_id: UUID,
     answers: list[ReadingAttemptAnswerCreate],
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: UUID = Depends(get_current_user_id),
 ) -> ReadingAttemptRead:
     service = ReadingService(db)
     try:
-        attempt = await service.submit_attempt(attempt_id, answers)
+        attempt = await service.submit_attempt(attempt_id, answers, user_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
