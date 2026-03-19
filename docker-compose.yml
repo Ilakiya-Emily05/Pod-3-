@@ -25,6 +25,9 @@ services:
       - api-logs:/app/logs
     networks:
       - powerup-network
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
       interval: 30s
@@ -41,10 +44,68 @@ services:
           cpus: '0.25'
           memory: 128M
 
+  postgres:
+    image: postgres:15-alpine
+    container_name: powerup-postgres
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-powerup_db}
+      - POSTGRES_USER=${POSTGRES_USER:-vaaheesan}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - powerup-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vaaheesan} -d ${POSTGRES_DB:-powerup_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: powerup-pgadmin
+    restart: unless-stopped
+    ports:
+      - "${PGADMIN_PORT:-8080}:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@powerup.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - powerup-network
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
 networks:
   powerup-network:
     driver: bridge
 
 volumes:
+  postgres-data:
+    driver: local
+  pgadmin-data:
+    driver: local
   api-logs:
     driver: local
