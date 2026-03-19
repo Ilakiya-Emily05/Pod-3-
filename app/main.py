@@ -19,7 +19,7 @@ def create_app() -> FastAPI:
             "**Docs:** `/docs` (Swagger UI) · `/redoc` (ReDoc) · `/openapi.json` (schema)"
         ),
         version="0.1.0",
-        docs_url=None,    # served manually below so we can customise
+        docs_url=None,  # served manually below so we can customise
         redoc_url=None,
         openapi_url="/openapi.json",
         contact={"name": "Power Up Engineering"},
@@ -63,7 +63,9 @@ def create_app() -> FastAPI:
             description=app.description,
             routes=app.routes,
         )
-        schema["info"]["x-logo"] = {"url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"}
+        schema["info"]["x-logo"] = {
+            "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
+        }
         app.openapi_schema = schema
         return schema
 
