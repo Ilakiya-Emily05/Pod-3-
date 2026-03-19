@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +15,6 @@ router = APIRouter(prefix="/onboarding", tags=["Onboarding"])
 async def onboarding(
     payload: OnboardingRequest,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: UUID = Depends(get_current_user_id),
 ) -> OnboardingResponse:
     return await complete_onboarding(user_id, db, payload)

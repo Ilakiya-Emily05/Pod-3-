@@ -15,6 +15,7 @@ from app.models.listening import (
     ListeningQuestion,
     ListeningQuestionOption,
 )
+from app.services.base_assessment_service import BaseAssessmentService
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -29,15 +30,21 @@ if TYPE_CHECKING:
     )
 
 
-class ListeningService:
+class ListeningService(BaseAssessmentService):
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def _get_attempt_for_response(self, attempt_id: UUID) -> ListeningAttempt | None:
+    async def _get_attempt_for_response(
+        self, attempt_id: UUID, user_id: UUID
+    ) -> ListeningAttempt | None:
+        """Fetch attempt by id and user_id to prevent information leakage.
+        
+        Returns None if attempt doesn't exist OR doesn't belong to the user.
+        """
         result = await self.db.execute(
             select(ListeningAttempt)
             .options(selectinload(ListeningAttempt.answers))
-            .where(ListeningAttempt.id == attempt_id)
+            .where(ListeningAttempt.id == attempt_id, ListeningAttempt.user_id == user_id)
         )
         return result.scalar_one_or_none()
 
@@ -136,7 +143,7 @@ class ListeningService:
 
         self.db.add(attempt)
         await self.db.commit()
-        created_attempt = await self._get_attempt_for_response(attempt.id)
+        created_attempt = await self._get_attempt_for_response(attempt.id, payload.user_id)
         if created_attempt is None:
             msg = "Listening attempt creation failed"
             raise RuntimeError(msg)
@@ -148,6 +155,8 @@ class ListeningService:
         answers: list[ListeningAttemptAnswerCreate],
         user_id: UUID,
     ) -> ListeningAttempt | None:
+        # Query with both attempt_id and user_id to enforce ownership at DB level
+        # Returns None if attempt doesn't exist OR doesn't belong to the user
         result = await self.db.execute(
             select(ListeningAttempt)
             .options(
@@ -156,65 +165,58 @@ class ListeningService:
                 .selectinload(ListeningAssessment.questions)
                 .selectinload(ListeningQuestion.options),
             )
-            .where(ListeningAttempt.id == attempt_id)
+            .where(ListeningAttempt.id == attempt_id, ListeningAttempt.user_id == user_id)
         )
         attempt = result.scalar_one_or_none()
         if attempt is None:
             return None
 
-        if attempt.user_id != user_id:
-            msg = "Attempt does not belong to the current user"
-            raise ValueError(msg)
-
+        # Validate that the attempt is in a submittable status
         if attempt.status != AttemptStatus.IN_PROGRESS:
             msg = f"Cannot submit attempt with status '{attempt.status}'. Only attempts with status 'in_progress' can be submitted."
             raise ValueError(msg)
 
+        # Validate that submitted answers don't have duplicates BEFORE deleting
+        self._validate_answers_input(answers)
+
+        # Build question map for validation
+        questions = attempt.assessment.questions
+        question_map = {question.id: question for question in questions}
+
+        # Validate all questions and options BEFORE deleting existing answers
+        for submitted in answers:
+            self._validate_question_belongs_to_assessment(
+                submitted.question_id, question_map
+            )
+            self._validate_option_for_question(
+                submitted.selected_option_id, question_map[submitted.question_id]
+            )
+
+        # Delete existing answers only after all validations pass
         for existing_answer in attempt.answers:
             await self.db.delete(existing_answer)
         await self.db.flush()
 
-        seen_question_ids: set[UUID] = set()
-        for submitted in answers:
-            if submitted.question_id in seen_question_ids:
-                msg = f"Question {submitted.question_id} appears multiple times in submitted answers"
-                raise ValueError(msg)
-            seen_question_ids.add(submitted.question_id)
-
-        questions = attempt.assessment.questions
-        question_map = {question.id: question for question in questions}
-
+        # Process answers and calculate score
         new_answers: list[ListeningAttemptAnswer] = []
         correct_answers = 0
         score = Decimal("0.00")
 
         for submitted in answers:
-            question = question_map.get(submitted.question_id)
-            if question is None:
-                msg = f"Question {submitted.question_id} does not belong to this assessment"
-                raise ValueError(msg)
+            # Retrieve question and calculate score
+            question = question_map[submitted.question_id]
 
-            is_correct: bool | None = None
-            if submitted.selected_option_id is not None:
-                selected_option = next(
-                    (
-                        option
-                        for option in question.options
-                        if option.id == submitted.selected_option_id
-                    ),
-                    None,
-                )
-                if selected_option is None:
-                    msg = (
-                        f"Option {submitted.selected_option_id} is invalid "
-                        f"for question {question.id}"
-                    )
-                    raise ValueError(msg)
-                is_correct = selected_option.is_correct
+            # Validate option and get correctness
+            is_correct = self._validate_option_for_question(
+                submitted.selected_option_id, question
+            )
 
-            if is_correct:
-                correct_answers += 1
-                score += question.points
+            # Calculate score contribution
+            answer_correct_count, answer_score = self._calculate_score_for_answer(
+                is_correct, question
+            )
+            correct_answers += answer_correct_count
+            score += answer_score
 
             new_answers.append(
                 ListeningAttemptAnswer(
@@ -227,6 +229,7 @@ class ListeningService:
 
         self.db.add_all(new_answers)
 
+        # Update attempt with submission results
         attempt.status = AttemptStatus.SUBMITTED
         attempt.submitted_at = datetime.now(UTC)
         attempt.answered_questions = len(new_answers)
@@ -235,7 +238,7 @@ class ListeningService:
         attempt.score = score
 
         await self.db.commit()
-        updated_attempt = await self._get_attempt_for_response(attempt.id)
+        updated_attempt = await self._get_attempt_for_response(attempt.id, user_id)
         if updated_attempt is None:
             msg = "Listening attempt submission failed"
             raise RuntimeError(msg)
