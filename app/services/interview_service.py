@@ -5,6 +5,7 @@ Orchestrates both:
   - Section 2: Mock Interview (adaptive difficulty + end-only gap analysis)
 """
 import random
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -311,11 +312,15 @@ async def submit_interview_answer(
     # Determine next difficulty
     next_difficulty = _next_difficulty(current_question.difficulty, is_correct)
 
-    # Get all answered question IDs
+    # Get all answered question IDs (for excluding them from next selection)
     answered_ids = [r.question_id for r in session.responses if r.question_id]
     answered_ids.append(current_q_id)
 
-    if len(answered_ids) >= 5:
+    # Calculate elapsed time (5-minute limit)
+    now = datetime.utcnow()
+    elapsed_seconds = (now - session.created_at).total_seconds()
+
+    if elapsed_seconds >= 300: # 300 seconds = 5 minutes
         next_question = None
     else:
         # Try to get the next skill to vary questions across skills
