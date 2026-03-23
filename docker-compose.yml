@@ -1,0 +1,47 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: powerup-api
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://powerup_user:powerup_password@db:5432/powerup_db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEBUG=False
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+    restart: unless-stopped
+    networks:
+      - powerup-network
+
+  db:
+    image: postgres:15-alpine
+    container_name: powerup-db
+    environment:
+      POSTGRES_USER: powerup_user
+      POSTGRES_PASSWORD: powerup_password
+      POSTGRES_DB: powerup_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U powerup_user -d powerup_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - powerup-network
+
+volumes:
+  postgres_data:
+
+networks:
+  powerup-network:
+    driver: bridge
