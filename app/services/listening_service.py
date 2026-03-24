@@ -51,8 +51,6 @@ class ListeningService(BaseAssessmentService):
     async def create_assessment(self, payload: ListeningAssessmentCreate) -> ListeningAssessment:
         assessment = ListeningAssessment(
             title=payload.title,
-            description=payload.description,
-            instructions=payload.instructions,
             audio_url=payload.audio_url,
             audio_duration_seconds=payload.audio_duration_seconds,
             total_questions=payload.total_questions,
