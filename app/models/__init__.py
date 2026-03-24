@@ -1,4 +1,4 @@
-from app.models.assessment_status import AttemptStatus
+from app.models.assessment_status import AttemptStatus, CEFRLevel
 from app.models.base import Base, TimestampMixin
 from app.models.grammar import (
     GrammarAssessment,
@@ -27,6 +27,7 @@ from app.models.user import User, UserProfile
 __all__ = [
     "AttemptStatus",
     "Base",
+    "CEFRLevel",
     "GrammarAssessment",
     "GrammarAttempt",
     "GrammarAttemptAnswer",
@@ -47,5 +48,3 @@ __all__ = [
     "UserProfile",
     "UserProgress",
 ]
-
-

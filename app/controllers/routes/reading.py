@@ -13,7 +13,12 @@ from app.schemas.reading import (
     ReadingAttemptRead,
 )
 from app.services.reading_service import ReadingService
-from app.utils.auth import CurrentUser, get_current_user, get_current_user_id
+from app.utils.auth import (
+    CurrentUser,
+    get_current_admin_email,
+    get_current_user,
+    get_current_user_id,
+)
 
 router = APIRouter(prefix="/reading", tags=["reading"])
 
@@ -26,6 +31,7 @@ router = APIRouter(prefix="/reading", tags=["reading"])
 async def create_reading_assessment(
     payload: ReadingAssessmentCreate,
     db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_admin_email),
 ) -> ReadingAssessmentRead:
     service = ReadingService(db)
     assessment = await service.create_assessment(payload)
@@ -61,6 +67,7 @@ async def update_reading_assessment(
     assessment_id: UUID,
     payload: ReadingAssessmentUpdate,
     db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_admin_email),
 ) -> ReadingAssessmentRead:
     service = ReadingService(db)
     assessment = await service.update_assessment(assessment_id, payload)

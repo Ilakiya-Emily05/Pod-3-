@@ -14,16 +14,14 @@ class UserProgress(Base):
 
     __tablename__ = "user_progress"
 
-    id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=UUID
-    )
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=UUID)
     user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    module_type: Mapped[str] = mapped_column(String(50), nullable=False)  # reading, listening, grammar
-    module_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False
-    )
+    module_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # reading, listening, grammar
+    module_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="in_progress")  # in_progress, completed
     started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

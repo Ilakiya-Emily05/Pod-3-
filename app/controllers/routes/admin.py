@@ -1,4 +1,3 @@
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,7 +42,7 @@ async def list_users(
 ):
     """
     Get a paginated list of all users.
-    
+
     - **page**: Page number (default: 1)
     - **page_size**: Items per page (1-100, default: 20)
     - **search**: Optional search term for email
@@ -64,7 +63,7 @@ async def get_analytics(
 ):
     """
     Get platform-wide analytics including:
-    
+
     - Total and active users
     - Assessment statistics
     - Average scores
@@ -87,7 +86,7 @@ async def create_question(
 ):
     """
     Create a question for an assessment (admin only).
-    
+
     - **assessment_type**: Type of assessment (reading, listening, grammar)
     - **assessment_id**: ID of the assessment
     - **question_text**: The question content

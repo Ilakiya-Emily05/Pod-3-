@@ -98,9 +98,7 @@ class ProgressController:
     async def get_user_progress_summary(self, user_id: UUID) -> dict:
         """Get summarized progress for a user."""
         # Total modules started
-        total_query = select(func.count(UserProgress.id)).where(
-            UserProgress.user_id == user_id
-        )
+        total_query = select(func.count(UserProgress.id)).where(UserProgress.user_id == user_id)
         total_result = await self.db.execute(total_query)
         total_started = total_result.scalar() or 0
 
@@ -122,9 +120,7 @@ class ProgressController:
         avg_score = avg_score_result.scalar() or Decimal("0")
 
         # Modules by type
-        type_query = select(
-            UserProgress.module_type, func.count(UserProgress.id)
-        ).where(
+        type_query = select(UserProgress.module_type, func.count(UserProgress.id)).where(
             UserProgress.user_id == user_id,
             UserProgress.status == "completed",
         )

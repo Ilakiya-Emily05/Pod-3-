@@ -28,7 +28,7 @@ async def start_module(
 ):
     """
     Start tracking progress for a module.
-    
+
     - **user_id**: ID of the user starting the module
     - **module_type**: Type of module (reading, listening, grammar)
     - **module_id**: ID of the assessment/module
@@ -53,7 +53,7 @@ async def complete_module(
 ):
     """
     Complete a module and record the score.
-    
+
     - **user_id**: ID of the user completing the module
     - **module_type**: Type of module (reading, listening, grammar)
     - **module_id**: ID of the assessment/module
@@ -84,7 +84,7 @@ async def get_user_progress(
 ):
     """
     Get all progress records for a user.
-    
+
     Returns a list of all modules the user has started or completed.
     """
     controller = ProgressController(db)
@@ -104,7 +104,7 @@ async def get_user_progress_summary(
 ):
     """
     Get a summary of user's progress across all modules.
-    
+
     Returns:
     - Total modules started
     - Total modules completed

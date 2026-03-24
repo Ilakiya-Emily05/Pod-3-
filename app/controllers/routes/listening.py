@@ -13,7 +13,12 @@ from app.schemas.listening import (
     ListeningAttemptRead,
 )
 from app.services.listening_service import ListeningService
-from app.utils.auth import CurrentUser, get_current_user, get_current_user_id
+from app.utils.auth import (
+    CurrentUser,
+    get_current_admin_email,
+    get_current_user,
+    get_current_user_id,
+)
 
 router = APIRouter(prefix="/listening", tags=["listening"])
 
@@ -26,6 +31,7 @@ router = APIRouter(prefix="/listening", tags=["listening"])
 async def create_listening_assessment(
     payload: ListeningAssessmentCreate,
     db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_admin_email),
 ) -> ListeningAssessmentRead:
     service = ListeningService(db)
     assessment = await service.create_assessment(payload)
@@ -62,6 +68,7 @@ async def update_listening_assessment(
     assessment_id: UUID,
     payload: ListeningAssessmentUpdate,
     db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_admin_email),
 ) -> ListeningAssessmentRead:
     service = ListeningService(db)
     assessment = await service.update_assessment(assessment_id, payload)
