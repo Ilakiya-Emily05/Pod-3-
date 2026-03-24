@@ -101,7 +101,10 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     sha256_hash = hashlib.sha256(plain_password.encode()).hexdigest()
-    return bcrypt.checkpw(sha256_hash.encode(), hashed_password.encode())
+    try:
+        return bcrypt.checkpw(sha256_hash.encode(), hashed_password.encode())
+    except ValueError:
+        return False
 
 
 def get_expiration_delta(remember_me: bool) -> timedelta:

@@ -18,21 +18,9 @@ class CurrentUser(NamedTuple):
     email: str
 
 
-async def get_current_user_id(
-    credentials: HTTPAuthorizationCredentials | None = Depends(security),
-) -> UUID:
-    """Extract the user ID from the JWT token and validate it as a UUID.
-
-    Args:
-        credentials: The HTTP Bearer token credentials.
-
-    Returns:
-        The user ID as a UUID from the token's 'sub' claim.
-
-    Raises:
-        HTTPException: If credentials are missing, invalid, token is malformed,
-                       or user_id is not a valid UUID.
-    """
+def _decode_jwt_payload(
+    credentials: HTTPAuthorizationCredentials | None,
+) -> dict[str, object]:
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,29 +39,52 @@ async def get_current_user_id(
 
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        user_id_str: str | None = payload.get("sub")
-        if user_id_str is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: missing user ID",
-            )
-
-        # Validate and convert to UUID
-        try:
-            user_id = UUID(user_id_str)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: user ID is not a valid UUID",
-            )
-
-        return user_id
     except JWTError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         ) from err
+
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+
+    return payload
+
+
+async def get_current_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> UUID:
+    """Extract the user ID from the JWT token and validate it as a UUID.
+
+    Args:
+        credentials: The HTTP Bearer token credentials.
+
+    Returns:
+        The user ID as a UUID from the token's 'sub' claim.
+
+    Raises:
+        HTTPException: If credentials are missing, invalid, token is malformed,
+                       or user_id is not a valid UUID.
+    """
+    payload = _decode_jwt_payload(credentials)
+    user_id_str = payload.get("sub")
+    if not isinstance(user_id_str, str):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: missing user ID",
+        )
+
+    try:
+        return UUID(user_id_str)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: user ID is not a valid UUID",
+        )
 
 
 async def get_current_user(
@@ -91,78 +102,31 @@ async def get_current_user(
         HTTPException: If credentials are missing, invalid, token is malformed,
                        or user_id is not a valid UUID.
     """
-    if credentials is None:
+    payload = _decode_jwt_payload(credentials)
+    user_id_str = payload.get("sub")
+    email = payload.get("email")
+
+    if not isinstance(user_id_str, str) or not isinstance(email, str) or not email:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Invalid token: missing user ID or email",
         )
-
-    if credentials.scheme.lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header format",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    token = credentials.credentials
 
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        user_id_str: str | None = payload.get("sub")
-        email: str | None = payload.get("email")
-
-        if user_id_str is None or email is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: missing user ID or email",
-            )
-
-        # Validate and convert user_id to UUID
-        try:
-            user_id = UUID(user_id_str)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: user ID is not a valid UUID",
-            )
-
-        return CurrentUser(user_id=user_id, email=email)
-    except JWTError as err:
+        user_id = UUID(user_id_str)
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from err
+            detail="Invalid token: user ID is not a valid UUID",
+        )
+
+    return CurrentUser(user_id=user_id, email=email)
 
 
 async def get_current_admin_email(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> str:
-    if credentials is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    if credentials.scheme.lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header format",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    token = credentials.credentials
-
-    try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-    except JWTError as err:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from err
+    payload = _decode_jwt_payload(credentials)
 
     role = payload.get("role")
     email = payload.get("email")
