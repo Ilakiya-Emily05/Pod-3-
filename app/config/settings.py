@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     google_token_url: str = "https://oauth2.googleapis.com/token"
     google_client_id: str | None = None
     google_client_secret: str | None = None
+    admin_email: str | None = None
+    admin_password: str | None = None
 
     @model_validator(mode="after")
     def validate_secret_key_for_production(self) -> "Settings":
