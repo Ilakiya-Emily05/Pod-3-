@@ -101,7 +101,10 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     sha256_hash = hashlib.sha256(plain_password.encode()).hexdigest()
-    return bcrypt.checkpw(sha256_hash.encode(), hashed_password.encode())
+    try:
+        return bcrypt.checkpw(sha256_hash.encode(), hashed_password.encode())
+    except ValueError:
+        return False
 
 
 def get_expiration_delta(remember_me: bool) -> timedelta:
@@ -110,7 +113,12 @@ def get_expiration_delta(remember_me: bool) -> timedelta:
     return timedelta(minutes=settings.access_token_expire_minutes)
 
 
-def create_access_token(subject: str, email: str, remember_me: bool) -> tuple[str, int]:
+def create_access_token(
+    subject: str,
+    email: str,
+    remember_me: bool,
+    role: str = "user",
+) -> tuple[str, int]:
     expiration_delta = get_expiration_delta(remember_me)
     expires_in = int(expiration_delta.total_seconds())
     expires_at = datetime.now(UTC) + expiration_delta
@@ -118,6 +126,7 @@ def create_access_token(subject: str, email: str, remember_me: bool) -> tuple[st
     payload = {
         "sub": subject,
         "email": email,
+        "role": role,
         "exp": expires_at,
     }
 

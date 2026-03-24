@@ -5,9 +5,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import get_db
 from app.controllers.admin import AdminController
-from app.schemas.admin import AnalyticsSummary, QuestionCreate, UsersListResponse
+from app.schemas.admin import (
+    AdminAuthResponse,
+    AdminLoginRequest,
+    AnalyticsSummary,
+    QuestionCreate,
+    UsersListResponse,
+)
+from app.services.admin_auth_service import admin_login
 
 router = APIRouter(prefix="/admin", tags=["Admin APIs"])
+
+
+@router.post(
+    "/auth/login",
+    response_model=AdminAuthResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Admin login",
+    description="Authenticate admin and return bearer token",
+)
+async def login_admin(payload: AdminLoginRequest) -> AdminAuthResponse:
+    return admin_login(payload)
 
 
 @router.get(
