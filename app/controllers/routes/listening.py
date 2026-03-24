@@ -27,11 +27,11 @@ router = APIRouter(prefix="/listening", tags=["listening"])
     "/assessments",
     response_model=ListeningAssessmentRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(get_current_admin_email)],
 )
 async def create_listening_assessment(
     payload: ListeningAssessmentCreate,
     db: AsyncSession = Depends(get_db),
-    _: str = Depends(get_current_admin_email),
 ) -> ListeningAssessmentRead:
     service = ListeningService(db)
     assessment = await service.create_assessment(payload)
@@ -63,12 +63,15 @@ async def get_listening_assessment(
     return ListeningAssessmentRead.model_validate(assessment)
 
 
-@router.patch("/assessments/{assessment_id}", response_model=ListeningAssessmentRead)
+@router.patch(
+    "/assessments/{assessment_id}",
+    response_model=ListeningAssessmentRead,
+    dependencies=[Depends(get_current_admin_email)],
+)
 async def update_listening_assessment(
     assessment_id: UUID,
     payload: ListeningAssessmentUpdate,
     db: AsyncSession = Depends(get_db),
-    _: str = Depends(get_current_admin_email),
 ) -> ListeningAssessmentRead:
     service = ListeningService(db)
     assessment = await service.update_assessment(assessment_id, payload)

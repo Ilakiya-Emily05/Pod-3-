@@ -56,6 +56,8 @@ class ReadingQuestionUpdate(BaseModel):
 class ReadingQuestionRead(ReadingQuestionBase):
     id: UUID
     assessment_id: UUID
+    cefr_level: CEFRLevel | None = None
+    difficulty_score: Decimal | None = None
     options: list[ReadingQuestionOptionRead] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime

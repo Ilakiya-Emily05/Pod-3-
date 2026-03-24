@@ -56,6 +56,8 @@ class ListeningQuestionUpdate(BaseModel):
 class ListeningQuestionRead(ListeningQuestionBase):
     id: UUID
     assessment_id: UUID
+    cefr_level: CEFRLevel | None = None
+    difficulty_score: Decimal | None = None
     options: list[ListeningQuestionOptionRead] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime

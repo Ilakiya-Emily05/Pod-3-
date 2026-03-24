@@ -56,6 +56,8 @@ class GrammarQuestionUpdate(BaseModel):
 class GrammarQuestionRead(GrammarQuestionBase):
     id: UUID
     assessment_id: UUID
+    cefr_level: CEFRLevel | None = None
+    difficulty_score: Decimal | None = None
     options: list[GrammarQuestionOptionRead] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime

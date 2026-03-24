@@ -95,6 +95,7 @@ Base URL:
 - Status: `201 Created`
 
 Request body:
+(Mock data)
 
 ```json
 {
@@ -295,6 +296,485 @@ Error response format:
   "detail": "Reading assessment not found"
 }
 ```
+
+## Mock Data for Assessment Creation
+### Reading Assessment Creation
+
+```json
+{
+  "title": "Giving Old Tech a Second Life",
+  "passage_text": "Every year, millions of smartphones are discarded, contributing to a massive global e-waste problem. Consumers often upgrade to the latest models, leaving their previous devices to gather dust in a drawer. However, many of these older phones are still incredibly powerful and fully functional. Instead of throwing them away, tech enthusiasts are finding highly creative ways to repurpose them.\n\nOne popular project is transforming an old smartphone into a dedicated navigation device for a bicycle or motorcycle. By unlocking the device's bootloader and installing a lightweight, custom operating system, users can remove unnecessary background applications that drain the battery. The resulting device functions as an excellent, highly customizable GPS navigator. It is often more responsive than standard navigation units and doesn't risk the battery life or safety of the user's primary, expensive smartphone while out on the road.\n\nOther creative uses for outdated electronics include turning them into home security cameras, remote controls for smart home setups, or even dedicated media servers. Specialized applications can easily be downloaded to facilitate these changes. \n\nBy taking the time to give old technology a second life, individuals not only save money but also actively reduce their environmental footprint. Furthermore, tinkering with custom ROMs and hardware provides a fantastic, hands-on opportunity to learn valuable new technical skills.",
+  "total_questions": 5,
+  "time_limit_seconds": 600,
+  "is_active": true,
+  "questions": [
+    {
+      "question_text": "What is the primary purpose of this passage?",
+      "sort_order": 1,
+      "points": 1,
+      "cefr_level": "B1",
+      "difficulty_score": 4,
+      "options": [
+        {
+          "option_text": "To convince people to stop buying the latest smartphone models.",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "To explain the environmental dangers of modern e-waste.",
+          "sort_order": 2,
+          "is_correct": false
+        },
+        {
+          "option_text": "To discuss how older smartphones can be successfully reused for new purposes.",
+          "sort_order": 3,
+          "is_correct": true
+        },
+        {
+          "option_text": "To provide a step-by-step guide on how to install a custom operating system.",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "According to the text, what is one advantage of using an old phone as a dedicated bike navigator?",
+      "sort_order": 2,
+      "points": 1,
+      "cefr_level": "B2",
+      "difficulty_score": 6,
+      "options": [
+        {
+          "option_text": "It protects the battery and safety of your main, expensive smartphone.",
+          "sort_order": 1,
+          "is_correct": true
+        },
+        {
+          "option_text": "It automatically connects to the internet without needing a SIM card.",
+          "sort_order": 2,
+          "is_correct": false
+        },
+        {
+          "option_text": "It is entirely waterproof and cannot be damaged while riding.",
+          "sort_order": 3,
+          "is_correct": false
+        },
+        {
+          "option_text": "It comes with pre-installed, highly expensive navigation software.",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "In the context of the first paragraph, what does the word 'discarded' mean?",
+      "sort_order": 3,
+      "points": 1,
+      "cefr_level": "B1",
+      "difficulty_score": 3,
+      "options": [
+        {
+          "option_text": "Sold for a very high profit.",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "Thrown away or rejected as useless.",
+          "sort_order": 2,
+          "is_correct": true
+        },
+        {
+          "option_text": "Repaired using complicated tools.",
+          "sort_order": 3,
+          "is_correct": false
+        },
+        {
+          "option_text": "Kept safely in a secure location.",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "Why might someone want to install a 'lightweight, custom operating system' on their repurposed phone?",
+      "sort_order": 4,
+      "points": 1,
+      "cefr_level": "B2",
+      "difficulty_score": 7,
+      "options": [
+        {
+          "option_text": "To increase the physical weight of the phone so it doesn't fall off the bike.",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "To make the phone compatible with the newest, most demanding video games.",
+          "sort_order": 2,
+          "is_correct": false
+        },
+        {
+          "option_text": "To remove background apps that drain the battery, improving performance.",
+          "sort_order": 3,
+          "is_correct": true
+        },
+        {
+          "option_text": "To bypass the need for a GPS signal while traveling on the road.",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "Which of the following is NOT mentioned as a potential use for old electronics?",
+      "sort_order": 5,
+      "points": 1,
+      "cefr_level": "B1",
+      "difficulty_score": 4,
+      "options": [
+        {
+          "option_text": "A home security camera.",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "A digital picture frame.",
+          "sort_order": 2,
+          "is_correct": true
+        },
+        {
+          "option_text": "A dedicated media server.",
+          "sort_order": 3,
+          "is_correct": false
+        },
+        {
+          "option_text": "A remote control for a smart home.",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    }
+  ]
+}
+```
+### Listening Assessment Creation
+
+```json
+{
+  "title": "Listening Assessment: The Fox and the Grapes",
+  "audio_url": "https://ia800305.us.archive.org/30/items/aesops_fables_volume_1_librivox/fables_01_01_aesop_64kb.mp3",
+  "audio_duration_seconds": 50,
+  "total_questions": 5,
+  "time_limit_seconds": 600,
+  "is_active": true,
+  "questions": [
+    {
+      "question_text": "What is the fox's primary goal at the beginning of the narrative?",
+      "sort_order": 1,
+      "points": 1,
+      "cefr_level": "B1",
+      "difficulty_score": 3,
+      "options": [
+        {
+          "option_text": "To find a safe place to hide from a hunter.",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "To reach a bunch of grapes hanging from a vine.",
+          "sort_order": 2,
+          "is_correct": true
+        },
+        {
+          "option_text": "To climb a high trellis to see the surrounding area.",
+          "sort_order": 3,
+          "is_correct": false
+        },
+        {
+          "option_text": "To search for water to quench his thirst.",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "Why is the fox ultimately unsuccessful in his attempt?",
+      "sort_order": 2,
+      "points": 1,
+      "cefr_level": "B1",
+      "difficulty_score": 3,
+      "options": [
+        {
+          "option_text": "He is too exhausted from running.",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "Another animal steals the food before he can get it.",
+          "sort_order": 2,
+          "is_correct": false
+        },
+        {
+          "option_text": "The trellis breaks when he tries to jump on it.",
+          "sort_order": 3,
+          "is_correct": false
+        },
+        {
+          "option_text": "The grapes are positioned completely out of his reach.",
+          "sort_order": 4,
+          "is_correct": true
+        }
+      ]
+    },
+    {
+      "question_text": "How does the fox behave immediately after deciding to give up?",
+      "sort_order": 3,
+      "points": 1,
+      "cefr_level": "B2",
+      "difficulty_score": 6,
+      "options": [
+        {
+          "option_text": "He throws a tantrum and barks in frustration.",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "He walks away adopting an attitude of dignity and unconcern.",
+          "sort_order": 2,
+          "is_correct": true
+        },
+        {
+          "option_text": "He begs the other animals in the forest for help.",
+          "sort_order": 3,
+          "is_correct": false
+        },
+        {
+          "option_text": "He sits down and waits for the grapes to fall on their own.",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "What excuse does the fox vocalize to justify his failure?",
+      "sort_order": 4,
+      "points": 1,
+      "cefr_level": "B1",
+      "difficulty_score": 4,
+      "options": [
+        {
+          "option_text": "He states that he wasn't actually hungry in the first place.",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "He argues that eating grapes is bad for a fox's health.",
+          "sort_order": 2,
+          "is_correct": false
+        },
+        {
+          "option_text": "He claims that the grapes are likely sour anyway.",
+          "sort_order": 3,
+          "is_correct": true
+        },
+        {
+          "option_text": "He says the sun was completely blinding his vision.",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "Which of the following best summarizes the underlying psychological theme of this fable?",
+      "sort_order": 5,
+      "points": 1,
+      "cefr_level": "B2",
+      "difficulty_score": 7,
+      "options": [
+        {
+          "option_text": "Hard work and persistence will eventually lead to success.",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "People frequently despise and belittle things they are incapable of achieving.",
+          "sort_order": 2,
+          "is_correct": true
+        },
+        {
+          "option_text": "Animals are often much more intelligent than humans realize.",
+          "sort_order": 3,
+          "is_correct": false
+        },
+        {
+          "option_text": "It is important to always share your food with those who are less fortunate.",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Grammar Assessment Creation
+
+```json
+{
+  "title": "Grammar Assessment: Advanced Tenses",
+  "topic": "Past and Perfect Tenses",
+  "total_questions": 5,
+  "time_limit_seconds": 300,
+  "is_active": true,
+  "questions": [
+    {
+      "question_text": "By the time the manager arrived at the office, the development team __________ the critical software update.",
+      "sort_order": 1,
+      "points": 1,
+      "cefr_level": "B2",
+      "difficulty_score": 5,
+      "options": [
+        {
+          "option_text": "has finished",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "had finished",
+          "sort_order": 2,
+          "is_correct": true
+        },
+        {
+          "option_text": "finished",
+          "sort_order": 3,
+          "is_correct": false
+        },
+        {
+          "option_text": "was finishing",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "If the developers __________ the code more carefully, the application would not have crashed during the presentation.",
+      "sort_order": 2,
+      "points": 1,
+      "cefr_level": "B2",
+      "difficulty_score": 7,
+      "options": [
+        {
+          "option_text": "checked",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "have checked",
+          "sort_order": 2,
+          "is_correct": false
+        },
+        {
+          "option_text": "were checking",
+          "sort_order": 3,
+          "is_correct": false
+        },
+        {
+          "option_text": "had checked",
+          "sort_order": 4,
+          "is_correct": true
+        }
+      ]
+    },
+    {
+      "question_text": "While the server administrator __________ the network settings, the power suddenly went out.",
+      "sort_order": 3,
+      "points": 1,
+      "cefr_level": "B1",
+      "difficulty_score": 3,
+      "options": [
+        {
+          "option_text": "configured",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "was configuring",
+          "sort_order": 2,
+          "is_correct": true
+        },
+        {
+          "option_text": "has configured",
+          "sort_order": 3,
+          "is_correct": false
+        },
+        {
+          "option_text": "had configured",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "The placement coordinator announced that the technology firm __________ three students from our batch during the previous week's interviews.",
+      "sort_order": 4,
+      "points": 1,
+      "cefr_level": "B2",
+      "difficulty_score": 6,
+      "options": [
+        {
+          "option_text": "recruited",
+          "sort_order": 1,
+          "is_correct": false
+        },
+        {
+          "option_text": "has recruited",
+          "sort_order": 2,
+          "is_correct": false
+        },
+        {
+          "option_text": "had recruited",
+          "sort_order": 3,
+          "is_correct": true
+        },
+        {
+          "option_text": "recruits",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "Before starting his current job, he __________ a lot of free time to experiment with different operating systems.",
+      "sort_order": 5,
+      "points": 1,
+      "cefr_level": "B1",
+      "difficulty_score": 4,
+      "options": [
+        {
+          "option_text": "used to have",
+          "sort_order": 1,
+          "is_correct": true
+        },
+        {
+          "option_text": "was having",
+          "sort_order": 2,
+          "is_correct": false
+        },
+        {
+          "option_text": "has had",
+          "sort_order": 3,
+          "is_correct": false
+        },
+        {
+          "option_text": "is used to having",
+          "sort_order": 4,
+          "is_correct": false
+        }
+      ]
+    }
+  ]
+}
+```
+
 
 ## Quick Change Checklist
 

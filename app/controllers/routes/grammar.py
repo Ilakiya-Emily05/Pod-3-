@@ -27,11 +27,11 @@ router = APIRouter(prefix="/grammar", tags=["grammar"])
     "/assessments",
     response_model=GrammarAssessmentRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(get_current_admin_email)],
 )
 async def create_grammar_assessment(
     payload: GrammarAssessmentCreate,
     db: AsyncSession = Depends(get_db),
-    _: str = Depends(get_current_admin_email),
 ) -> GrammarAssessmentRead:
     service = GrammarService(db)
     assessment = await service.create_assessment(payload)
@@ -62,12 +62,15 @@ async def get_grammar_assessment(
     return GrammarAssessmentRead.model_validate(assessment)
 
 
-@router.patch("/assessments/{assessment_id}", response_model=GrammarAssessmentRead)
+@router.patch(
+    "/assessments/{assessment_id}",
+    response_model=GrammarAssessmentRead,
+    dependencies=[Depends(get_current_admin_email)],
+)
 async def update_grammar_assessment(
     assessment_id: UUID,
     payload: GrammarAssessmentUpdate,
     db: AsyncSession = Depends(get_db),
-    _: str = Depends(get_current_admin_email),
 ) -> GrammarAssessmentRead:
     service = GrammarService(db)
     assessment = await service.update_assessment(assessment_id, payload)
