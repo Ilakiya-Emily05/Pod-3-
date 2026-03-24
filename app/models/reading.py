@@ -47,7 +47,7 @@ class ReadingQuestion(Base, TimestampMixin):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
     points: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False, default=Decimal("1.00"))
     cefr_level: Mapped[CEFRLevel | None] = mapped_column(
-        Enum(CEFRLevel, name="cefr_level_enum"),
+        Enum(CEFRLevel, name="cefr_level_enum", create_type=False),
         nullable=True,
     )
     difficulty_score: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)

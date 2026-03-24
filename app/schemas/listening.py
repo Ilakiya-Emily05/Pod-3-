@@ -4,7 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.assessment_status import AttemptStatus, CEFRLevel, is_valid_cefr_result_level
+from app.models.assessment_status import AttemptStatus, CEFRLevel
+from app.utils.validators import validate_cefr_result_level
 
 
 class ListeningQuestionOptionBase(BaseModel):
@@ -133,15 +134,10 @@ class ListeningAttemptUpdate(BaseModel):
     )
     cefr_level: str | None = Field(default=None, min_length=2, max_length=3)
 
-    @field_validator("cefr_level")
+    @field_validator("cefr_level", mode="before")
     @classmethod
     def validate_cefr_level(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        if not is_valid_cefr_result_level(value):
-            msg = f"Invalid CEFR result level: {value}"
-            raise ValueError(msg)
-        return value
+        return validate_cefr_result_level(value)
 
 
 class ListeningAttemptRead(BaseModel):
@@ -161,14 +157,9 @@ class ListeningAttemptRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    @field_validator("cefr_level")
+    @field_validator("cefr_level", mode="before")
     @classmethod
     def validate_cefr_level(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        if not is_valid_cefr_result_level(value):
-            msg = f"Invalid CEFR result level: {value}"
-            raise ValueError(msg)
-        return value
+        return validate_cefr_result_level(value)
 
     model_config = ConfigDict(from_attributes=True)

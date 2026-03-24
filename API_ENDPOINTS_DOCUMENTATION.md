@@ -204,21 +204,29 @@ Response body (shape):
 
 ```json
 {
-  "id": "...",
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "assessment_id": "550e8400-e29b-41d4-a716-446655440001",
+  "user_id": "550e8400-e29b-41d4-a716-446655440002",
+  "user_email": "user@example.com",
   "status": "submitted",
+  "started_at": "2024-03-24T10:00:00Z",
+  "submitted_at": "2024-03-24T10:15:00Z",
+  "total_questions": 5,
   "answered_questions": 5,
   "correct_answers": 4,
   "ability_score": 0.7429,
   "cefr_level": "B1+",
   "answers": [
     {
-      "id": "...",
-      "question_id": "...",
-      "selected_option_id": "...",
+      "id": "550e8400-e29b-41d4-a716-446655440003",
+      "question_id": "550e8400-e29b-41d4-a716-446655440004",
+      "selected_option_id": "550e8400-e29b-41d4-a716-446655440005",
       "cefr_level": "B1",
       "difficulty_score": 3.0
     }
-  ]
+  ],
+  "created_at": "2024-03-24T10:00:00Z",
+  "updated_at": "2024-03-24T10:15:00Z"
 }
 ```
 
@@ -298,6 +306,7 @@ Error response format:
 ```
 
 ## Mock Data for Assessment Creation
+
 ### Reading Assessment Creation
 
 ```json
@@ -456,6 +465,7 @@ Error response format:
   ]
 }
 ```
+
 ### Listening Assessment Creation
 
 ```json
@@ -774,7 +784,6 @@ Error response format:
   ]
 }
 ```
-
 
 ## Quick Change Checklist
 

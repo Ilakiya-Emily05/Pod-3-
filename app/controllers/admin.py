@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from math import ceil
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -97,51 +97,20 @@ class AdminController:
         )
 
         # Average ability score (from all attempts)
-        reading_attempt_count_query = select(func.count(ReadingAttempt.id)).where(
+        reading_scores = select(ReadingAttempt.ability_score.label("ability_score")).where(
             ReadingAttempt.ability_score.isnot(None)
         )
-        reading_attempt_count_result = await self.db.execute(reading_attempt_count_query)
-        reading_attempt_count = reading_attempt_count_result.scalar() or 0
-
-        listening_attempt_count_query = select(func.count(ListeningAttempt.id)).where(
+        listening_scores = select(ListeningAttempt.ability_score.label("ability_score")).where(
             ListeningAttempt.ability_score.isnot(None)
         )
-        listening_attempt_count_result = await self.db.execute(listening_attempt_count_query)
-        listening_attempt_count = listening_attempt_count_result.scalar() or 0
-
-        grammar_attempt_count_query = select(func.count(GrammarAttempt.id)).where(
+        grammar_scores = select(GrammarAttempt.ability_score.label("ability_score")).where(
             GrammarAttempt.ability_score.isnot(None)
         )
-        grammar_attempt_count_result = await self.db.execute(grammar_attempt_count_query)
-        grammar_attempt_count = grammar_attempt_count_result.scalar() or 0
 
-        reading_ability_query = select(func.sum(ReadingAttempt.ability_score)).where(
-            ReadingAttempt.ability_score.isnot(None)
-        )
-        reading_ability_result = await self.db.execute(reading_ability_query)
-        reading_ability_total = reading_ability_result.scalar() or Decimal("0")
-
-        listening_ability_query = select(func.sum(ListeningAttempt.ability_score)).where(
-            ListeningAttempt.ability_score.isnot(None)
-        )
-        listening_ability_result = await self.db.execute(listening_ability_query)
-        listening_ability_total = listening_ability_result.scalar() or Decimal("0")
-
-        grammar_ability_query = select(func.sum(GrammarAttempt.ability_score)).where(
-            GrammarAttempt.ability_score.isnot(None)
-        )
-        grammar_ability_result = await self.db.execute(grammar_ability_query)
-        grammar_ability_total = grammar_ability_result.scalar() or Decimal("0")
-
-        total_ability_sum = reading_ability_total + listening_ability_total + grammar_ability_total
-        total_ability_attempts = (
-            reading_attempt_count + listening_attempt_count + grammar_attempt_count
-        )
-        avg_score = (
-            total_ability_sum / Decimal(total_ability_attempts)
-            if total_ability_attempts > 0
-            else Decimal("0")
-        )
+        all_scores_query = union_all(reading_scores, listening_scores, grammar_scores).subquery()
+        avg_query = select(func.avg(all_scores_query.c.ability_score))
+        avg_result = await self.db.execute(avg_query)
+        avg_score = avg_result.scalar_one_or_none() or Decimal("0")
 
         # Module completion rate
         completed_query = select(func.count(User.id)).where(
