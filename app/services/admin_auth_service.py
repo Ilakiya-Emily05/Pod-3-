@@ -1,37 +1,40 @@
-import hmac
-
 from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config.settings import get_settings
-from app.schemas.admin import AdminAuthResponse, AdminLoginRequest
-from app.services.auth_service import create_access_token, verify_password
-
-settings = get_settings()
+from app.models.user import AdminUser
+from app.schemas.admin import AdminAuthResponse, AdminSignupRequest
+from app.services.auth_service import create_access_token, hash_password
 
 
-def admin_login(login_payload: AdminLoginRequest) -> AdminAuthResponse:
-    configured_email = (settings.admin_email or "").strip().lower()
-    configured_password_hash = settings.admin_password_hash
-
-    if not configured_email or not configured_password_hash:
+async def admin_signup(db: AsyncSession, signup_payload: AdminSignupRequest) -> AdminAuthResponse:
+    if not signup_payload.passwords_match:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid admin credentials",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password and confirm_password must match",
         )
 
-    submitted_email = str(login_payload.email).strip().lower()
-    email_matches = hmac.compare_digest(submitted_email, configured_email)
-    password_matches = verify_password(login_payload.password, configured_password_hash)
+    normalized_email = str(signup_payload.email).strip().lower()
+    existing_admin_stmt = select(AdminUser).where(AdminUser.email == normalized_email)
+    existing_admin = await db.scalar(existing_admin_stmt)
 
-    if not email_matches or not password_matches:
+    if existing_admin:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid admin credentials",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An admin with this email already exists",
         )
+
+    new_admin = AdminUser(
+        email=normalized_email,
+        password_hash=hash_password(signup_payload.password),
+    )
+    db.add(new_admin)
+    await db.commit()
+    await db.refresh(new_admin)
 
     access_token, expires_in = create_access_token(
-        subject=submitted_email,
-        email=submitted_email,
+        subject=str(new_admin.id),
+        email=new_admin.email,
         remember_me=False,
         role="admin",
     )
@@ -39,5 +42,5 @@ def admin_login(login_payload: AdminLoginRequest) -> AdminAuthResponse:
     return AdminAuthResponse(
         access_token=access_token,
         expires_in=expires_in,
-        admin_email=submitted_email,
+        admin_email=new_admin.email,
     )

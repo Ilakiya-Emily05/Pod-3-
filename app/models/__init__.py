@@ -22,10 +22,11 @@ from app.models.reading import (
     ReadingQuestion,
     ReadingQuestionOption,
 )
-from app.models.user import User, UserProfile
+from app.models.user import AdminUser, User, UserProfile
 
 __all__ = [
     "AttemptStatus",
+    "AdminUser",
     "Base",
     "CEFRLevel",
     "GrammarAssessment",

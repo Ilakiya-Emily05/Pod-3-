@@ -6,10 +6,14 @@ from pydantic import BaseModel, EmailStr, Field
 
 from app.models.assessment_status import CEFRLevel
 
-
-class AdminLoginRequest(BaseModel):
+class AdminSignupRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=72)
+    confirm_password: str = Field(min_length=8, max_length=72)
+
+    @property
+    def passwords_match(self) -> bool:
+        return self.password == self.confirm_password
 
 
 class AdminAuthResponse(BaseModel):
