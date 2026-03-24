@@ -1,0 +1,49 @@
+
+version: "3.9"
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: resume_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB:       resume_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: resume_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      POSTGRES_USER:         postgres
+      POSTGRES_PASSWORD:     admin123
+      POSTGRES_DB:           resume_db
+      POSTGRES_HOST:         postgres
+      POSTGRES_PORT:         5432
+      APP_ENV:               production
+      UPLOAD_DIR:            ./uploads
+      MAX_FILE_SIZE_MB:      10
+      ALLOWED_ORIGINS:       "*"
+      RATE_LIMIT_PER_MINUTE: 30
+      OPENAI_API_KEY:        ${OPENAI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+
+volumes:
+  postgres_data:

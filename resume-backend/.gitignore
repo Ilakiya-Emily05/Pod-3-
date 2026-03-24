@@ -1,0 +1,28 @@
+# Secrets — never push
+.env
+
+# Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.venv/
+
+# Database
+*.db
+*.sqlite
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Requirements (we use pyproject.toml)
+requirements.txt
