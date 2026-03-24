@@ -3,6 +3,9 @@ from decimal import Decimal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
+
+from app.models.assessment_status import CEFRLevel
+
 class AdminSignupRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=72)
@@ -15,7 +18,7 @@ class AdminSignupRequest(BaseModel):
 
 class AdminAuthResponse(BaseModel):
     access_token: str
-    token_type: str = "bearer"
+    token_type: str = Field(default="bearer")
     expires_in: int
     admin_email: EmailStr
 
@@ -65,4 +68,6 @@ class QuestionCreate(BaseModel):
     question_text: str = Field(..., min_length=1, max_length=2000)
     sort_order: int = Field(..., ge=1)
     points: Decimal = Field(..., ge=0)
+    cefr_level: CEFRLevel
+    difficulty_score: Decimal = Field(..., ge=0)
     options: list[dict] = Field(..., description="List of options with is_correct flag")

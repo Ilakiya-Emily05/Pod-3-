@@ -13,7 +13,12 @@ from app.schemas.grammar import (
     GrammarAttemptRead,
 )
 from app.services.grammar_service import GrammarService
-from app.utils.auth import CurrentUser, get_current_user, get_current_user_id
+from app.utils.auth import (
+    CurrentUser,
+    get_current_admin_email,
+    get_current_user,
+    get_current_user_id,
+)
 
 router = APIRouter(prefix="/grammar", tags=["grammar"])
 
@@ -22,6 +27,7 @@ router = APIRouter(prefix="/grammar", tags=["grammar"])
     "/assessments",
     response_model=GrammarAssessmentRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(get_current_admin_email)],
 )
 async def create_grammar_assessment(
     payload: GrammarAssessmentCreate,
@@ -56,7 +62,11 @@ async def get_grammar_assessment(
     return GrammarAssessmentRead.model_validate(assessment)
 
 
-@router.patch("/assessments/{assessment_id}", response_model=GrammarAssessmentRead)
+@router.patch(
+    "/assessments/{assessment_id}",
+    response_model=GrammarAssessmentRead,
+    dependencies=[Depends(get_current_admin_email)],
+)
 async def update_grammar_assessment(
     assessment_id: UUID,
     payload: GrammarAssessmentUpdate,

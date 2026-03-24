@@ -13,7 +13,12 @@ from app.schemas.listening import (
     ListeningAttemptRead,
 )
 from app.services.listening_service import ListeningService
-from app.utils.auth import CurrentUser, get_current_user, get_current_user_id
+from app.utils.auth import (
+    CurrentUser,
+    get_current_admin_email,
+    get_current_user,
+    get_current_user_id,
+)
 
 router = APIRouter(prefix="/listening", tags=["listening"])
 
@@ -22,6 +27,7 @@ router = APIRouter(prefix="/listening", tags=["listening"])
     "/assessments",
     response_model=ListeningAssessmentRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(get_current_admin_email)],
 )
 async def create_listening_assessment(
     payload: ListeningAssessmentCreate,
@@ -57,7 +63,11 @@ async def get_listening_assessment(
     return ListeningAssessmentRead.model_validate(assessment)
 
 
-@router.patch("/assessments/{assessment_id}", response_model=ListeningAssessmentRead)
+@router.patch(
+    "/assessments/{assessment_id}",
+    response_model=ListeningAssessmentRead,
+    dependencies=[Depends(get_current_admin_email)],
+)
 async def update_listening_assessment(
     assessment_id: UUID,
     payload: ListeningAssessmentUpdate,

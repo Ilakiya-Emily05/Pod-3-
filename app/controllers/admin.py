@@ -1,23 +1,22 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
 from math import ceil
-from uuid import UUID
 
-from sqlalchemy import Float, func, select
+from sqlalchemy import func, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.grammar import GrammarAssessment, GrammarAttempt
 from app.models.listening import ListeningAssessment, ListeningAttempt
 from app.models.reading import ReadingAssessment, ReadingAttempt
-from app.models.user import User, UserProfile
+from app.models.user import User
 from app.schemas.admin import QuestionCreate
 
 
 class AdminController:
     """Admin controller for user management and analytics."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
     async def get_users(
@@ -32,11 +31,7 @@ class AdminController:
         total = total_result.scalar() or 0
 
         # Paginated query
-        query = (
-            select(User)
-            .options(selectinload(User.profile))
-            .order_by(User.created_at.desc())
-        )
+        query = select(User).options(selectinload(User.profile)).order_by(User.created_at.desc())
         if search:
             query = query.where(User.email.ilike(f"%{search}%"))
 
@@ -81,46 +76,41 @@ class AdminController:
 
         # Active users (last 30 days)
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-        active_users_query = select(func.count(User.id)).where(
-            User.created_at >= thirty_days_ago
-        )
+        active_users_query = select(func.count(User.id)).where(User.created_at >= thirty_days_ago)
         active_users_result = await self.db.execute(active_users_query)
         active_users = active_users_result.scalar() or 0
 
         # Total assessments
         reading_count = await self.db.execute(select(func.count(ReadingAssessment.id)))
-        listening_count = await self.db.execute(
-            select(func.count(ListeningAssessment.id))
-        )
+        listening_count = await self.db.execute(select(func.count(ListeningAssessment.id)))
         grammar_count = await self.db.execute(select(func.count(GrammarAssessment.id)))
         total_assessments = (
-            reading_count.scalar()
-            + listening_count.scalar()
-            + grammar_count.scalar()
-            or 0
+            reading_count.scalar() + listening_count.scalar() + grammar_count.scalar() or 0
         )
 
         # Total attempts
         reading_attempts = await self.db.execute(select(func.count(ReadingAttempt.id)))
-        listening_attempts = await self.db.execute(
-            select(func.count(ListeningAttempt.id))
-        )
-        grammar_attempts = await self.db.execute(
-            select(func.count(GrammarAttempt.id))
-        )
+        listening_attempts = await self.db.execute(select(func.count(ListeningAttempt.id)))
+        grammar_attempts = await self.db.execute(select(func.count(GrammarAttempt.id)))
         total_attempts = (
-            reading_attempts.scalar()
-            + listening_attempts.scalar()
-            + grammar_attempts.scalar()
-            or 0
+            reading_attempts.scalar() + listening_attempts.scalar() + grammar_attempts.scalar() or 0
         )
 
-        # Average score (from all attempts)
-        avg_score_query = select(func.avg(ReadingAttempt.score)).where(
-            ReadingAttempt.score.isnot(None)
+        # Average ability score (from all attempts)
+        reading_scores = select(ReadingAttempt.ability_score.label("ability_score")).where(
+            ReadingAttempt.ability_score.isnot(None)
         )
-        avg_score_result = await self.db.execute(avg_score_query)
-        avg_score = avg_score_result.scalar() or Decimal("0")
+        listening_scores = select(ListeningAttempt.ability_score.label("ability_score")).where(
+            ListeningAttempt.ability_score.isnot(None)
+        )
+        grammar_scores = select(GrammarAttempt.ability_score.label("ability_score")).where(
+            GrammarAttempt.ability_score.isnot(None)
+        )
+
+        all_scores_query = union_all(reading_scores, listening_scores, grammar_scores).subquery()
+        avg_query = select(func.avg(all_scores_query.c.ability_score))
+        avg_result = await self.db.execute(avg_query)
+        avg_score = avg_result.scalar_one_or_none() or Decimal("0")
 
         # Module completion rate
         completed_query = select(func.count(User.id)).where(
@@ -132,9 +122,7 @@ class AdminController:
 
         # Recent activity (last 7 days)
         seven_days_ago = datetime.utcnow() - timedelta(days=7)
-        recent_query = select(func.count(User.id)).where(
-            User.created_at >= seven_days_ago
-        )
+        recent_query = select(func.count(User.id)).where(User.created_at >= seven_days_ago)
         recent_result = await self.db.execute(recent_query)
         recent_activity = {"last_7_days": recent_result.scalar() or 0}
 
@@ -183,9 +171,7 @@ class AdminController:
             raise ValueError(f"Invalid assessment type: {data.assessment_type}")
 
         # Verify assessment exists
-        assessment_query = select(assessment_class).where(
-            assessment_class.id == data.assessment_id
-        )
+        assessment_query = select(assessment_class).where(assessment_class.id == data.assessment_id)
         assessment_result = await self.db.execute(assessment_query)
         assessment = assessment_result.scalar_one_or_none()
 
@@ -198,6 +184,8 @@ class AdminController:
             question_text=data.question_text,
             sort_order=data.sort_order,
             points=float(data.points),
+            cefr_level=data.cefr_level,
+            difficulty_score=float(data.difficulty_score),
         )
 
         self.db.add(question)
@@ -222,6 +210,8 @@ class AdminController:
             "question_text": question.question_text,
             "sort_order": question.sort_order,
             "points": question.points,
+            "cefr_level": question.cefr_level,
+            "difficulty_score": question.difficulty_score,
             "options": [
                 {
                     "id": opt.id,

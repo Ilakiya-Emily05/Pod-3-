@@ -8,7 +8,7 @@ from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, St
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.assessment_status import AttemptStatus
+from app.models.assessment_status import AttemptStatus, CEFRLevel
 from app.models.base import Base, TimestampMixin
 
 
@@ -46,6 +46,11 @@ class ReadingQuestion(Base, TimestampMixin):
     question_text: Mapped[str] = mapped_column(Text, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
     points: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False, default=Decimal("1.00"))
+    cefr_level: Mapped[CEFRLevel | None] = mapped_column(
+        Enum(CEFRLevel, name="cefr_level_enum", create_type=False),
+        nullable=True,
+    )
+    difficulty_score: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
 
     assessment: Mapped[ReadingAssessment] = relationship(back_populates="questions")
     options: Mapped[list[ReadingQuestionOption]] = relationship(
@@ -99,7 +104,8 @@ class ReadingAttempt(Base, TimestampMixin):
     total_questions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     answered_questions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     correct_answers: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    score: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False, default=Decimal("0.00"))
+    ability_score: Mapped[Decimal | None] = mapped_column(Numeric(6, 4), nullable=True)
+    cefr_level: Mapped[str | None] = mapped_column(String(3), nullable=True)
 
     assessment: Mapped[ReadingAssessment] = relationship(back_populates="attempts")
     answers: Mapped[list[ReadingAttemptAnswer]] = relationship(
@@ -130,6 +136,11 @@ class ReadingAttemptAnswer(Base):
         nullable=True,
     )
     is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    cefr_level: Mapped[CEFRLevel | None] = mapped_column(
+        Enum(CEFRLevel, name="cefr_level_enum", create_type=False),
+        nullable=True,
+    )
+    difficulty_score: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
 
     attempt: Mapped[ReadingAttempt] = relationship(back_populates="answers")
     question: Mapped[ReadingQuestion] = relationship(back_populates="submitted_answers")

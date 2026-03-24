@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -16,6 +15,7 @@ from app.models.reading import (
     ReadingQuestionOption,
 )
 from app.services.base_assessment_service import BaseAssessmentService
+from app.services.cefr_grading_service import CEFRGradingService
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -33,12 +33,13 @@ if TYPE_CHECKING:
 class ReadingService(BaseAssessmentService):
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
+        self.grading_service = CEFRGradingService()
 
     async def _get_attempt_for_response(
         self, attempt_id: UUID, user_id: UUID
     ) -> ReadingAttempt | None:
         """Fetch attempt by id and user_id to prevent information leakage.
-        
+
         Returns None if attempt doesn't exist OR doesn't belong to the user.
         """
         result = await self.db.execute(
@@ -62,6 +63,8 @@ class ReadingService(BaseAssessmentService):
                 question_text=question_payload.question_text,
                 sort_order=question_payload.sort_order,
                 points=question_payload.points,
+                cefr_level=question_payload.cefr_level,
+                difficulty_score=question_payload.difficulty_score,
             )
             for option_payload in question_payload.options:
                 question.options.append(
@@ -135,7 +138,8 @@ class ReadingService(BaseAssessmentService):
             total_questions=assessment.total_questions,
             answered_questions=0,
             correct_answers=0,
-            score=Decimal("0.00"),
+            ability_score=None,
+            cefr_level=None,
         )
 
         self.db.add(attempt)
@@ -170,7 +174,10 @@ class ReadingService(BaseAssessmentService):
 
         # Validate that the attempt is in a submittable status
         if attempt.status != AttemptStatus.IN_PROGRESS:
-            msg = f"Cannot submit attempt with status '{attempt.status}'. Only attempts with status 'in_progress' can be submitted."
+            msg = (
+                f"Cannot submit attempt with status '{attempt.status}'. "
+                "Only attempts with status 'in_progress' can be submitted."
+            )
             raise ValueError(msg)
 
         # Validate that submitted answers don't have duplicates BEFORE deleting
@@ -182,9 +189,7 @@ class ReadingService(BaseAssessmentService):
 
         # Validate all questions and options BEFORE deleting existing answers
         for submitted in answers:
-            self._validate_question_belongs_to_assessment(
-                submitted.question_id, question_map
-            )
+            self._validate_question_belongs_to_assessment(submitted.question_id, question_map)
             self._validate_option_for_question(
                 submitted.selected_option_id, question_map[submitted.question_id]
             )
@@ -194,26 +199,35 @@ class ReadingService(BaseAssessmentService):
             await self.db.delete(existing_answer)
         await self.db.flush()
 
-        # Process answers and calculate score
+        # Process answers and collect CEFR grading inputs
         new_answers: list[ReadingAttemptAnswer] = []
+        grading_attempts: list[dict] = []
         correct_answers = 0
-        score = Decimal("0.00")
 
         for submitted in answers:
-            # Retrieve question and calculate score
+            # Retrieve question and validate CEFR metadata
             question = question_map[submitted.question_id]
+            if question.cefr_level is None:
+                msg = f"Question {question.id} is missing CEFR level"
+                raise ValueError(msg)
+            if question.difficulty_score is None:
+                msg = f"Question {question.id} is missing difficulty score"
+                raise ValueError(msg)
 
             # Validate option and get correctness
-            is_correct = self._validate_option_for_question(
-                submitted.selected_option_id, question
-            )
+            is_correct = self._validate_option_for_question(submitted.selected_option_id, question)
 
-            # Calculate score contribution
-            answer_correct_count, answer_score = self._calculate_score_for_answer(
-                is_correct, question
-            )
+            # Maintain count for existing response metadata
+            answer_correct_count = 1 if is_correct else 0
             correct_answers += answer_correct_count
-            score += answer_score
+
+            grading_attempts.append(
+                {
+                    "cefr_level": question.cefr_level,
+                    "difficulty_score": float(question.difficulty_score),
+                    "is_correct": bool(is_correct),
+                }
+            )
 
             new_answers.append(
                 ReadingAttemptAnswer(
@@ -221,10 +235,14 @@ class ReadingService(BaseAssessmentService):
                     question_id=question.id,
                     selected_option_id=submitted.selected_option_id,
                     is_correct=is_correct,
+                    cefr_level=question.cefr_level,
+                    difficulty_score=question.difficulty_score,
                 )
             )
 
         self.db.add_all(new_answers)
+
+        grading_result = self.grading_service.grade(grading_attempts)
 
         # Update attempt with submission results
         attempt.status = AttemptStatus.SUBMITTED
@@ -232,7 +250,8 @@ class ReadingService(BaseAssessmentService):
         attempt.answered_questions = len(new_answers)
         attempt.correct_answers = correct_answers
         attempt.total_questions = len(questions)
-        attempt.score = score
+        attempt.ability_score = grading_result.ability_score
+        attempt.cefr_level = grading_result.cefr_level
 
         await self.db.commit()
         updated_attempt = await self._get_attempt_for_response(attempt.id, user_id)

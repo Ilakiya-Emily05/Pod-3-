@@ -13,7 +13,12 @@ from app.schemas.reading import (
     ReadingAttemptRead,
 )
 from app.services.reading_service import ReadingService
-from app.utils.auth import CurrentUser, get_current_user, get_current_user_id
+from app.utils.auth import (
+    CurrentUser,
+    get_current_admin_email,
+    get_current_user,
+    get_current_user_id,
+)
 
 router = APIRouter(prefix="/reading", tags=["reading"])
 
@@ -22,6 +27,7 @@ router = APIRouter(prefix="/reading", tags=["reading"])
     "/assessments",
     response_model=ReadingAssessmentRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(get_current_admin_email)],
 )
 async def create_reading_assessment(
     payload: ReadingAssessmentCreate,
@@ -56,7 +62,11 @@ async def get_reading_assessment(
     return ReadingAssessmentRead.model_validate(assessment)
 
 
-@router.patch("/assessments/{assessment_id}", response_model=ReadingAssessmentRead)
+@router.patch(
+    "/assessments/{assessment_id}",
+    response_model=ReadingAssessmentRead,
+    dependencies=[Depends(get_current_admin_email)],
+)
 async def update_reading_assessment(
     assessment_id: UUID,
     payload: ReadingAssessmentUpdate,

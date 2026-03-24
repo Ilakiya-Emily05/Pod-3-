@@ -2,9 +2,10 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.assessment_status import AttemptStatus
+from app.models.assessment_status import AttemptStatus, CEFRLevel
+from app.utils.validators import validate_cefr_result_level
 
 
 class GrammarQuestionOptionBase(BaseModel):
@@ -23,8 +24,10 @@ class GrammarQuestionOptionUpdate(BaseModel):
     is_correct: bool | None = None
 
 
-class GrammarQuestionOptionRead(GrammarQuestionOptionBase):
+class GrammarQuestionOptionRead(BaseModel):
     id: UUID
+    option_text: str
+    sort_order: int
     created_at: datetime
     updated_at: datetime
 
@@ -35,6 +38,8 @@ class GrammarQuestionBase(BaseModel):
     question_text: str = Field(min_length=1)
     sort_order: int = Field(ge=1)
     points: Decimal = Field(default=Decimal("1.00"), ge=Decimal("0.00"))
+    cefr_level: CEFRLevel
+    difficulty_score: Decimal = Field(ge=Decimal("0.00"))
 
 
 class GrammarQuestionCreate(GrammarQuestionBase):
@@ -45,11 +50,15 @@ class GrammarQuestionUpdate(BaseModel):
     question_text: str | None = Field(default=None, min_length=1)
     sort_order: int | None = Field(default=None, ge=1)
     points: Decimal | None = Field(default=None, ge=Decimal("0.00"))
+    cefr_level: CEFRLevel | None = None
+    difficulty_score: Decimal | None = Field(default=None, ge=Decimal("0.00"))
 
 
 class GrammarQuestionRead(GrammarQuestionBase):
     id: UUID
     assessment_id: UUID
+    cefr_level: CEFRLevel | None = None
+    difficulty_score: Decimal | None = None
     options: list[GrammarQuestionOptionRead] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
@@ -95,7 +104,8 @@ class GrammarAttemptAnswerRead(BaseModel):
     id: UUID
     question_id: UUID
     selected_option_id: UUID | None
-    is_correct: bool | None
+    cefr_level: CEFRLevel | None
+    difficulty_score: Decimal | None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -115,7 +125,17 @@ class GrammarAttemptUpdate(BaseModel):
     submitted_at: datetime | None = None
     answered_questions: int | None = Field(default=None, ge=0)
     correct_answers: int | None = Field(default=None, ge=0)
-    score: Decimal | None = Field(default=None, ge=Decimal("0.00"))
+    ability_score: Decimal | None = Field(
+        default=None,
+        ge=Decimal("0.00"),
+        le=Decimal("1.00"),
+    )
+    cefr_level: str | None = Field(default=None, min_length=2, max_length=3)
+
+    @field_validator("cefr_level", mode="before")
+    @classmethod
+    def validate_cefr_level(cls, value: str | None) -> str | None:
+        return validate_cefr_result_level(value)
 
 
 class GrammarAttemptRead(BaseModel):
@@ -129,9 +149,15 @@ class GrammarAttemptRead(BaseModel):
     total_questions: int
     answered_questions: int
     correct_answers: int
-    score: Decimal
+    ability_score: Decimal | None
+    cefr_level: str | None
     answers: list[GrammarAttemptAnswerRead] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("cefr_level", mode="before")
+    @classmethod
+    def validate_cefr_level(cls, value: str | None) -> str | None:
+        return validate_cefr_result_level(value)
 
     model_config = ConfigDict(from_attributes=True)

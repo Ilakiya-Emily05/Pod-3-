@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     from uuid import UUID
 
 
-
 class BaseAssessmentService:
     """Base service class for assessment-related operations.
 
@@ -38,7 +37,9 @@ class BaseAssessmentService:
         seen_question_ids: set = set()
         for submitted in answers:
             if submitted.question_id in seen_question_ids:
-                msg = f"Question {submitted.question_id} appears multiple times in submitted answers"
+                msg = (
+                    f"Question {submitted.question_id} appears multiple times in submitted answers"
+                )
                 raise ValueError(msg)
             seen_question_ids.add(submitted.question_id)
         return seen_question_ids
@@ -91,9 +92,7 @@ class BaseAssessmentService:
             None,
         )
         if selected_option is None:
-            msg = (
-                f"Option {selected_option_id} is invalid for question {question.id}"
-            )
+            msg = f"Option {selected_option_id} is invalid for question {question.id}"
             raise ValueError(msg)
         return selected_option.is_correct
 
@@ -115,4 +114,3 @@ class BaseAssessmentService:
         if is_correct:
             return 1, question.points
         return 0, Decimal("0.00")
-
