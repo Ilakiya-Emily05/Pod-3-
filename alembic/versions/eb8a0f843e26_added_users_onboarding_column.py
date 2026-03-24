@@ -34,11 +34,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id')
     )
-    op.drop_column('grammar_assessments', 'instructions')
-    op.drop_column('grammar_assessments', 'description')
-    op.drop_column('listening_assessments', 'instructions')
-    op.drop_column('listening_assessments', 'description')
-    op.add_column('users', sa.Column('profile_completed', sa.Boolean(), nullable=False))
+    op.add_column('users', sa.Column('profile_completed', sa.Boolean(), nullable=False, server_default=sa.false()))
     op.drop_constraint(op.f('users_oauth_sub_key'), 'users', type_='unique')
     op.drop_column('users', 'name')
     # ### end Alembic commands ###
@@ -50,9 +46,5 @@ def downgrade() -> None:
     op.add_column('users', sa.Column('name', sa.VARCHAR(length=255), autoincrement=False, nullable=False))
     op.create_unique_constraint(op.f('users_oauth_sub_key'), 'users', ['oauth_sub'], postgresql_nulls_not_distinct=False)
     op.drop_column('users', 'profile_completed')
-    op.add_column('listening_assessments', sa.Column('description', sa.TEXT(), autoincrement=False, nullable=True))
-    op.add_column('listening_assessments', sa.Column('instructions', sa.TEXT(), autoincrement=False, nullable=True))
-    op.add_column('grammar_assessments', sa.Column('description', sa.TEXT(), autoincrement=False, nullable=True))
-    op.add_column('grammar_assessments', sa.Column('instructions', sa.TEXT(), autoincrement=False, nullable=True))
     op.drop_table('user_profiles')
     # ### end Alembic commands ###

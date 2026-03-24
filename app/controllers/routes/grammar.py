@@ -13,7 +13,7 @@ from app.schemas.grammar import (
     GrammarAttemptRead,
 )
 from app.services.grammar_service import GrammarService
-from app.utils.auth import get_current_user_id
+from app.utils.auth import CurrentUser, get_current_user, get_current_user_id
 
 router = APIRouter(prefix="/grammar", tags=["grammar"])
 
@@ -75,8 +75,15 @@ async def update_grammar_assessment(
 async def create_grammar_attempt(
     payload: GrammarAttemptCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    current_user: CurrentUser = Depends(get_current_user),
 ) -> GrammarAttemptRead:
+    # Override user_id and user_email from the authenticated user context
+    payload = payload.model_copy(
+        update={
+            "user_id": current_user.user_id,
+            "user_email": current_user.email,
+        }
+    )
     service = GrammarService(db)
     try:
         attempt = await service.create_attempt(payload)
@@ -90,11 +97,11 @@ async def submit_grammar_attempt(
     attempt_id: UUID,
     answers: list[GrammarAttemptAnswerCreate],
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: UUID = Depends(get_current_user_id),
 ) -> GrammarAttemptRead:
     service = GrammarService(db)
     try:
-        attempt = await service.submit_attempt(attempt_id, answers)
+        attempt = await service.submit_attempt(attempt_id, answers, user_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

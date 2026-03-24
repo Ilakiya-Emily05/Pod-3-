@@ -14,6 +14,7 @@ from app.models.listening import (
     ListeningQuestion,
     ListeningQuestionOption,
 )
+from app.models.progress import UserProgress
 from app.models.reading import (
     ReadingAssessment,
     ReadingAttempt,
@@ -42,7 +43,9 @@ __all__ = [
     "ReadingQuestion",
     "ReadingQuestionOption",
     "TimestampMixin",
-    "User", "UserProfile"
+    "User",
+    "UserProfile",
+    "UserProgress",
 ]
 
 

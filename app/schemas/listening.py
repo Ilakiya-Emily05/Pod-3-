@@ -59,8 +59,6 @@ class ListeningQuestionRead(ListeningQuestionBase):
 
 class ListeningAssessmentBase(BaseModel):
     title: str = Field(min_length=1, max_length=255)
-    description: str | None = None
-    instructions: str | None = None
     audio_url: str = Field(min_length=1, max_length=1024)
     audio_duration_seconds: int | None = Field(default=None, ge=1)
     total_questions: int = Field(default=0, ge=0)
@@ -74,8 +72,6 @@ class ListeningAssessmentCreate(ListeningAssessmentBase):
 
 class ListeningAssessmentUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
-    instructions: str | None = None
     audio_url: str | None = Field(default=None, min_length=1, max_length=1024)
     audio_duration_seconds: int | None = Field(default=None, ge=1)
     total_questions: int | None = Field(default=None, ge=0)

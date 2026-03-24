@@ -24,6 +24,9 @@ class User(Base):
     profile: Mapped["UserProfile | None"] = relationship(
         "UserProfile", back_populates="user", uselist=False
     )
+    progress_records: Mapped[list["UserProgress"]] = relationship(
+        "UserProgress", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class UserProfile(Base):

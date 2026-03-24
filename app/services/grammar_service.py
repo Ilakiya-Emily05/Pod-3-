@@ -15,6 +15,8 @@ from app.models.grammar import (
     GrammarQuestion,
     GrammarQuestionOption,
 )
+from app.schemas.grammar import GrammarAttemptCreate
+from app.services.base_assessment_service import BaseAssessmentService
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -25,27 +27,30 @@ if TYPE_CHECKING:
         GrammarAssessmentCreate,
         GrammarAssessmentUpdate,
         GrammarAttemptAnswerCreate,
-        GrammarAttemptCreate,
     )
 
 
-class GrammarService:
+class GrammarService(BaseAssessmentService):
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def _get_attempt_for_response(self, attempt_id: UUID) -> GrammarAttempt | None:
+    async def _get_attempt_for_response(
+        self, attempt_id: UUID, user_id: UUID
+    ) -> GrammarAttempt | None:
+        """Fetch attempt by id and user_id to prevent information leakage.
+        
+        Returns None if attempt doesn't exist OR doesn't belong to the user.
+        """
         result = await self.db.execute(
             select(GrammarAttempt)
             .options(selectinload(GrammarAttempt.answers))
-            .where(GrammarAttempt.id == attempt_id)
+            .where(GrammarAttempt.id == attempt_id, GrammarAttempt.user_id == user_id)
         )
         return result.scalar_one_or_none()
 
     async def create_assessment(self, payload: GrammarAssessmentCreate) -> GrammarAssessment:
         assessment = GrammarAssessment(
             title=payload.title,
-            description=payload.description,
-            instructions=payload.instructions,
             topic=payload.topic,
             total_questions=payload.total_questions,
             time_limit_seconds=payload.time_limit_seconds,
@@ -135,7 +140,7 @@ class GrammarService:
 
         self.db.add(attempt)
         await self.db.commit()
-        created_attempt = await self._get_attempt_for_response(attempt.id)
+        created_attempt = await self._get_attempt_for_response(attempt.id, payload.user_id)
         if created_attempt is None:
             msg = "Grammar attempt creation failed"
             raise RuntimeError(msg)
@@ -145,7 +150,10 @@ class GrammarService:
         self,
         attempt_id: UUID,
         answers: list[GrammarAttemptAnswerCreate],
+        user_id: UUID,
     ) -> GrammarAttempt | None:
+        # Query with both attempt_id and user_id to enforce ownership at DB level
+        # Returns None if attempt doesn't exist OR doesn't belong to the user
         result = await self.db.execute(
             select(GrammarAttempt)
             .options(
@@ -154,50 +162,58 @@ class GrammarService:
                 .selectinload(GrammarAssessment.questions)
                 .selectinload(GrammarQuestion.options),
             )
-            .where(GrammarAttempt.id == attempt_id)
+            .where(GrammarAttempt.id == attempt_id, GrammarAttempt.user_id == user_id)
         )
         attempt = result.scalar_one_or_none()
         if attempt is None:
             return None
 
+        # Validate that the attempt is in a submittable status
+        if attempt.status != AttemptStatus.IN_PROGRESS:
+            msg = f"Cannot submit attempt with status '{attempt.status}'. Only attempts with status 'in_progress' can be submitted."
+            raise ValueError(msg)
+
+        # Validate that submitted answers don't have duplicates BEFORE deleting
+        self._validate_answers_input(answers)
+
+        # Build question map for validation
+        questions = attempt.assessment.questions
+        question_map = {question.id: question for question in questions}
+
+        # Validate all questions and options BEFORE deleting existing answers
+        for submitted in answers:
+            self._validate_question_belongs_to_assessment(
+                submitted.question_id, question_map
+            )
+            self._validate_option_for_question(
+                submitted.selected_option_id, question_map[submitted.question_id]
+            )
+
+        # Delete existing answers only after all validations pass
         for existing_answer in attempt.answers:
             await self.db.delete(existing_answer)
         await self.db.flush()
 
-        questions = attempt.assessment.questions
-        question_map = {question.id: question for question in questions}
-
+        # Process answers and calculate score
         new_answers: list[GrammarAttemptAnswer] = []
         correct_answers = 0
         score = Decimal("0.00")
 
         for submitted in answers:
-            question = question_map.get(submitted.question_id)
-            if question is None:
-                msg = f"Question {submitted.question_id} does not belong to this assessment"
-                raise ValueError(msg)
+            # Retrieve question and calculate score
+            question = question_map[submitted.question_id]
 
-            is_correct: bool | None = None
-            if submitted.selected_option_id is not None:
-                selected_option = next(
-                    (
-                        option
-                        for option in question.options
-                        if option.id == submitted.selected_option_id
-                    ),
-                    None,
-                )
-                if selected_option is None:
-                    msg = (
-                        f"Option {submitted.selected_option_id} is invalid "
-                        f"for question {question.id}"
-                    )
-                    raise ValueError(msg)
-                is_correct = selected_option.is_correct
+            # Validate option and get correctness
+            is_correct = self._validate_option_for_question(
+                submitted.selected_option_id, question
+            )
 
-            if is_correct:
-                correct_answers += 1
-                score += question.points
+            # Calculate score contribution
+            answer_correct_count, answer_score = self._calculate_score_for_answer(
+                is_correct, question
+            )
+            correct_answers += answer_correct_count
+            score += answer_score
 
             new_answers.append(
                 GrammarAttemptAnswer(
@@ -210,6 +226,7 @@ class GrammarService:
 
         self.db.add_all(new_answers)
 
+        # Update attempt with submission results
         attempt.status = AttemptStatus.SUBMITTED
         attempt.submitted_at = datetime.now(UTC)
         attempt.answered_questions = len(new_answers)
@@ -218,7 +235,7 @@ class GrammarService:
         attempt.score = score
 
         await self.db.commit()
-        updated_attempt = await self._get_attempt_for_response(attempt.id)
+        updated_attempt = await self._get_attempt_for_response(attempt.id, user_id)
         if updated_attempt is None:
             msg = "Grammar attempt submission failed"
             raise RuntimeError(msg)

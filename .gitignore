@@ -11,6 +11,7 @@ deployments/*
 
 # C extensions
 *.so
+docs/
 
 # Distribution / packaging
 .Python
