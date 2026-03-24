@@ -51,8 +51,6 @@ class GrammarService(BaseAssessmentService):
     async def create_assessment(self, payload: GrammarAssessmentCreate) -> GrammarAssessment:
         assessment = GrammarAssessment(
             title=payload.title,
-            description=payload.description,
-            instructions=payload.instructions,
             topic=payload.topic,
             total_questions=payload.total_questions,
             time_limit_seconds=payload.time_limit_seconds,

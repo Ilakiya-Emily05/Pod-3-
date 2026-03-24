@@ -59,8 +59,6 @@ class GrammarQuestionRead(GrammarQuestionBase):
 
 class GrammarAssessmentBase(BaseModel):
     title: str = Field(min_length=1, max_length=255)
-    description: str | None = None
-    instructions: str | None = None
     topic: str | None = Field(default=None, max_length=255)
     total_questions: int = Field(default=0, ge=0)
     time_limit_seconds: int | None = Field(default=None, ge=1)
@@ -73,8 +71,6 @@ class GrammarAssessmentCreate(GrammarAssessmentBase):
 
 class GrammarAssessmentUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
-    instructions: str | None = None
     topic: str | None = Field(default=None, max_length=255)
     total_questions: int | None = Field(default=None, ge=0)
     time_limit_seconds: int | None = Field(default=None, ge=1)

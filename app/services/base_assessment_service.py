@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from app.models.grammar import GrammarQuestion
 
 
 class BaseAssessmentService:

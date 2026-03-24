@@ -57,7 +57,7 @@ async def get_current_user_id(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token: missing user ID",
             )
-        
+
         # Validate and convert to UUID
         try:
             user_id = UUID(user_id_str)
@@ -66,7 +66,7 @@ async def get_current_user_id(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token: user ID is not a valid UUID",
             )
-        
+
         return user_id
     except JWTError as err:
         raise HTTPException(

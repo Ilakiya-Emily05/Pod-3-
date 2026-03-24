@@ -17,8 +17,6 @@ class ListeningAssessment(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
     audio_url: Mapped[str] = mapped_column(String(1024), nullable=False)
     audio_duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     total_questions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
