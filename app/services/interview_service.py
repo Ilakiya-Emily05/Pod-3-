@@ -3,6 +3,9 @@ Interview Service
 Orchestrates both:
   - Section 1: AI Practice  (adaptive difficulty + immediate feedback)
   - Section 2: Mock Interview (adaptive difficulty + end-only gap analysis)
+
+All user input is audio — Whisper handles transcription before this service is called.
+No text fallback; audio_path is always expected.
 """
 import random
 from datetime import datetime
@@ -23,10 +26,14 @@ from app.services.question_service import (
     evaluate_answer,
     generate_gap_analysis,
     generate_qa_for_keyword,
+    segment_transcript,
 )
 from app.services.transcribe import transcribe_audio
 from app.services.confidence_analyzer import extract_audio_features, compute_confidence
 from app.config.settings import settings
+
+# Minimum number of unasked questions before auto-generation is triggered
+MIN_QUESTION_THRESHOLD = 3
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -56,7 +63,7 @@ async def _fetch_question(
         .where(
             Question.skill_id == skill_id,
             Question.difficulty == difficulty,
-            Question.id.notin_(exclude_ids),
+            Question.id.notin_(exclude_ids) if exclude_ids else True,
         )
         .limit(1)
     )
@@ -68,6 +75,45 @@ async def _get_skills_for_user(db: AsyncSession, user_id: str) -> list[KeySkill]
     """Return all skills stored for the user."""
     result = await db.execute(select(KeySkill).where(KeySkill.user_id == user_id))
     return list(result.scalars().all())
+
+
+async def _get_practice_answered_ids(db: AsyncSession, user_id: str) -> list[UUID]:
+    """Return all question IDs the user has answered in Practice (session_id IS NULL)."""
+    stmt = (
+        select(UserResponse.question_id)
+        .join(Question, UserResponse.question_id == Question.id)
+        .join(KeySkill, Question.skill_id == KeySkill.id)
+        .where(KeySkill.user_id == user_id, UserResponse.session_id.is_(None))
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def _get_prior_mock_answered_ids(db: AsyncSession, user_id: str) -> list[UUID]:
+    """Return all question IDs the user has answered in any prior completed mock session."""
+    stmt = (
+        select(UserResponse.question_id)
+        .join(InterviewSession, UserResponse.session_id == InterviewSession.id)
+        .where(InterviewSession.user_id == user_id, InterviewSession.status == "completed")
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def _count_available_questions(
+    db: AsyncSession, user_id: str, exclude_ids: list[UUID]
+) -> int:
+    """Count questions not yet answered (not in exclude_ids) for a user's skills."""
+    skills = await _get_skills_for_user(db, user_id)
+    if not skills:
+        return 0
+    skill_ids = [s.id for s in skills]
+    stmt = select(Question.id).where(
+        Question.skill_id.in_(skill_ids),
+        Question.id.notin_(exclude_ids) if exclude_ids else True,
+    )
+    result = await db.execute(stmt)
+    return len(result.scalars().all())
 
 
 # ── Keyword Ingestion ────────────────────────────────────────────────────────
@@ -102,22 +148,47 @@ async def ingest_keywords_and_generate(
     return skills
 
 
+async def _regenerate_questions_for_user(db: AsyncSession, user_id: str) -> None:
+    """Generate a fresh batch of questions for each of the user's skills."""
+    skills = await _get_skills_for_user(db, user_id)
+    for skill in skills:
+        for difficulty in DifficultyLevel:
+            for _ in range(3):
+                q_text, options, a_text = await generate_qa_for_keyword(skill.keyword, difficulty)
+                if q_text:
+                    db.add(Question(
+                        skill_id=skill.id,
+                        text=q_text,
+                        options=options,
+                        answer_key=a_text,
+                        difficulty=difficulty,
+                    ))
+    await db.commit()
+
+
 # ── Section 1: AI Practice ────────────────────────────────────────────────────
 
 async def get_practice_question(
     db: AsyncSession,
     user_id: str,
     difficulty: DifficultyLevel | None = None,
-    exclude_ids: list[UUID] | None = None,
+    extra_exclude_ids: list[UUID] | None = None,
 ) -> Question | None:
-    """Fetch any question at the requested difficulty for the user."""
-    # Performance-based logic: if difficulty is None, find last performance
+    """Fetch any unanswered question at the requested difficulty for the user.
+    Always excludes all previously answered practice questions (DB-queried fresh).
+    """
+    # Always query DB for all practice-answered IDs to prevent repeats
+    exclude_ids = await _get_practice_answered_ids(db, user_id)
+    if extra_exclude_ids:
+        exclude_ids = list(set(exclude_ids) | set(extra_exclude_ids))
+
+    # Performance-based difficulty selection
     if difficulty is None:
         stmt = (
             select(UserResponse, Question)
             .join(Question, UserResponse.question_id == Question.id)
             .join(KeySkill, Question.skill_id == KeySkill.id)
-            .where(KeySkill.user_id == user_id, UserResponse.session_id == None)
+            .where(KeySkill.user_id == user_id, UserResponse.session_id.is_(None))
             .order_by(UserResponse.created_at.desc())
             .limit(1)
         )
@@ -132,13 +203,12 @@ async def get_practice_question(
     skills = await _get_skills_for_user(db, user_id)
     if not skills:
         return None
-    
+
     # Randomize skill selection for variety
     random.shuffle(skills)
-    
-    exclude = exclude_ids or []
+
     for skill in skills:
-        q = await _fetch_question(db, skill.id, difficulty, exclude)
+        q = await _fetch_question(db, skill.id, difficulty, exclude_ids)
         if q:
             return q
     return None
@@ -148,15 +218,14 @@ async def submit_practice_answer(
     db: AsyncSession,
     user_id: str,
     question_id: UUID,
-    user_answer: str | None = None,
-    audio_path: str | None = None,
+    audio_path: str,
 ) -> dict:
     """
-    Section 1 logic:
-    1. Evaluate answer immediately via simple comparison.
-    2. Show feedback to the user.
-    3. Determine the next question's difficulty adaptively.
-    4. Return the next question (or mark practice complete).
+    Section 1 logic — Audio-only input:
+    1. Transcribe audio via Whisper.
+    2. Extract audio features + compute confidence score.
+    3. Evaluate answer semantically via LLM.
+    4. Return immediate feedback + next question.
     """
     # Load the answered question
     result = await db.execute(select(Question).where(Question.id == question_id))
@@ -164,28 +233,19 @@ async def submit_practice_answer(
     if not question:
         return {"error": "Question not found"}
 
-    # Handle Audio if provided
-    transcription = None
-    confidence_score = None
-    audio_metadata = None
+    # Transcribe audio
+    transcription = await transcribe_audio(audio_path)
+    audio_metadata = extract_audio_features(audio_path, transcription)
+    confidence_score = compute_confidence(audio_metadata)
 
-    if audio_path:
-        transcription = await transcribe_audio(audio_path)
-        audio_metadata = extract_audio_features(audio_path, transcription)
-        confidence_score = compute_confidence(audio_metadata)
-        user_answer = transcription
-
-    if not user_answer:
-        return {"error": "No answer provided."}
-
-    # Evaluate
-    is_correct, feedback = await evaluate_answer(question.text, question.answer_key, user_answer)
+    # Evaluate semantically
+    is_correct, feedback = await evaluate_answer(question.text, question.answer_key, transcription)
 
     # Save the user's response
     response_record = UserResponse(
         session_id=None,  # No session in practice mode
         question_id=question_id,
-        user_answer=user_answer,
+        user_answer=transcription,
         confidence_score=confidence_score,
         audio_metadata=audio_metadata,
         is_correct=is_correct,
@@ -197,192 +257,256 @@ async def submit_practice_answer(
     # Determine next difficulty
     next_difficulty = _next_difficulty(question.difficulty, is_correct)
 
-    # Fetch next question (exclude already answered one)
+    # Fetch next question (exclude already answered ones, DB-fresh)
     next_question = await get_practice_question(
-        db, user_id, next_difficulty, exclude_ids=[question_id]
+        db, user_id, next_difficulty, extra_exclude_ids=[question_id]
     )
 
     return {
         "is_correct": is_correct,
         "feedback": feedback,
-        "next_question": next_question,
-        "practice_complete": next_question is None,
         "transcription": transcription,
         "confidence_score": confidence_score,
+        "next_question": next_question,
+        "practice_complete": next_question is None,
     }
 
 
 # ── Section 2: Mock Interview ─────────────────────────────────────────────────
 
-async def start_interview_session(db: AsyncSession, user_id: str) -> dict:
+# ── Frontend List / Result Endpoints ─────────────────────────────────────────
+
+async def get_user_sessions(db: AsyncSession, user_id: str) -> list[dict]:
     """
-    Creates a new interview session and returns the first Easy question.
+    Return a list of all mock interview sessions for a user,
+    with the count of responses per session.
+    """
+    sessions_result = await db.execute(
+        select(InterviewSession)
+        .where(InterviewSession.user_id == user_id)
+        .order_by(InterviewSession.created_at.desc())
+        .options(selectinload(InterviewSession.responses))
+    )
+    sessions = sessions_result.scalars().all()
+    return [
+        {
+            "session_id": s.id,
+            "status": s.status,
+            "created_at": s.created_at,
+            "response_count": len(s.responses),
+        }
+        for s in sessions
+    ]
+
+
+async def get_session_result(db: AsyncSession, session_id: UUID) -> dict:
+    """
+    Return the full result for a completed mock session:
+    session metadata + gap analysis + all Q&A responses.
+    """
+    session_result = await db.execute(
+        select(InterviewSession).where(InterviewSession.id == session_id)
+    )
+    session = session_result.scalar_one_or_none()
+    if not session:
+        return {"error": "Session not found."}
+    if session.status != "completed":
+        return {"error": "Session is still active. Complete the interview first."}
+
+    # Fetch all responses joined with their questions
+    responses_result = await db.execute(
+        select(UserResponse, Question)
+        .join(Question, UserResponse.question_id == Question.id)
+        .where(UserResponse.session_id == session_id)
+        .order_by(UserResponse.created_at)
+    )
+    responses = [
+        {
+            "question_text": row.Question.text,
+            "user_answer": row.UserResponse.user_answer,
+            "confidence_score": row.UserResponse.confidence_score,
+            "is_correct": row.UserResponse.is_correct,
+            "feedback": row.UserResponse.feedback,
+        }
+        for row in responses_result.all()
+    ]
+
+    return {
+        "session_id": session.id,
+        "status": session.status,
+        "gap_analysis": session.feedback,
+        "responses": responses,
+    }
+
+
+# ── Batch Audio Mock Interview (5-Minute Session) ───────────────────────────
+
+async def start_batch_interview(db: AsyncSession, user_id: str) -> dict:
+    """
+    Starts a compulsory 5-minute mock session by providing 15 questions upfront.
+    The user will answer as many as possible in one long audio recording.
     """
     skills = await _get_skills_for_user(db, user_id)
     if not skills:
         return {"error": "No skills found for user. Please ingest keywords first."}
 
-    # Create session
-    session = InterviewSession(user_id=user_id, status="active")
-    db.add(session)
-    await db.flush()
+    # Build global exclusion
+    practice_ids = await _get_practice_answered_ids(db, user_id)
+    prior_mock_ids = await _get_prior_mock_answered_ids(db, user_id)
+    globally_excluded = list(set(practice_ids) | set(prior_mock_ids))
 
-    # First question is always Easy, picked from a random skill
+    # Auto-generate if pool is shallow
+    available = await _count_available_questions(db, user_id, globally_excluded)
+    if available < 15:  # Need at least 15 for a full 5-minute batch
+        await _regenerate_questions_for_user(db, user_id)
+
+    # Pick 15 questions: 5 Easy, 5 Medium, 5 Hard
+    batch_questions: list[Question] = []
+    difficulties = [
+        DifficultyLevel.EASY, DifficultyLevel.EASY, DifficultyLevel.EASY, DifficultyLevel.EASY, DifficultyLevel.EASY,
+        DifficultyLevel.MEDIUM, DifficultyLevel.MEDIUM, DifficultyLevel.MEDIUM, DifficultyLevel.MEDIUM, DifficultyLevel.MEDIUM,
+        DifficultyLevel.HARD, DifficultyLevel.HARD, DifficultyLevel.HARD, DifficultyLevel.HARD, DifficultyLevel.HARD
+    ]
+    
+    # Shuffle skills to spread questions across topics
     random.shuffle(skills)
-    first_question = await _fetch_question(db, skills[0].id, DifficultyLevel.EASY, [])
-    if not first_question:
-        return {"error": "No questions available. Please generate questions first."}
+    skill_cycle = 0
+    
+    current_excluded = list(globally_excluded)
+    for target_diff in difficulties:
+        picked = None
+        for _ in range(len(skills)):
+            skill = skills[skill_cycle % len(skills)]
+            skill_cycle += 1
+            picked = await _fetch_question(db, skill.id, target_diff, current_excluded)
+            if picked:
+                batch_questions.append(picked)
+                current_excluded.append(picked.id)
+                break
+        if not picked:
+            for skill in skills:
+                picked = await _fetch_question(db, skill.id, DifficultyLevel.EASY, current_excluded) or \
+                         await _fetch_question(db, skill.id, DifficultyLevel.MEDIUM, current_excluded) or \
+                         await _fetch_question(db, skill.id, DifficultyLevel.HARD, current_excluded)
+                if picked:
+                    batch_questions.append(picked)
+                    current_excluded.append(picked.id)
+                    break
 
-    # Store the first question ID in feedback as the 'current' question
-    session.feedback = str(first_question.id)
+    if not batch_questions:
+        return {"error": "No questions available. Please ingest more keywords."}
 
+    # Create session
+    import json
+    session = InterviewSession(user_id=user_id, status="active")
+    session.feedback = json.dumps({"batch_ids": [str(q.id) for q in batch_questions]})
+    db.add(session)
     await db.commit()
-    return {"session": session, "current_question": first_question}
+    
+    return {"session_id": session.id, "questions": batch_questions}
 
 
-async def submit_interview_answer(
+async def submit_batch_answer(
     db: AsyncSession,
     session_id: UUID,
-    user_answer: str | None = None,
-    audio_path: str | None = None,
+    audio_path: str,
 ) -> dict:
     """
-    Section 2 logic:
-    1. Secretly evaluate the answer (NOT shown to user).
-    2. Adaptively determine the next question's difficulty.
-    3. If last question → generate Gap Analysis.
-    4. Return only the next question (or session_complete flag).
+    Processes the compulsory 5-minute audio file.
+    Enforces a minimum duration of 5 minutes (300 seconds).
     """
-    # Load session with responses
-    result = await db.execute(
-        select(InterviewSession)
-        .where(InterviewSession.id == session_id)
-        .options(selectinload(InterviewSession.responses))
-    )
+    import json
+    import librosa
+    
+    # Check duration (strictly 5 minutes for a full assessment)
+    try:
+        duration_sec = librosa.get_duration(path=audio_path)
+        if duration_sec < 290:  # Minimum 4:50
+            return {
+                "error": "The recording is too short for a comprehensive evaluation. "
+                         "Please provide more detailed responses to the questions provided."
+            }
+        if duration_sec > 315:  # Maximum 5:15
+            return {
+                "error": "The recording exceeds the allotted 5-minute time limit. "
+                         "Please ensure your session stays within the precise timing."
+            }
+    except Exception as e:
+         return {"error": f"Failed to check audio duration: {str(e)}"}
+
+    # Load session
+    result = await db.execute(select(InterviewSession).where(InterviewSession.id == session_id))
     session = result.scalar_one_or_none()
     if not session or session.status != "active":
         return {"error": "Session not found or already completed."}
 
-    # Get the last answered question to know current difficulty + skill
-    last_response = session.responses[-1] if session.responses else None
+    # Load question IDs from metadata
+    try:
+        metadata = json.loads(session.feedback or "{}")
+        batch_ids = [UUID(id_str) for id_str in metadata.get("batch_ids", [])]
+    except (json.JSONDecodeError, ValueError):
+        return {"error": "Invalid session metadata."}
 
-    # Load the current (pending) question — we track via a "current_question_id" in session
-    # We store the current question id in the session feedback field temporarily
-    current_q_id = UUID(session.feedback) if session.feedback and len(session.feedback) == 36 else None  # noqa: PLR2004
-    if not current_q_id:
-        return {"error": "No active question found for this session."}
+    if not batch_ids:
+        return {"error": "No questions found for this session."}
 
-    q_result = await db.execute(select(Question).where(Question.id == current_q_id))
-    current_question = q_result.scalar_one_or_none()
-    if not current_question:
-        return {"error": "Question not found."}
+    # Transcribe full audio
+    full_transcript = await transcribe_audio(audio_path)
+    audio_metadata = extract_audio_features(audio_path, full_transcript)
+    confidence_score = compute_confidence(audio_metadata)
 
-    # Handle Audio if provided
-    transcription = None
-    confidence_score = None
-    audio_metadata = None
+    # Fetch question objects to provide texts for segmentation
+    q_result = await db.execute(select(Question).where(Question.id.in_(batch_ids)))
+    questions = q_result.scalars().all()
+    q_map = {q.id: q for q in questions}
+    ordered_questions = [q_map[qid] for qid in batch_ids if qid in q_map]
 
-    if audio_path:
-        transcription = await transcribe_audio(audio_path)
-        audio_metadata = extract_audio_features(audio_path, transcription)
-        confidence_score = compute_confidence(audio_metadata)
-        user_answer = transcription  # transcription becomes the answer text for evaluation
+    # Segment transcript
+    segments = await segment_transcript([q.text for q in ordered_questions], full_transcript)
 
-    if not user_answer:
-        return {"error": "No answer provided (neither text nor audio)."}
-
-    # Secretly evaluate
-    is_correct, feedback = await evaluate_answer(
-        current_question.text, current_question.answer_key, user_answer
-    )
-
-    # Save response with hidden result
-    response_record = UserResponse(
-        session_id=session_id,
-        question_id=current_q_id,
-        user_answer=user_answer,
-        confidence_score=confidence_score,
-        audio_metadata=audio_metadata,
-        is_correct=is_correct,
-        feedback=feedback if not session_id else None, # Feedback only for practice (non-session)
-    )
-    db.add(response_record)
-    await db.flush()
-
-    # Determine next difficulty
-    next_difficulty = _next_difficulty(current_question.difficulty, is_correct)
-
-    # Get all answered question IDs (for excluding them from next selection)
-    answered_ids = [r.question_id for r in session.responses if r.question_id]
-    answered_ids.append(current_q_id)
-
-    # Calculate elapsed time (5-minute limit)
-    now = datetime.utcnow()
-    elapsed_seconds = (now - session.created_at).total_seconds()
-
-    if elapsed_seconds >= 300: # 300 seconds = 5 minutes
-        next_question = None
-    else:
-        # Try to get the next skill to vary questions across skills
-        all_skills = await _get_skills_for_user(db, session.user_id)
-        random.shuffle(all_skills)
-        next_question = None
-        for skill in all_skills:
-            next_q = await _fetch_question(db, skill.id, next_difficulty, answered_ids)
-            if next_q:
-                next_question = next_q
-                break
-
-    if next_question:
-        # Store next question id in session.feedback temporarily
-        session.feedback = str(next_question.id)
-        await db.commit()
-        return {
-            "session_complete": False, 
-            "next_question": next_question,
-            "transcription": transcription,
-            "confidence_score": confidence_score,
-        }
-    else:
-        # No more questions → generate Gap Analysis
-        all_responses_result = await db.execute(
-            select(UserResponse, Question)
-            .join(Question, UserResponse.question_id == Question.id)
-            .where(UserResponse.session_id == session_id)
+    # Evaluate each segment
+    responses_list = []
+    for idx, answer_text in segments.items():
+        if idx >= len(ordered_questions):
+            continue
+        
+        q = ordered_questions[idx]
+        is_correct, feedback = await evaluate_answer(q.text, q.answer_key, answer_text)
+        
+        response_record = UserResponse(
+            session_id=session_id,
+            question_id=q.id,
+            user_answer=answer_text,
+            confidence_score=confidence_score,
+            audio_metadata=audio_metadata,
+            is_correct=is_correct,
+            feedback=feedback,
         )
-        history = [
-            {
-                "question": row.Question.text,
-                "user_answer": row.UserResponse.user_answer,
-                "is_correct": row.UserResponse.is_correct or False,
-                "confidence": row.UserResponse.confidence_score,
-            }
-            for row in all_responses_result.all()
-        ]
+        db.add(response_record)
+        responses_list.append({
+            "question": q.text,
+            "user_answer": answer_text,
+            "is_correct": is_correct,
+            "confidence": confidence_score
+        })
 
-        gap_analysis = await generate_gap_analysis(history)
-        session.feedback = gap_analysis
-        session.status = "completed"
-        await db.commit()
-        return {
-            "session_complete": True, 
-            "next_question": None,
-            "transcription": transcription,
-            "confidence_score": confidence_score,
-        }
+    # Generate Gap Analysis
+    if not responses_list:
+        gap_analysis = "No answers were identified in the 5-minute recording."
+    else:
+        gap_analysis = await generate_gap_analysis(responses_list)
 
+    session.feedback = gap_analysis
+    session.status = "completed"
+    await db.commit()
 
-async def get_session_feedback(db: AsyncSession, session_id: UUID) -> dict:
-    """Return the Gap Analysis feedback for a completed session."""
-    result = await db.execute(
-        select(InterviewSession).where(InterviewSession.id == session_id)
-    )
-    session = result.scalar_one_or_none()
-    if not session:
-        return {"error": "Session not found."}
-    if session.status != "completed":
-        return {"error": "Session is still active. Complete the interview first."}
     return {
         "session_id": session_id,
-        "feedback": session.feedback,
+        "gap_analysis": gap_analysis,
+        "responses_count": len(responses_list),
+        "duration_sec": round(duration_sec, 2)
     }
+
+
+
+

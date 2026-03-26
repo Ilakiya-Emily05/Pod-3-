@@ -40,24 +40,22 @@ async def start_practice(
 async def submit_answer(
     user_id: str = Form(...),
     question_id: UUID = Form(...),
-    user_answer: str | None = Form(None),
-    file: UploadFile = File(None),
+    file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Section 1: AI Practice.
-    Submits an answer (Audio or Text).
+    Submits an answer (Audio only).
     """
     tmp_path = None
-    if file:
-        suffix = os.path.splitext(file.filename)[1].lower()
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            tmp.write(await file.read())
-            tmp_path = tmp.name
+    suffix = os.path.splitext(file.filename)[1].lower()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(await file.read())
+        tmp_path = tmp.name
 
     try:
         result = await submit_practice_answer(
-            db, user_id, question_id, user_answer=user_answer, audio_path=tmp_path
+            db, user_id, question_id, audio_path=tmp_path
         )
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])

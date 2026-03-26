@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -26,7 +27,6 @@ class KeySkillOut(BaseModel):
 class QuestionOut(BaseModel):
     id: UUID
     text: str
-    options: list[str]
     difficulty: DifficultyLevel
     skill_id: UUID
 
@@ -36,7 +36,6 @@ class QuestionOut(BaseModel):
 class QuestionWithAnswer(BaseModel):
     id: UUID
     text: str
-    options: list[str]
     answer_key: str
     difficulty: DifficultyLevel
     skill_id: UUID
@@ -56,37 +55,48 @@ class PracticeAnswerFeedback(BaseModel):
     """Immediate feedback returned to user in Section 1."""
     is_correct: bool
     feedback: str
+    transcription: str | None = None
+    confidence_score: int | None = None
     next_question: QuestionOut | None = None
     practice_complete: bool = False
 
-
-# ── Mock Interview Schemas ────────────────────────────────────────────────────
 
 class StartInterviewRequest(BaseModel):
     """Start a new mock interview session."""
     user_id: str
 
 
-class InterviewSessionOut(BaseModel):
+# ── Mock Session List / Result Schemas (for frontend) ────────────────────────
+
+class MockSessionOut(BaseModel):
+    """Summary of a single mock interview session."""
     session_id: UUID
     status: str
-    current_question: QuestionOut
+    created_at: datetime
+    response_count: int
+
+    model_config = {"from_attributes": True}
 
 
-class SubmitInterviewAnswer(BaseModel):
-    """User submits an answer during mock interview (Section 2)."""
-    user_answer: str | None = None
+class UserResponseOut(BaseModel):
+    """A single question-answer pair within a session result."""
+    question_text: str
+    user_answer: str
+    confidence_score: int | None = None
+    is_correct: bool | None = None
+    feedback: str | None = None
 
 
-class InterviewAnswerResponse(BaseModel):
-    """Response after submitting an interview answer — no performance feedback shown."""
-    session_complete: bool
-    next_question: QuestionOut | None = None  # None when session is complete
-    transcription: str | None = None
-    confidence_score: float | None = None
-
-
-class GapAnalysisFeedback(BaseModel):
-    """Final Gap Analysis report shown at the end of the Mock Interview."""
+class MockSessionResultOut(BaseModel):
+    """Full result for a completed mock interview session."""
     session_id: UUID
-    feedback: str
+    status: str
+    gap_analysis: str | None = None
+    responses: list[UserResponseOut]
+
+
+class BatchSessionOut(BaseModel):
+    """Output for a batch mock interview session (10 questions for 5 mins)."""
+    session_id: UUID
+    questions: list[QuestionOut]
+
