@@ -1,5 +1,12 @@
 from app.models.assessment_status import AttemptStatus, CEFRLevel
 from app.models.base import Base, TimestampMixin
+from app.models.behav_assessment_model import (
+    BehavAttempt,
+    BehavOption,
+    BehavOptionScore,
+    BehavQuestion,
+    BehavUserAnswer,
+)
 from app.models.grammar import (
     GrammarAssessment,
     GrammarAttempt,
@@ -25,9 +32,14 @@ from app.models.reading import (
 from app.models.user import AdminUser, User, UserProfile
 
 __all__ = [
-    "AttemptStatus",
     "AdminUser",
+    "AttemptStatus",
     "Base",
+    "BehavAttempt",
+    "BehavOption",
+    "BehavOptionScore",
+    "BehavQuestion",
+    "BehavUserAnswer",
     "CEFRLevel",
     "GrammarAssessment",
     "GrammarAttempt",
