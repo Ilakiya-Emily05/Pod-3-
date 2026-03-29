@@ -19,16 +19,14 @@ def get_llm():
         )
 
     # Fallback to Azure if configured
-    # api_key_azure = os.getenv("AZURE_OPENAI_API_KEY")
-    # endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-    # if api_key_azure and endpoint:
-    #     return AzureChatOpenAI(
-    #         azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o"),
-    #         api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
-    #         azure_endpoint=endpoint,
-    #         api_key=api_key_azure,
-    #         temperature=0.9,
-    #     )
+    if settings.azure_openai_api_key and settings.azure_openai_endpoint:
+        return AzureChatOpenAI(
+            azure_deployment=settings.azure_openai_deployment,
+            api_version=settings.azure_openai_api_version,
+            azure_endpoint=settings.azure_openai_endpoint,
+            api_key=settings.azure_openai_api_key,
+            temperature=0.9,
+        )
     return None
 
 

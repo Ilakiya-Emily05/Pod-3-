@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import ClassVar, Any
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, func
@@ -84,7 +84,7 @@ class BehavUserAnswer(Base):
     )
     question_id: Mapped[int] = mapped_column(Integer, ForeignKey("behav_questions.id"))
     option_id: Mapped[int] = mapped_column(Integer, ForeignKey("behav_options.id"))
-    user_id: Mapped[UUID | None] = mapped_column(index=True)  # Kept for backward compatibility
+    user_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), index=True)  # Kept for backward compatibility
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     attempt: Mapped["BehavAttempt"] = relationship("BehavAttempt", back_populates="answers")

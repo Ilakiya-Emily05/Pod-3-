@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     admin_email: str | None = None
     admin_password_hash: str | None = None
 
+    # AI Settings
+    openai_api_key: str | None = None
+    azure_openai_endpoint: str | None = None
+    azure_openai_api_key: str | None = None
+    azure_openai_deployment: str = "gpt-4o"
+    azure_openai_api_version: str = "2024-02-01"
+
     @model_validator(mode="after")
     def validate_secret_key_for_production(self) -> "Settings":
         if (

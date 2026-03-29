@@ -5,17 +5,17 @@ Revises: b2f4c8d9e1a7
 Create Date: 2026-03-29 19:39:43.543603
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '6cf5cdad4292'
-down_revision: Union[str, Sequence[str], None] = 'b2f4c8d9e1a7'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = 'b2f4c8d9e1a7'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -28,7 +28,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_behav_questions_id'), 'behav_questions', ['id'], unique=False)
-    
+
     op.create_table('behav_options',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('question_id', sa.Integer(), nullable=False),
@@ -38,7 +38,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_behav_options_id'), 'behav_options', ['id'], unique=False)
-    
+
     op.create_table('behav_option_scores',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('option_id', sa.Integer(), nullable=False),
@@ -73,7 +73,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_behav_user_answers_user_id'), 'behav_user_answers', ['user_id'], unique=False)
-    
+
     # Cleanup orphaned generic tables if they exist
     for table in ['option_scores', 'user_answers', 'options', 'questions', 'behav_unique_questions', 'behav_unique_options', 'behav_unique_option_scores', 'behav_unique_user_answers']:
         op.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
