@@ -2,7 +2,7 @@
 # db/models.py
 from sqlalchemy import Column, Integer, String, Float, JSON, DateTime
 from sqlalchemy.sql import func
-from app.db.base import Base
+from app.database.base import Base
 
 class PronunciationResult(Base):
     __tablename__ = "pronunciation_results"
