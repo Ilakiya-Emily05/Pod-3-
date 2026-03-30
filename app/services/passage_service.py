@@ -84,6 +84,9 @@ class PassageService:
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
+        if session.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Unauthorized: This session does not belong to you")
+
         question = self.repo.get_question_by_id(answer.question_id)
         if not question:
             raise HTTPException(status_code=404, detail="Question not found")
@@ -104,12 +107,23 @@ class PassageService:
         correct = sum(1 for a in answers if a.is_correct)
         accuracy = (correct / total * 100) if total > 0 else 0
 
+        weak_areas = []
+        strong_areas = []
+        for answer in answers:
+            question = self.repo.get_question_by_id(answer.question_id)
+            if question:
+                difficulty = getattr(question, 'difficulty', 'medium')
+                if not answer.is_correct and difficulty not in weak_areas:
+                    weak_areas.append(difficulty)
+                elif answer.is_correct and difficulty not in strong_areas:
+                    strong_areas.append(difficulty)
+
         return PassageSummaryResponse(
             session_id=session_id,
             total_questions=total,
             total_correct=correct,
             accuracy=round(accuracy, 2),
             status="COMPLETED",
-            weak_areas=[],
-            strong_areas=[],
+            weak_areas=weak_areas,
+            strong_areas=strong_areas,
         )

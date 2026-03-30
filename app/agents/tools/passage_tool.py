@@ -28,19 +28,16 @@ def generate_passage_with_questions(topic_hint: str | None = None) -> dict:
     and its questions. This function asks the LLM to return JSON and parses it
     locally to avoid strict OpenAI response_format validation errors.
     """
+    settings = get_settings()
     llm = ChatOpenAI(
-        model=get_settings().OPENAI_MODEL,
-        api_key=get_settings().OPENAI_API_KEY,
+        model=settings.OPENAI_MODEL,
+        api_key=settings.OPENAI_API_KEY,
         temperature=0.5,
         max_tokens=1200,
     )
     # Ask the model to return JSON only, then parse with Pydantic locally.
     topic_clause = f"\nTopic focus: {topic_hint}." if topic_hint else ""
-    prompt = PASSAGE_TOOL_PROMPT_TEMPLATE + topic_clause + (
-        "\n\nReturn JSON only with this shape: {\"passage\": string, \"questions\": [\n"
-        "{\"question\": string, \"options\": {\"a\": string, \"b\": string, \"c\": string, \"d\": string}, "
-        "\"correct_answer\": \"a|b|c|d\", \"difficulty\": \"easy|medium|hard\", \"explanation\": string\n} ] }"
-    )
+    prompt = PASSAGE_TOOL_PROMPT_TEMPLATE + topic_clause
 
     raw = llm.invoke(prompt)
     # llm.invoke may return a string or an object with content
