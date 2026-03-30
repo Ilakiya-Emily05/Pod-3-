@@ -19,7 +19,7 @@ def transcribe_audio(file_path: str) -> str:
     try:
         with open(file_path, "rb") as f:
             response = client.audio.transcriptions.create(
-                model="gpt-4o-transcribe",
+                model="whisper-1",
                 file=f
             )
         return response.text or ""
