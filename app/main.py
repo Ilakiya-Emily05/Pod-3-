@@ -4,8 +4,14 @@ from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from app.config.database import init_db
+from app.config.settings import get_settings
+from app.controllers.router import api_router
+
 
 def create_app() -> FastAPI:
+    settings = get_settings()
+
     app = FastAPI(
         title="Power Up API",
         description=(
@@ -13,7 +19,7 @@ def create_app() -> FastAPI:
             "**Docs:** `/docs` (Swagger UI) · `/redoc` (ReDoc) · `/openapi.json` (schema)"
         ),
         version="0.1.0",
-        docs_url=None,    # served manually below so we can customise
+        docs_url=None,  # served manually below so we can customise
         redoc_url=None,
         openapi_url="/openapi.json",
         contact={"name": "Power Up Engineering"},
@@ -23,7 +29,7 @@ def create_app() -> FastAPI:
     # ── CORS ────────────────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],   # tightened via settings in production
+        allow_origins=settings.cors_origins_list,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -57,7 +63,9 @@ def create_app() -> FastAPI:
             description=app.description,
             routes=app.routes,
         )
-        schema["info"]["x-logo"] = {"url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"}
+        schema["info"]["x-logo"] = {
+            "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
+        }
         app.openapi_schema = schema
         return schema
 
@@ -68,9 +76,12 @@ def create_app() -> FastAPI:
     async def health() -> JSONResponse:
         return JSONResponse({"status": "ok", "version": app.version})
 
+    @app.on_event("startup")
+    async def startup_event() -> None:
+        await init_db()
+
     # ── Routers ───────────────────────────────────────────────────────────────
-    # from app.controllers.router import api_router
-    # app.include_router(api_router, prefix="/api/v1")
+    app.include_router(api_router, prefix=settings.api_v1_prefix)
 
     return app
 

@@ -4,12 +4,14 @@ __pycache__/
 *$py.class
 
 CLAUDE.md
+copilot-instructions.md
 .claude/*
 rule.md
 deployments/*
 
 # C extensions
 *.so
+docs/
 
 # Distribution / packaging
 .Python
