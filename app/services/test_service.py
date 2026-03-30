@@ -138,10 +138,13 @@ class TestService:
         else:
             session.status = "COMPLETED"
 
-    def get_summary(self, session_id: int):
+    def get_summary(self, session_id: int, user_id: int):
         session = self.session_repo.get_by_id(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
+
+        if session.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Unauthorized: This session does not belong to you")
 
         accuracy = 0.0 if session.total_questions == 0 else round((session.total_correct / session.total_questions) * 100, 2)
         answers = self.answer_repo.get_answers_by_session(session_id)

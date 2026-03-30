@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 
@@ -37,6 +39,10 @@ class PassageService:
         total_passages = self.repo.count_passages()
         if total_passages < MIN_POOL:
             background_tasks.add_task(fill_pool, MIN_POOL)
+
+    def preload_passages(self, target_size: int) -> None:
+        """Synchronously preload passages into the pool up to the target size."""
+        asyncio.run(fill_pool(target_size))
 
     def ensure_question_buffer(self, session_id: int, passage_id: int, background_tasks: BackgroundTasks) -> None:
         total_questions = self.repo.count_questions_by_passage(passage_id)

@@ -24,6 +24,29 @@ class PassageRepository:
     def get_random_passage(self) -> Passage | None:
         return self.db.query(Passage).order_by(func.random()).first()
 
+    def get_random_passage_with_questions(self, min_questions: int = 5) -> Passage | None:
+        """Get a random passage that has at least min_questions associated questions."""
+        return (
+            self.db.query(Passage)
+            .join(ComprehensionQuestion, Passage.id == ComprehensionQuestion.passage_id)
+            .group_by(Passage.id)
+            .having(func.count(ComprehensionQuestion.id) >= min_questions)
+            .order_by(func.random())
+            .first()
+        )
+
+    def get_eligible_passages(self, limit: int = 10) -> list[Passage]:
+        """Get passages that have associated questions, suitable for the reading pool."""
+        return (
+            self.db.query(Passage)
+            .join(ComprehensionQuestion, Passage.id == ComprehensionQuestion.passage_id)
+            .group_by(Passage.id)
+            .having(func.count(ComprehensionQuestion.id) >= 5)
+            .order_by(func.random())
+            .limit(limit)
+            .all()
+        )
+
     def count_passages(self) -> int:
         return self.db.query(Passage).count()
 

@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.utils.auth import get_current_user  # ✅ Correct locationfrom app.models.user import User
+from app.utils.auth import get_current_user 
 from app.schemas.passage_schema import (
     PassageAnswerRequest,
     PassageAnswerResponse,
