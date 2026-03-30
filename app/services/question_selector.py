@@ -32,5 +32,5 @@ class QuestionGenerationService:
         normalized = score / 100.0
         difficulty = self.get_difficulty(normalized)
         question_list = QUESTIONS.get(difficulty, [])
-        question_text = random.choice(question_list) if question_list else "Practice reading aloud."
-        return {"difficulty": difficulty, "question": question_text}
+        question_data = random.choice(question_list) if question_list else {"text": "Practice reading aloud."}
+        return {"difficulty": difficulty, "question": question_data["text"]}

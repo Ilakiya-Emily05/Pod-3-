@@ -3,7 +3,7 @@ from pydub import AudioSegment
 from pathlib import Path
 
 # Set the path to your FFmpeg binary
-AudioSegment.converter = r"C:\Users\fidel\Desktop\FFmpeg\bin\ffmpeg.exe"
+
 
 def convert_to_wav(file_path, audio_format: str = None) -> Path:
     """

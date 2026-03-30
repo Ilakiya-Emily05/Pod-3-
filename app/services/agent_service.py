@@ -6,7 +6,7 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 
-from app.prompts.question_prompt import PROMPT
+from app.prompts.question_prompt import PROMPT_LISTENING_ONLY
 
 # Load env
 load_dotenv()
