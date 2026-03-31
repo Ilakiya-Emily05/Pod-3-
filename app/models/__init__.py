@@ -1,51 +1,13 @@
-from app.models.assessment_status import AttemptStatus, CEFRLevel
-from app.models.base import Base, TimestampMixin
-from app.models.grammar import (
-    GrammarAssessment,
-    GrammarAttempt,
-    GrammarAttemptAnswer,
-    GrammarQuestion,
-    GrammarQuestionOption,
-)
-from app.models.listening import (
-    ListeningAssessment,
-    ListeningAttempt,
-    ListeningAttemptAnswer,
-    ListeningQuestion,
-    ListeningQuestionOption,
-)
-from app.models.progress import UserProgress
-from app.models.reading import (
-    ReadingAssessment,
-    ReadingAttempt,
-    ReadingAttemptAnswer,
-    ReadingQuestion,
-    ReadingQuestionOption,
-)
-from app.models.user import AdminUser, User, UserProfile
+from app.config.database import Base
+from app.models.interview_system import DifficultyLevel, InterviewSession, KeySkill, Question, UserResponse
+from app.models.resume import Resume
 
 __all__ = [
-    "AttemptStatus",
-    "AdminUser",
     "Base",
-    "CEFRLevel",
-    "GrammarAssessment",
-    "GrammarAttempt",
-    "GrammarAttemptAnswer",
-    "GrammarQuestion",
-    "GrammarQuestionOption",
-    "ListeningAssessment",
-    "ListeningAttempt",
-    "ListeningAttemptAnswer",
-    "ListeningQuestion",
-    "ListeningQuestionOption",
-    "ReadingAssessment",
-    "ReadingAttempt",
-    "ReadingAttemptAnswer",
-    "ReadingQuestion",
-    "ReadingQuestionOption",
-    "TimestampMixin",
-    "User",
-    "UserProfile",
-    "UserProgress",
+    "DifficultyLevel",
+    "InterviewSession",
+    "KeySkill",
+    "Question",
+    "UserResponse",
+    "Resume",
 ]
