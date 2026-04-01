@@ -21,6 +21,13 @@ from app.models.listening import (
     ListeningQuestion,
     ListeningQuestionOption,
 )
+from app.models.interview_system import (
+    DifficultyLevel,
+    InterviewSession,
+    KeySkill,
+    Question,
+    UserResponse,
+)
 from app.models.progress import UserProgress
 from app.models.reading import (
     ReadingAssessment,
@@ -29,6 +36,7 @@ from app.models.reading import (
     ReadingQuestion,
     ReadingQuestionOption,
 )
+from app.models.resume import Resume
 from app.models.user import AdminUser, User, UserProfile
 
 __all__ = [
@@ -60,4 +68,10 @@ __all__ = [
     "User",
     "UserProfile",
     "UserProgress",
+    "DifficultyLevel",
+    "InterviewSession",
+    "KeySkill",
+    "Question",
+    "UserResponse",
+    "Resume",
 ]

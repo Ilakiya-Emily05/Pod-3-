@@ -34,6 +34,19 @@ class Settings(BaseSettings):
     azure_openai_deployment: str = "gpt-4o"
     azure_openai_api_version: str = "2024-02-01"
 
+    # Pod-3 Compatibility
+    @property
+    def OPENAI_API_KEY(self) -> str | None:
+        return self.openai_api_key
+
+    @property
+    def DEBUG(self) -> bool:
+        return self.debug
+
+    @property
+    def PROJECT_NAME(self) -> str:
+        return self.app_name
+
     @model_validator(mode="after")
     def validate_secret_key_for_production(self) -> "Settings":
         if (
@@ -52,3 +65,6 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+settings = get_settings()
