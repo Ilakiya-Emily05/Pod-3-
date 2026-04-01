@@ -1,13 +1,13 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class AttemptStatus(str, Enum):
+class AttemptStatus(StrEnum):
     IN_PROGRESS = "in_progress"
     SUBMITTED = "submitted"
     EVALUATED = "evaluated"
 
 
-class CEFRLevel(str, Enum):
+class CEFRLevel(StrEnum):
     A1 = "A1"
     A2 = "A2"
     B1 = "B1"

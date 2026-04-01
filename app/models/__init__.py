@@ -1,12 +1,5 @@
 from app.models.assessment_status import AttemptStatus, CEFRLevel
 from app.models.base import Base, TimestampMixin
-from app.models.behav_assessment_model import (
-    BehavAttempt,
-    BehavOption,
-    BehavOptionScore,
-    BehavQuestion,
-    BehavUserAnswer,
-)
 from app.models.grammar import (
     GrammarAssessment,
     GrammarAttempt,
@@ -21,13 +14,6 @@ from app.models.listening import (
     ListeningQuestion,
     ListeningQuestionOption,
 )
-from app.models.interview_system import (
-    DifficultyLevel,
-    InterviewSession,
-    KeySkill,
-    Question,
-    UserResponse,
-)
 from app.models.progress import UserProgress
 from app.models.reading import (
     ReadingAssessment,
@@ -36,18 +22,12 @@ from app.models.reading import (
     ReadingQuestion,
     ReadingQuestionOption,
 )
-from app.models.resume import Resume
 from app.models.user import AdminUser, User, UserProfile
 
 __all__ = [
-    "AdminUser",
     "AttemptStatus",
+    "AdminUser",
     "Base",
-    "BehavAttempt",
-    "BehavOption",
-    "BehavOptionScore",
-    "BehavQuestion",
-    "BehavUserAnswer",
     "CEFRLevel",
     "GrammarAssessment",
     "GrammarAttempt",
@@ -68,10 +48,4 @@ __all__ = [
     "User",
     "UserProfile",
     "UserProgress",
-    "DifficultyLevel",
-    "InterviewSession",
-    "KeySkill",
-    "Question",
-    "UserResponse",
-    "Resume",
 ]
