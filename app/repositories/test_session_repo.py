@@ -7,7 +7,7 @@ class TestSessionRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_session(self, user_id: int, topic: str, subtopic: str) -> TestSession:
+    def create_session(self, user_id: UUID, topic: str, subtopic: str) -> TestSession:
         session = TestSession(
             user_id=user_id,
             current_topic=topic,
