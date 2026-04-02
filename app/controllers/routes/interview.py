@@ -65,7 +65,7 @@ async def submit_mock_audio(
 
 @router.get("/sessions", response_model=list[MockSessionOut])
 async def list_mock_sessions(
-    candidate_id: str,
+    candidate_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """

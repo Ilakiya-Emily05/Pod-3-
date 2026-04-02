@@ -10,13 +10,13 @@ from app.models.interview_system import DifficultyLevel
 
 class KeywordIngest(BaseModel):
     """Payload sent by teammate's module to store keywords for a user."""
-    user_id: str
+    user_id: UUID
     keywords: list[str]
 
 
 class KeySkillOut(BaseModel):
     id: UUID
-    user_id: str
+    user_id: UUID
     keyword: str
 
     model_config = {"from_attributes": True}
@@ -63,7 +63,7 @@ class PracticeAnswerFeedback(BaseModel):
 
 class StartInterviewRequest(BaseModel):
     """Start a new mock interview session."""
-    user_id: str
+    user_id: UUID
 
 
 # ── Mock Session List / Result Schemas (for frontend) ────────────────────────

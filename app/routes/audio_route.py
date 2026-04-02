@@ -1,14 +1,17 @@
-from fastapi import APIRouter, UploadFile, Request, Depends, Query
-from sqlalchemy.orm import Session
-from pathlib import Path
 import os
+from pathlib import Path
+from uuid import UUID
 
+from fastapi import APIRouter, Depends, Query, Request, UploadFile
+from sqlalchemy.orm import Session
+
+from app.database.session import get_db
+from app.repository.pronounciation_repo import save_pronunciation_result
 from app.services.audio_service import convert_to_wav
-from app.services.transcription_service import transcribe_audio
 from app.services.phoneme_engine import compute_pronunciation_scores
 from app.services.question_service import generate_pronunciation_question
-from app.repository.pronounciation_repo import save_pronunciation_result
-from app.database.session import get_db
+from app.services.transcription_service import transcribe_audio
+from app.utils.auth import get_current_user_id
 
 router = APIRouter(prefix="/test", tags=["pronunciation"])
 
@@ -17,7 +20,8 @@ async def analyze_audio(
     request: Request,
     file: UploadFile,
     reference_text: str = Query(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: UUID = Depends(get_current_user_id),
 ):
     """
     Analyze uploaded audio for pronunciation.
@@ -51,13 +55,14 @@ async def analyze_audio(
 
         # Save in DB
         db_data = {
+            "user_id": user_id,
             "transcript": transcript,
             "reference_text": reference_text,
             "pronunciation_score": phoneme_score,
             "total_mistakes": len(mistakes),
             "mistakes": mistakes,
             "improvement_tips": tips,
-            "audio_path": str(wav_path)
+            "audio_path": str(wav_path),
         }
         save_pronunciation_result(db, db_data)
 

@@ -3,6 +3,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text, JSON
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.config.database import Base
@@ -18,7 +19,7 @@ class KeySkill(Base):
     __tablename__ = "key_skills"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    user_id: Mapped[str] = mapped_column(String, index=True)  # Placeholder for user identification
+    user_id: Mapped[UUID] = mapped_column("uuid_user_id", PG_UUID(as_uuid=True), index=True)
     keyword: Mapped[str] = mapped_column(String, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -44,7 +45,7 @@ class InterviewSession(Base):
     __tablename__ = "interview_sessions"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    user_id: Mapped[str] = mapped_column(String, index=True)
+    user_id: Mapped[UUID] = mapped_column("uuid_user_id", PG_UUID(as_uuid=True), index=True)
     status: Mapped[str] = mapped_column(String, default="active")  # active, completed
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)  # The final "Gap Analysis"
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

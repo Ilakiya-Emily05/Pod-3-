@@ -11,6 +11,7 @@ from app.models.behav_assessment_model import BehavAttempt, AttemptStatus as Beh
 from app.models.grammar import GrammarAssessment, GrammarAttempt
 from app.models.interview_system import InterviewSession
 from app.models.listening import ListeningAttempt
+from app.models.pronunciation_model import PronunciationResult
 from app.models.reading import ReadingAttempt
 from app.schemas.analytics import (
     AnalyticsModuleBreakdown,
@@ -117,9 +118,32 @@ class AnalyticsService:
         )
 
     async def _get_pronunciation_module_progress(self, user_id: UUID) -> PronunciationModuleProgress:
-        # Pronunciation UserPerformance table is not available in this branch yet.
-        _ = user_id
-        return PronunciationModuleProgress(completion_pct=0.0, current_level="Not Available")
+        query = select(
+            func.count(PronunciationResult.id),
+            func.avg(PronunciationResult.pronunciation_score),
+        ).where(PronunciationResult.user_id == user_id)
+        result = await self.db.execute(query)
+        attempts_count, avg_score_raw = result.one()
+
+        attempts = int(attempts_count or 0)
+        avg_score = float(avg_score_raw or 0.0)
+
+        # Completion is normalized to a 10-attempt milestone for dashboard progress.
+        completion_pct = round(min(attempts / 10.0, 1.0) * 100.0, 2)
+
+        if attempts == 0:
+            current_level = "Beginner"
+        elif avg_score < 40:
+            current_level = "Beginner"
+        elif avg_score < 70:
+            current_level = "Intermediate"
+        else:
+            current_level = "Advanced"
+
+        return PronunciationModuleProgress(
+            completion_pct=completion_pct,
+            current_level=current_level,
+        )
 
     async def _get_behavioral_module_progress(self, user_id: UUID) -> BehavioralModuleProgress:
         latest_behavioral_query = (
@@ -152,7 +176,7 @@ class AnalyticsService:
                 .limit(1)
             )
             result = await self.db.execute(query)
-            latest_points.extend(result.all())
+            latest_points.extend((row[0], row[1]) for row in result.all())
 
         latest_with_level = [
             (submitted_at, cefr_level)
@@ -191,11 +215,15 @@ class AnalyticsService:
             elif created_at is not None:
                 activity.append(created_at)
 
-        interview_query = select(InterviewSession.created_at).where(
-            InterviewSession.user_id == str(user_id)
-        )
+        interview_query = select(InterviewSession.created_at).where(InterviewSession.user_id == user_id)
         interview_result = await self.db.execute(interview_query)
         activity.extend([created_at for created_at in interview_result.scalars().all() if created_at])
+
+        pronunciation_query = select(PronunciationResult.created_at).where(
+            PronunciationResult.user_id == user_id
+        )
+        pronunciation_result = await self.db.execute(pronunciation_query)
+        activity.extend([created_at for created_at in pronunciation_result.scalars().all() if created_at])
 
         return activity
 

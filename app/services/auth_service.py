@@ -119,17 +119,19 @@ def create_access_token(
     subject: str,
     email: str,
     remember_me: bool,
-    role: str = "user",
+    role: str = "student",
 ) -> tuple[str, int]:
     expiration_delta = get_expiration_delta(remember_me)
     expires_in = int(expiration_delta.total_seconds())
-    expires_at = datetime.now(UTC) + expiration_delta
+    issued_at = datetime.now(UTC)
+    expires_at = issued_at + expiration_delta
 
     payload = {
         "sub": subject,
         "email": email,
         "role": role,
-        "exp": expires_at,
+        "iat": int(issued_at.timestamp()),
+        "exp": int(expires_at.timestamp()),
     }
 
     token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
