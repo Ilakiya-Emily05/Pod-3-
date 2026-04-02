@@ -53,7 +53,7 @@ class PassageRepository:
     def passage_text_exists(self, text: str) -> bool:
         return self.db.query(Passage).filter(Passage.text == text).first() is not None
 
-    def create_passage_session(self, user_id: int, passage_id: int) -> PassageSession:
+    def create_passage_session(self, user_id: UUID, passage_id: int) -> PassageSession:
         session = PassageSession(user_id=user_id, passage_id=passage_id)
         self.db.add(session)
         self.db.commit()
