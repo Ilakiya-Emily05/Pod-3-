@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.controllers.routes.admin import router as admin_router
+from app.controllers.routes.analytics import router as analytics_router
 from app.controllers.routes.auth import router as auth_router
 from app.controllers.routes.behav_assessment_routes import router as behav_assessment_router
 from app.controllers.routes.grammar import router as grammar_router
@@ -14,6 +15,7 @@ from app.controllers.routes.resume import router as resume_router
 
 api_router = APIRouter()
 api_router.include_router(admin_router)
+api_router.include_router(analytics_router)
 api_router.include_router(auth_router)
 api_router.include_router(onboarding_router)
 api_router.include_router(reading_router)

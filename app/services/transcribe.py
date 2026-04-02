@@ -4,14 +4,13 @@ from pydub import AudioSegment
 from openai import OpenAI
 from app.config.settings import settings
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
-
 
 async def transcribe_audio(file_path: str) -> str:
     """
     Compress uploaded audio before sending to Whisper
     to ensure it stays under the 25MB API limit.
     """
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
     # Load the audio file regardless of format
     audio = AudioSegment.from_file(file_path)
