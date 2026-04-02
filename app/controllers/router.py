@@ -12,6 +12,10 @@ from app.controllers.routes.reading import router as reading_router
 from app.controllers.routes.interview import router as interview_router
 from app.controllers.routes.practice import router as practice_router
 from app.controllers.routes.resume import router as resume_router
+from app.routes. audio_route import router as audio_router
+from app.routes.listening_route import router as listening_router
+from app.routes.listening_test_route import router as listening_test_router
+from app.routes.question_route import router as question_router
 
 api_router = APIRouter()
 api_router.include_router(admin_router)
@@ -26,3 +30,9 @@ api_router.include_router(behav_assessment_router)
 api_router.include_router(practice_router, prefix="/v1")
 api_router.include_router(interview_router, prefix="/v1")
 api_router.include_router(resume_router, prefix="/resume", tags=["Resume Parser"])
+
+
+api_router.include_router(audio_router)
+api_router.include_router(listening_router)
+api_router.include_router(listening_test_router)
+api_router.include_router(question_router)
