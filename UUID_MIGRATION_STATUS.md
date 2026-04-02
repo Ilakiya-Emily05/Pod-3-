@@ -130,7 +130,7 @@ Executed checks for:
 - numeric/UUID legacy value classifications
 - mapping coverage and orphan checks
 
-Observed in current environment:
+Observed in current environment (empty database):
 
 - `key_skills`: 0 rows
 - `interview_sessions`: 0 rows
