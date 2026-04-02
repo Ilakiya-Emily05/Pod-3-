@@ -36,7 +36,7 @@ class TestService:
         self.question_agent.ensure_questions(topic, subtopic, session_id=None)
         return self.question_repo.get_by_topic(topic, subtopic, self.LIMIT)
 
-    def start_test(self, user_id: int) -> TestSessionResponse:
+    def start_test(self, user_id: UUID) -> TestSessionResponse:
         first_topic = list(GRAMMAR_FLOW.keys())[0]
         first_subtopic = GRAMMAR_FLOW[first_topic][0]
 
