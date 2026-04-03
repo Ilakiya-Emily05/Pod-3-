@@ -38,3 +38,23 @@ class AnalyticsProgressResponse(BaseModel):
     modules: AnalyticsModuleBreakdown
     streak_days: int = Field(ge=0)
     last_activity: datetime | None = None
+
+
+class HeatmapTopicItem(BaseModel):
+    name: str
+    score: float = Field(ge=0.0, le=100.0)
+    status: str
+
+
+class AnalyticsHeatmapResponse(BaseModel):
+    topics: list[HeatmapTopicItem] = Field(default_factory=list)
+
+
+class TrendPoint(BaseModel):
+    date: datetime
+    avg_score: float | None = Field(default=None, ge=0.0, le=100.0)
+
+
+class AnalyticsTrendsResponse(BaseModel):
+    period: str
+    data: list[TrendPoint] = Field(default_factory=list)

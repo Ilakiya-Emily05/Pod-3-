@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy import Float, func, select
@@ -10,16 +11,29 @@ from app.models.assessment_status import AttemptStatus
 from app.models.behav_assessment_model import BehavAttempt, AttemptStatus as BehavAttemptStatus
 from app.models.grammar import GrammarAssessment, GrammarAttempt
 from app.models.interview_system import InterviewSession
-from app.models.listening import ListeningAttempt
+from app.models.listening import ListeningAssessment, ListeningAttempt
 from app.models.pronunciation_model import PronunciationResult
-from app.models.reading import ReadingAttempt
+from app.models.reading import ReadingAssessment, ReadingAttempt
 from app.schemas.analytics import (
+    AnalyticsHeatmapResponse,
     AnalyticsModuleBreakdown,
     AnalyticsProgressResponse,
+    AnalyticsTrendsResponse,
     BehavioralModuleProgress,
     GrammarModuleProgress,
+    HeatmapTopicItem,
     PronunciationModuleProgress,
+    TrendPoint,
 )
+
+
+COMPLETED_ATTEMPT_STATUSES = (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED)
+
+
+def _attempt_score_expr(model: type[GrammarAttempt] | type[ListeningAttempt] | type[ReadingAttempt]):
+    return (
+        (model.correct_answers.cast(Float) / func.nullif(model.total_questions.cast(Float), 0.0)) * 100.0
+    )
 
 
 class AnalyticsService:
@@ -64,7 +78,7 @@ class AnalyticsService:
 
         completed_query = select(func.count(func.distinct(GrammarAttempt.assessment_id))).where(
             GrammarAttempt.user_id == user_id,
-            GrammarAttempt.status == AttemptStatus.SUBMITTED,
+            GrammarAttempt.status.in_(COMPLETED_ATTEMPT_STATUSES),
         )
         completed_result = await self.db.execute(completed_query)
         completed_assessments = int(completed_result.scalar() or 0)
@@ -74,15 +88,9 @@ class AnalyticsService:
         else:
             completion_pct = 0.0
 
-        avg_accuracy_query = select(
-            func.avg(
-                (GrammarAttempt.correct_answers.cast(Float)
-                / func.nullif(GrammarAttempt.total_questions.cast(Float), 0.0))
-                * 100.0
-            )
-        ).where(
+        avg_accuracy_query = select(func.avg(_attempt_score_expr(GrammarAttempt))).where(
             GrammarAttempt.user_id == user_id,
-            GrammarAttempt.status == AttemptStatus.SUBMITTED,
+            GrammarAttempt.status.in_(COMPLETED_ATTEMPT_STATUSES),
         )
         avg_accuracy_result = await self.db.execute(avg_accuracy_query)
         avg_score = round(float(avg_accuracy_result.scalar() or 0.0), 2)
@@ -90,16 +98,12 @@ class AnalyticsService:
         topic_accuracy_query = (
             select(
                 GrammarAssessment.topic,
-                func.avg(
-                    (GrammarAttempt.correct_answers.cast(Float)
-                    / func.nullif(GrammarAttempt.total_questions.cast(Float), 0.0))
-                    * 100.0
-                ).label("topic_avg"),
+                func.avg(_attempt_score_expr(GrammarAttempt)).label("topic_avg"),
             )
             .join(GrammarAssessment, GrammarAssessment.id == GrammarAttempt.assessment_id)
             .where(
                 GrammarAttempt.user_id == user_id,
-                GrammarAttempt.status == AttemptStatus.SUBMITTED,
+                GrammarAttempt.status.in_(COMPLETED_ATTEMPT_STATUSES),
                 GrammarAssessment.topic.isnot(None),
             )
             .group_by(GrammarAssessment.topic)
@@ -169,7 +173,7 @@ class AnalyticsService:
                 select(attempt_model.submitted_at, attempt_model.cefr_level)
                 .where(
                     attempt_model.user_id == user_id,
-                    attempt_model.status == AttemptStatus.SUBMITTED,
+                    attempt_model.status.in_(COMPLETED_ATTEMPT_STATUSES),
                     attempt_model.cefr_level.isnot(None),
                 )
                 .order_by(attempt_model.submitted_at.desc())
@@ -227,6 +231,113 @@ class AnalyticsService:
 
         return activity
 
+    async def get_heatmap(self, user_id: UUID) -> AnalyticsHeatmapResponse:
+        topics: list[HeatmapTopicItem] = []
+
+        grammar_query = (
+            select(
+                func.coalesce(GrammarAssessment.topic, GrammarAssessment.title).label("topic_name"),
+                func.avg(_attempt_score_expr(GrammarAttempt)).label("avg_score"),
+            )
+            .join(GrammarAssessment, GrammarAssessment.id == GrammarAttempt.assessment_id)
+            .where(
+                GrammarAttempt.user_id == user_id,
+                GrammarAttempt.status.in_(COMPLETED_ATTEMPT_STATUSES),
+            )
+            .group_by(func.coalesce(GrammarAssessment.topic, GrammarAssessment.title))
+        )
+        grammar_rows = await self.db.execute(grammar_query)
+        for topic_name, avg_score in grammar_rows.all():
+            if topic_name is None or avg_score is None:
+                continue
+            score = round(float(avg_score), 2)
+            topics.append(
+                HeatmapTopicItem(name=str(topic_name), score=score, status=self._get_score_status(score))
+            )
+
+        reading_query = (
+            select(
+                ReadingAssessment.title,
+                func.avg(_attempt_score_expr(ReadingAttempt)).label("avg_score"),
+            )
+            .join(ReadingAssessment, ReadingAssessment.id == ReadingAttempt.assessment_id)
+            .where(
+                ReadingAttempt.user_id == user_id,
+                ReadingAttempt.status.in_(COMPLETED_ATTEMPT_STATUSES),
+            )
+            .group_by(ReadingAssessment.title)
+        )
+        reading_rows = await self.db.execute(reading_query)
+        for title, avg_score in reading_rows.all():
+            if title is None or avg_score is None:
+                continue
+            score = round(float(avg_score), 2)
+            topics.append(
+                HeatmapTopicItem(
+                    name=f"Reading - {title}",
+                    score=score,
+                    status=self._get_score_status(score),
+                )
+            )
+
+        listening_query = (
+            select(
+                ListeningAssessment.title,
+                func.avg(_attempt_score_expr(ListeningAttempt)).label("avg_score"),
+            )
+            .join(ListeningAssessment, ListeningAssessment.id == ListeningAttempt.assessment_id)
+            .where(
+                ListeningAttempt.user_id == user_id,
+                ListeningAttempt.status.in_(COMPLETED_ATTEMPT_STATUSES),
+            )
+            .group_by(ListeningAssessment.title)
+        )
+        listening_rows = await self.db.execute(listening_query)
+        for title, avg_score in listening_rows.all():
+            if title is None or avg_score is None:
+                continue
+            score = round(float(avg_score), 2)
+            topics.append(
+                HeatmapTopicItem(
+                    name=f"Listening - {title}",
+                    score=score,
+                    status=self._get_score_status(score),
+                )
+            )
+
+        return AnalyticsHeatmapResponse(topics=topics)
+
+    async def get_trends(self, user_id: UUID, period: str = "30d") -> AnalyticsTrendsResponse:
+        period_map = {"30d": 30}
+        if period not in period_map:
+            raise ValueError("Unsupported period")
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=period_map[period])
+        daily_scores: dict[datetime, list[float]] = defaultdict(list)
+
+        for model in (GrammarAttempt, ReadingAttempt, ListeningAttempt):
+            query = select(model.submitted_at, _attempt_score_expr(model).label("score")).where(
+                model.user_id == user_id,
+                model.status.in_(COMPLETED_ATTEMPT_STATUSES),
+                model.submitted_at.isnot(None),
+                model.submitted_at >= cutoff,
+            )
+            result = await self.db.execute(query)
+            for submitted_at, score in result.all():
+                if submitted_at is None or score is None:
+                    continue
+                day_bucket = submitted_at.replace(hour=0, minute=0, second=0, microsecond=0)
+                daily_scores[day_bucket].append(float(score))
+
+        points = [
+            TrendPoint(
+                date=day,
+                avg_score=round(sum(scores) / len(scores), 2) if scores else None,
+            )
+            for day, scores in sorted(daily_scores.items())
+        ]
+        return AnalyticsTrendsResponse(period=period, data=points)
+
     def _compute_streak_days(self, activity_points: list[datetime]) -> int:
         if not activity_points:
             return 0
@@ -244,3 +355,10 @@ class AnalyticsService:
             else:
                 break
         return streak
+
+    def _get_score_status(self, score: float) -> str:
+        if score >= 75.0:
+            return "strong"
+        if score < 50.0:
+            return "needs_work"
+        return "average"
