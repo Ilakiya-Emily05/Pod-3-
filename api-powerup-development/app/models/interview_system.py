@@ -18,8 +18,8 @@ class DifficultyLevel(str, enum.Enum):
 class KeySkill(Base):
     __tablename__ = "key_skills"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), index=True)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column("uuid_user_id", PG_UUID(as_uuid=True), index=True)
     keyword: Mapped[str] = mapped_column(String, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -44,8 +44,8 @@ class Question(Base):
 class InterviewSession(Base):
     __tablename__ = "interview_sessions"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), index=True)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column("uuid_user_id", PG_UUID(as_uuid=True), index=True)
     status: Mapped[str] = mapped_column(String, default="active")  # active, completed
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)  # The final "Gap Analysis"
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
