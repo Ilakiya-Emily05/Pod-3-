@@ -6,7 +6,7 @@ from app.agents.question_agent import QuestionAgent
 from app.repositories.question_repo import QuestionRepository
 from app.repositories.test_session_repo import TestSessionRepository
 from app.repositories.user_answer_repo import UserAnswerRepository
-from app.schemas.question_schema import QuestionResponse
+from uuid import UUID
 from app.schemas.test_session_schema import AnswerResponse, TestSessionResponse
 
 
@@ -36,7 +36,7 @@ class TestService:
         self.question_agent.ensure_questions(topic, subtopic, session_id=None)
         return self.question_repo.get_by_topic(topic, subtopic, self.LIMIT)
 
-    def start_test(self, user_id: int) -> TestSessionResponse:
+    def start_test(self, user_id: UUID) -> TestSessionResponse:
         first_topic = list(GRAMMAR_FLOW.keys())[0]
         first_subtopic = GRAMMAR_FLOW[first_topic][0]
 

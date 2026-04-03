@@ -22,7 +22,7 @@ class PassageService:
         self.db = db
         self.repo = PassageRepository(db)
 
-    async def start_reading(self, user_id: int, background_tasks: BackgroundTasks) -> PassageStartResponse:
+    async def start_reading(self, user_id: UUID, background_tasks: BackgroundTasks) -> PassageStartResponse:
         passage_id = take_random_passage_id()
         if not passage_id:
             await fill_pool(MIN_POOL)
