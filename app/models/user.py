@@ -25,8 +25,8 @@ class User(Base):
         "UserProfile", back_populates="user", uselist=False
     )
     progress_records: Mapped[list["UserProgress"]] = relationship(
-        "UserProgress", back_populates="user", cascade="all, delete-orphan"
-    )
+    "UserProgress", back_populates="user", cascade="all, delete-orphan"
+)
 
 
 class AdminUser(Base):

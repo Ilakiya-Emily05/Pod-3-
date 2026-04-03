@@ -10,8 +10,9 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from contextlib import asynccontextmanager
 
-from app.config.database import engine, Base
+from app.config.database import engine
 from app.utils.exceptions import (
     ResumeParseError, resume_parse_error_handler,
     UnsupportedFileTypeError, unsupported_file_handler,
@@ -24,13 +25,18 @@ from app.utils.exceptions import (
 # ── Rate Limiter ─────────────────────────────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address, default_limits=["30/minute"])
 
+
+# ── Lifespan (Import models here to avoid circular imports) ──────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Create tables if they don't exist
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Startup: Register all models with SQLAlchemy MetaData
+    # This ensures tables are registered exactly once at app startup
+    # The register_models() function is idempotent and safe to call multiple times
+    from app.models._register import register_models
+    register_models()
     yield
     # Shutdown logic if needed
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -94,7 +100,9 @@ def create_app() -> FastAPI:
             description=app.description,
             routes=app.routes,
         )
-        schema["info"]["x-logo"] = {"url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"}
+        schema["info"]["x-logo"] = {
+            "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
+        }
         app.openapi_schema = schema
         return schema
 
@@ -113,7 +121,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-
-# schema updated at 03/21/2026 12:09:07
-
-# schema updated at 03/21/2026 12:09:12
