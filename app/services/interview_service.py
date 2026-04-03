@@ -71,13 +71,13 @@ async def _fetch_question(
     return result.scalar_one_or_none()
 
 
-async def _get_skills_for_user(db: AsyncSession, user_id: str) -> list[KeySkill]:
+async def _get_skills_for_user(db: AsyncSession, user_id: UUID) -> list[KeySkill]:
     """Return all skills stored for the user."""
     result = await db.execute(select(KeySkill).where(KeySkill.user_id == user_id))
     return list(result.scalars().all())
 
 
-async def _get_practice_answered_ids(db: AsyncSession, user_id: str) -> list[UUID]:
+async def _get_practice_answered_ids(db: AsyncSession, user_id: UUID) -> list[UUID]:
     """Return all question IDs the user has answered in Practice (session_id IS NULL)."""
     stmt = (
         select(UserResponse.question_id)
@@ -89,7 +89,7 @@ async def _get_practice_answered_ids(db: AsyncSession, user_id: str) -> list[UUI
     return list(result.scalars().all())
 
 
-async def _get_prior_mock_answered_ids(db: AsyncSession, user_id: str) -> list[UUID]:
+async def _get_prior_mock_answered_ids(db: AsyncSession, user_id: UUID) -> list[UUID]:
     """Return all question IDs the user has answered in any prior completed mock session."""
     stmt = (
         select(UserResponse.question_id)
@@ -101,7 +101,7 @@ async def _get_prior_mock_answered_ids(db: AsyncSession, user_id: str) -> list[U
 
 
 async def _count_available_questions(
-    db: AsyncSession, user_id: str, exclude_ids: list[UUID]
+    db: AsyncSession, user_id: UUID, exclude_ids: list[UUID]
 ) -> int:
     """Count questions not yet answered (not in exclude_ids) for a user's skills."""
     skills = await _get_skills_for_user(db, user_id)
@@ -119,7 +119,7 @@ async def _count_available_questions(
 # ── Keyword Ingestion ────────────────────────────────────────────────────────
 
 async def ingest_keywords_and_generate(
-    db: AsyncSession, user_id: str, keywords: list[str]
+    db: AsyncSession, user_id: UUID, keywords: list[str]
 ) -> list[KeySkill]:
     """
     Receives keywords from the teammate's module.
@@ -148,7 +148,7 @@ async def ingest_keywords_and_generate(
     return skills
 
 
-async def _regenerate_questions_for_user(db: AsyncSession, user_id: str) -> None:
+async def _regenerate_questions_for_user(db: AsyncSession, user_id: UUID) -> None:
     """Generate a fresh batch of questions for each of the user's skills."""
     skills = await _get_skills_for_user(db, user_id)
     for skill in skills:
@@ -170,7 +170,7 @@ async def _regenerate_questions_for_user(db: AsyncSession, user_id: str) -> None
 
 async def get_practice_question(
     db: AsyncSession,
-    user_id: str,
+    user_id: UUID,
     difficulty: DifficultyLevel | None = None,
     extra_exclude_ids: list[UUID] | None = None,
 ) -> Question | None:
@@ -216,7 +216,7 @@ async def get_practice_question(
 
 async def submit_practice_answer(
     db: AsyncSession,
-    user_id: str,
+    user_id: UUID,
     question_id: UUID,
     audio_path: str,
 ) -> dict:
@@ -276,7 +276,7 @@ async def submit_practice_answer(
 
 # ── Frontend List / Result Endpoints ─────────────────────────────────────────
 
-async def get_user_sessions(db: AsyncSession, user_id: str) -> list[dict]:
+async def get_user_sessions(db: AsyncSession, user_id: UUID) -> list[dict]:
     """
     Return a list of all mock interview sessions for a user,
     with the count of responses per session.
@@ -341,7 +341,7 @@ async def get_session_result(db: AsyncSession, session_id: UUID) -> dict:
 
 # ── Batch Audio Mock Interview (5-Minute Session) ───────────────────────────
 
-async def start_batch_interview(db: AsyncSession, user_id: str) -> dict:
+async def start_batch_interview(db: AsyncSession, user_id: UUID) -> dict:
     """
     Starts a compulsory 5-minute mock session by providing 15 questions upfront.
     The user will answer as many as possible in one long audio recording.

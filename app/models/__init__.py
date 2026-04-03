@@ -29,6 +29,7 @@ from app.models.interview_system import (
     UserResponse,
 )
 from app.models.progress import UserProgress
+from app.models.pronunciation_model import PronunciationResult
 from app.models.reading import (
     ReadingAssessment,
     ReadingAttempt,
@@ -68,6 +69,7 @@ __all__ = [
     "User",
     "UserProfile",
     "UserProgress",
+    "PronunciationResult",
     "DifficultyLevel",
     "InterviewSession",
     "KeySkill",

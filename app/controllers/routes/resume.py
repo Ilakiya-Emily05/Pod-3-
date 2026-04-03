@@ -1,5 +1,6 @@
 import logging
 import uuid
+from uuid import UUID
 from fastapi import APIRouter, Depends, UploadFile, File, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,7 +29,7 @@ MAX_BYTES = 10 * 1024 * 1024 # 10MB default
     summary="Upload PDF resume",
 )
 async def upload_resume(
-    user_id: str | None = None,
+    user_id: UUID | None = None,
     file: UploadFile = File(..., description="Resume PDF file"),
     db:   AsyncSession = Depends(get_db),
 ):
@@ -37,7 +38,7 @@ async def upload_resume(
     ensuring safe concurrency for multiple users.
     """
     if not user_id:
-        user_id = str(uuid.uuid4())
+        user_id = uuid.uuid4()
 
     try:
         if not file.filename.lower().endswith(".pdf"):
@@ -54,7 +55,7 @@ async def upload_resume(
         parsed = parse_resume(raw_text)
 
         resume = Resume(
-            user_id            = user_id,
+            user_id            = str(user_id),
             filename           = file.filename,
             raw_text           = raw_text,
             file_size_kb       = round(len(file_bytes) / 1024, 1),
@@ -93,7 +94,7 @@ async def upload_resume(
 
         return {
             "message": "Resume uploaded and parsed successfully",
-            "user_id": user_id,
+            "user_id": str(user_id),
             "resume":  resume_to_detail(resume),
         }
 

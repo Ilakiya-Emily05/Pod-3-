@@ -52,6 +52,21 @@ def _decode_jwt_payload(
             detail="Invalid token payload",
         )
 
+    required_claims = {
+        "sub": str,
+        "email": str,
+        "role": str,
+        "iat": int,
+        "exp": int,
+    }
+    for claim, expected_type in required_claims.items():
+        claim_value = payload.get(claim)
+        if not isinstance(claim_value, expected_type):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid token: missing or malformed '{claim}' claim",
+            )
+
     return payload
 
 

@@ -19,7 +19,7 @@ router = APIRouter(prefix="/practice", tags=["practice"])
 
 @router.get("/questions/start", response_model=QuestionOut)
 async def start_practice(
-    user_id: str,
+    user_id: UUID,
     difficulty: DifficultyLevel | None = None,
     db: AsyncSession = Depends(get_db),
 ):
@@ -38,7 +38,7 @@ async def start_practice(
 
 @router.post("/answer", response_model=PracticeAnswerFeedback)
 async def submit_answer(
-    user_id: str = Form(...),
+    user_id: UUID = Form(...),
     question_id: UUID = Form(...),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
