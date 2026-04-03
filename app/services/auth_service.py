@@ -1,7 +1,5 @@
 import hashlib
-from datetime import datetime, timedelta, timezone
-
-UTC = timezone.utc
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import bcrypt
