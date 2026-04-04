@@ -19,7 +19,7 @@ class BehavQuestion(Base):
     __tablename__ = "behav_questions"
     __table_args__ = {"extend_existing": True}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)
     question_text: Mapped[str] = mapped_column(Text)
     trait_type: Mapped[str] = mapped_column(String)  # HEXACO trait name
 
@@ -30,8 +30,8 @@ class BehavOption(Base):
     __tablename__ = "behav_options"
     __table_args__ = {"extend_existing": True}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    question_id: Mapped[int] = mapped_column(Integer, ForeignKey("behav_questions.id"))
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)
+    question_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("behav_questions.id"))
     option_key: Mapped[str] = mapped_column(String)
     option_text: Mapped[str] = mapped_column(Text)
 
@@ -45,8 +45,8 @@ class BehavOptionScore(Base):
     __tablename__ = "behav_option_scores"
     __table_args__ = {"extend_existing": True}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    option_id: Mapped[int] = mapped_column(Integer, ForeignKey("behav_options.id"))
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    option_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("behav_options.id"))
 
     trait_name: Mapped[str] = mapped_column(String)
     score_value: Mapped[int] = mapped_column(Integer)
@@ -78,12 +78,12 @@ class BehavUserAnswer(Base):
     __tablename__ = "behav_user_answers"
     __table_args__ = {"extend_existing": True}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     attempt_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("behav_attempts.id")
     )
-    question_id: Mapped[int] = mapped_column(Integer, ForeignKey("behav_questions.id"))
-    option_id: Mapped[int] = mapped_column(Integer, ForeignKey("behav_options.id"))
+    question_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("behav_questions.id"))
+    option_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("behav_options.id"))
     user_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), index=True)  # Kept for backward compatibility
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
