@@ -81,12 +81,7 @@ f6a7b8c9d0e1 (convert_resumes_user_id_to_uuid)
   ↓
 g7h8i9j0k1l2 (convert_behav_tables_to_uuid)
   ↓
-h8i9j0k1l2m3 (convert_pronunciation_results_id
-... other migrations ...
-  ↓
-f6a7b8c9d0e1 (convert_resumes_user_id_to_uuid)
-  ↓
-g7h8i9j0k1l2 (convert_behav_tables_to_uuid) ← HEAD
+h8i9j0k1l2m3 (convert_pronunciation_results_id_to_uuid) ← HEAD
 ```
 
 ---
@@ -466,14 +461,13 @@ alembic downgrade d7f8a9b0c1d2
 - [ ] Document: Final schema state in DATABASE_SCHEMA_DOCUMENTATION.md
 
 ---
-6 migrations) | 0% | 100% | 25
 ## Effort Estimation Summary
 
 | Phase | Completed | Remaining | Effort |
 |-------|-----------|-----------|--------|
 | Phase 1: Schema Update | 100% | 0% | ✅ DONE |
 | Phase 2: Code Update | 100% | 0% | ✅ DONE |
-| Phase 3: Data Migration (5 migrations) | 0% | 100% | 20 min (execution) |
+| Phase 3: Data Migration (6 migrations) | 0% | 100% | 20 min (execution) |
 | Phase 4: Cleanup | 0% | 100% | 10 min (optional) |
 | Testing & Docs | 0% | 100% | 2-3 hours |
 | **Total** | **50%** | **50%** | **~3.5-4 hours remaining** |
@@ -492,7 +486,5 @@ All code and migrations are complete. Pod 1 and Pod 3 are now on a unified UUID-
 - ✅ Zero data loss during migration
 - ✅ Single migration head (no conflicts)
 
-**Next Action:** Run `alembic upgrade head` during maintenance window to apply all 6
-
-**Next Action:** Run `alembic upgrade head` during maintenance window to apply all 5 migrations.
+**Next Action:** Run `alembic upgrade head` during maintenance window to apply all 6 migrations.
 
