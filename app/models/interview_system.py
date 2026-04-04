@@ -16,7 +16,7 @@ class DifficultyLevel(str, enum.Enum):
 
 class KeySkill(Base):
     __tablename__ = "key_skills"
-    __table_args__ = {"extend_existing": True} 
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[str] = mapped_column(String, index=True)
@@ -28,7 +28,7 @@ class KeySkill(Base):
 
 class Question(Base):
     __tablename__ = "questions"
-    __table_args__ = {"extend_existing": True} 
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     skill_id: Mapped[UUID] = mapped_column(ForeignKey("key_skills.id"))
@@ -43,22 +43,21 @@ class Question(Base):
 
 class InterviewSession(Base):
     __tablename__ = "interview_sessions"
-    __table_args__ = {"extend_existing": True} 
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[str] = mapped_column(String, index=True)
-
-    # 🔥 updated
-    status: Mapped[str] = mapped_column(String, default="in_progress")
-
+    status: Mapped[str] = mapped_column(String, default="active")
     interview_type: Mapped[str] = mapped_column(String, default="technical")
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # ── Timestamps ──────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    # ── Scores ──────────────────────────────────────────────────────
     overall_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     improvement_delta: Mapped[float | None] = mapped_column(Float, nullable=True)
     duration_mins: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -68,20 +67,27 @@ class InterviewSession(Base):
 
 class UserResponse(Base):
     __tablename__ = "user_responses"
-    __table_args__ = {"extend_existing": True} 
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     session_id: Mapped[UUID | None] = mapped_column(ForeignKey("interview_sessions.id"), nullable=True)
     question_id: Mapped[UUID] = mapped_column(ForeignKey("questions.id"))
 
+    # ── Answer ──────────────────────────────────────────────────────
     user_answer: Mapped[str] = mapped_column(Text)
     is_correct: Mapped[bool | None] = mapped_column(nullable=True)
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # ── Audio / Confidence ──────────────────────────────────────────
     confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     audio_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     audio_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # ── Pronunciation (Task 2) ───────────────────────────────────────
+    pronunciation_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    pronunciation_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    # ── Timestamps & Position ───────────────────────────────────────
     question_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
     answered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     time_taken_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)

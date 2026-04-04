@@ -39,7 +39,7 @@ async def start_session(
 
 
 # ── Submit Answer ─────────────────────────────────────────────────
-@router.post("/sessions/{session_id}/answer", response_model=InterviewAnswerResponse)
+@router.post("/sessions/{session_id}/answer")
 async def submit_answer(
     session_id: UUID,
     user_answer: str | None = Form(None),

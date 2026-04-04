@@ -12,6 +12,18 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from contextlib import asynccontextmanager
 
+from fastapi.responses import JSONResponse
+import json
+
+class SafeJSONResponse(JSONResponse):
+    def render(self, content) -> bytes:
+        return json.dumps(
+            content,
+            default=lambda o: str(o) if not isinstance(o, (int, float, bool, type(None))) else o,
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+
 from app.config.database import engine
 from app.utils.exceptions import (
     ResumeParseError, resume_parse_error_handler,
@@ -40,6 +52,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(
+        default_response_class=SafeJSONResponse,
         title="Power Up Unified API",
         description=(
             "Unified FastAPI backend integrating Resume Parser and Interview Coach modules.\n\n"

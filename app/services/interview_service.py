@@ -1,18 +1,11 @@
 """
-Interview Service — Sprint 2 Task 1 (Complete)
-All spec requirements implemented:
-  - performance_level, key_skills_tested, has_report, improvement_trend,
-    most_practiced_type, sort in history API
-  - Full replay with question_id, skill_tags, evaluation, pronunciation blocks
-  - Progress API with score_progression, skill_improvement, consistency, milestones
-  - SessionAnalyticsService with milestone checking
-  - skill_scores_history tracking per session
+Interview Service — Sprint 2 Task 2 (Final Working)
 """
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select, func, desc, asc
+from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import noload
 
@@ -35,9 +28,11 @@ from app.services.question_service import (
 )
 from app.services.transcribe import transcribe_audio
 from app.services.confidence_analyzer import extract_audio_features, compute_confidence
+from app.services.pronunciation_analyzer import analyze_pronunciation
 
 
-# ── Score → Performance Level ─────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
 def _performance_level(score: int | None) -> str:
     if score is None:
         return "N/A"
@@ -52,7 +47,32 @@ def _performance_level(score: int | None) -> str:
     return "Poor"
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+def _safe_dict(value) -> dict | None:
+    """Return dict or None — never a string 'null'."""
+    if isinstance(value, dict):
+        return value
+    return None
+
+
+def _safe_pronunciation(result) -> dict:
+    """Ensure pronunciation result is always JSON serializable."""
+    if not isinstance(result, dict):
+        return {
+            "phoneme_score": None,
+            "fluency_score": None,
+            "mistakes": [],
+            "tips": [],
+            
+        }
+    return {
+        "phoneme_score": result.get("phoneme_score") if isinstance(result.get("phoneme_score"), (int, float, type(None))) else None,
+        "fluency_score": result.get("fluency_score") if isinstance(result.get("fluency_score"), (int, float, type(None))) else None,
+        "mistakes": result.get("mistakes") if isinstance(result.get("mistakes"), list) else [],
+        "tips": result.get("tips") if isinstance(result.get("tips"), list) else [],
+        "ref_ipa": str(result.get("ref_ipa")) if result.get("ref_ipa") else None,
+        "user_ipa": str(result.get("user_ipa")) if result.get("user_ipa") else None,
+    }
+
 
 def _next_difficulty(current: DifficultyLevel, is_correct: bool) -> DifficultyLevel:
     ladder = [DifficultyLevel.EASY, DifficultyLevel.MEDIUM, DifficultyLevel.HARD]
@@ -102,6 +122,16 @@ async def _get_previous_completed_score(db: AsyncSession, user_id: str) -> int |
     return result.scalar_one_or_none()
 
 
+def _question_to_dict(q: Question) -> dict:
+    """Convert SQLAlchemy Question to plain dict."""
+    return {
+        "id": str(q.id),
+        "text": q.text,
+        "difficulty": q.difficulty,
+        "skill_id": str(q.skill_id),
+    }
+
+
 # ── Session Analytics Service ─────────────────────────────────────────────────
 
 class SessionAnalyticsService:
@@ -126,7 +156,6 @@ class SessionAnalyticsService:
         analytics.total_time_mins += session.duration_mins or 0
         analytics.last_session_at = session.ended_at
 
-        # Recalculate avg score
         if session.overall_score is not None:
             if analytics.avg_score is None:
                 analytics.avg_score = session.overall_score
@@ -135,13 +164,11 @@ class SessionAnalyticsService:
                 analytics.avg_score = round(
                     (total + session.overall_score) / analytics.total_sessions, 2
                 )
-            # Best/worst
             if analytics.best_score is None or session.overall_score > analytics.best_score:
                 analytics.best_score = session.overall_score
             if analytics.worst_score is None or session.overall_score < analytics.worst_score:
                 analytics.worst_score = session.overall_score
 
-        # Most practiced type
         type_count_result = await self.db.execute(
             select(InterviewSession.interview_type, func.count(InterviewSession.id).label("cnt"))
             .where(
@@ -159,8 +186,6 @@ class SessionAnalyticsService:
 
         analytics.updated_at = datetime.utcnow()
         await self.db.commit()
-
-        # Check milestones
         await self.check_milestones(user_id, session, analytics.total_sessions)
 
     async def check_milestones(
@@ -175,11 +200,9 @@ class SessionAnalyticsService:
             ("10_interviews", "10 Interviews Completed", lambda s, c: c >= 10),
             ("25_interviews", "25 Interviews Completed", lambda s, c: c >= 25),
         ]
-
         for m_type, m_name, condition in milestones_to_check:
             if not condition(session, total_count):
                 continue
-            # Check if already awarded
             existing = await self.db.execute(
                 select(UserMilestone).where(
                     UserMilestone.user_id == user_id,
@@ -188,7 +211,6 @@ class SessionAnalyticsService:
             )
             if existing.scalar_one_or_none():
                 continue
-            # Award milestone
             self.db.add(UserMilestone(
                 user_id=user_id,
                 milestone_type=m_type,
@@ -308,13 +330,14 @@ async def submit_practice_answer(
     confidence_score = None
     audio_metadata = None
     user_answer = None
+    pronunciation_result = {}
 
     if audio_path:
         transcription = await transcribe_audio(audio_path)
-        audio_metadata = extract_audio_features(audio_path, transcription)
-        audio_metadata = audio_metadata if isinstance(audio_metadata, dict) else None
+        audio_metadata = _safe_dict(extract_audio_features(audio_path, transcription))
         confidence_score = compute_confidence(audio_metadata) if audio_metadata else None
         user_answer = transcription
+        pronunciation_result = await analyze_pronunciation(question.text, transcription)
 
     if not user_answer:
         return {"error": "No answer provided."}
@@ -330,6 +353,8 @@ async def submit_practice_answer(
         is_correct=is_correct,
         feedback=feedback,
         answered_at=datetime.utcnow(),
+        pronunciation_score=_safe_pronunciation(pronunciation_result).get("phoneme_score"),
+        pronunciation_data=_safe_dict(_safe_pronunciation(pronunciation_result)),
     )
     db.add(response_record)
     await db.commit()
@@ -344,7 +369,8 @@ async def submit_practice_answer(
         "feedback": feedback,
         "transcription": transcription,
         "confidence_score": confidence_score,
-        "next_question": next_question,
+        "pronunciation": _safe_pronunciation(pronunciation_result),
+        "next_question": _question_to_dict(next_question) if next_question else None,
         "practice_complete": next_question is None,
     }
 
@@ -420,13 +446,17 @@ async def submit_batch_answer(
     transcription = None
     confidence_score = None
     audio_metadata = None
+    pronunciation_result = {}
 
     if audio_path:
         transcription = await transcribe_audio(audio_path)
-        audio_metadata = extract_audio_features(audio_path, transcription)
-        audio_metadata = audio_metadata if isinstance(audio_metadata, dict) else None
+        audio_metadata = _safe_dict(extract_audio_features(audio_path, transcription))
         confidence_score = compute_confidence(audio_metadata) if audio_metadata else None
         user_answer = transcription
+        pronunciation_result = await analyze_pronunciation(
+            reference_text=current_question.text,
+            transcript=transcription,
+        )
 
     if not user_answer:
         return {"error": "No answer provided (neither text nor audio)."}
@@ -435,16 +465,20 @@ async def submit_batch_answer(
         current_question.text, current_question.answer_key, user_answer
     )
 
+    safe_p = _safe_pronunciation(pronunciation_result)
+
     response_record = UserResponse(
         session_id=session_id,
         question_id=current_q_id,
         user_answer=user_answer,
         confidence_score=confidence_score,
-        audio_metadata=audio_metadata,
+        audio_metadata=audio_metadata,          # ← always dict or None
         is_correct=is_correct,
         feedback=None,
         question_index=response_count,
         answered_at=datetime.utcnow(),
+        pronunciation_score=safe_p.get("phoneme_score"),
+        pronunciation_data=safe_p if any(v is not None for v in safe_p.values()) else None,
     )
     db.add(response_record)
     await db.commit()
@@ -470,9 +504,10 @@ async def submit_batch_answer(
         await db.commit()
         return {
             "session_complete": False,
-            "next_question": next_question,
+            "next_question": _question_to_dict(next_question),
             "transcription": transcription,
             "confidence_score": confidence_score,
+            "pronunciation": safe_p,
         }
 
     # ── Session complete ──────────────────────────────────────────
@@ -518,10 +553,8 @@ async def submit_batch_answer(
     session.improvement_delta = improvement_delta
     await db.commit()
 
-    # ── Update analytics + milestones + skill scores ──────────────
     analytics_svc = SessionAnalyticsService(db)
     await analytics_svc.update(session.user_id, session)
-
     skills = await _get_skills_for_user(db, session.user_id)
     await analytics_svc.save_skill_scores(session.user_id, session_id, skills, overall_score)
 
@@ -530,6 +563,7 @@ async def submit_batch_answer(
         "next_question": None,
         "transcription": transcription,
         "confidence_score": confidence_score,
+        "pronunciation": safe_p,
     }
 
 
@@ -566,7 +600,6 @@ async def get_user_sessions(
     if interview_type:
         base_query = base_query.where(InterviewSession.interview_type == interview_type)
 
-    # Sort
     sort_map = {
         "date_desc": InterviewSession.created_at.desc(),
         "date_asc": InterviewSession.created_at.asc(),
@@ -584,17 +617,14 @@ async def get_user_sessions(
     result = await db.execute(base_query.offset(offset).limit(limit))
     sessions = result.scalars().all()
 
-    # Get response counts + skill tags per session via separate queries
     session_list = []
     for s in sessions:
-        # Response count
         rc = await db.execute(
             select(func.count(UserResponse.id))
             .where(UserResponse.session_id == s.id)
         )
         q_count = rc.scalar_one()
 
-        # Has recordings
         rec = await db.execute(
             select(func.count(UserResponse.id))
             .where(
@@ -604,7 +634,6 @@ async def get_user_sessions(
         )
         has_recordings = rec.scalar_one() > 0
 
-        # Key skills tested
         skills_result = await db.execute(
             select(KeySkill.keyword)
             .join(Question, Question.skill_id == KeySkill.id)
@@ -631,10 +660,9 @@ async def get_user_sessions(
             "key_skills_tested": key_skills,
         })
 
-    # Summary
-    scores = [s["overall_score"] for s in session_list if s["overall_score"] is not None]
+    scores = [s["overall_score"] for s in session_list if s["overall_score"] is not None and s["status"] == "completed"]
 
-    # Improvement trend over last 5
+
     last5_result = await db.execute(
         select(InterviewSession.overall_score)
         .where(
@@ -653,7 +681,6 @@ async def get_user_sessions(
         sign = "+" if delta >= 0 else ""
         improvement_trend = f"{sign}{delta}% over last {len(last5)} interviews"
 
-    # Most practiced type
     type_result = await db.execute(
         select(InterviewSession.interview_type, func.count(InterviewSession.id).label("cnt"))
         .where(
@@ -712,15 +739,28 @@ async def get_session_result(db: AsyncSession, session_id: UUID) -> dict:
         ur = row.UserResponse
         q = row.Question
 
-        # Get skill tag for this question
         skill_result = await db.execute(
             select(KeySkill.keyword).where(KeySkill.id == q.skill_id)
         )
         skill_keyword = skill_result.scalar_one_or_none()
         skill_tags = [skill_keyword] if skill_keyword else []
 
+        p_data = ur.pronunciation_data or {}
+        mistakes = p_data.get("mistakes", []) if isinstance(p_data.get("mistakes"), list) else []
+        mispronounced = [
+            m.get("expected", "") for m in mistakes
+            if isinstance(m, dict) and m.get("type") in ("wrong", "missing")
+            and m.get("expected")
+            ]
+            
+        user_answer = ur.user_answer or ""
+        filler_words = ["um", "uh", "like", "so", "you know", "actually", "erm"]
+        filler_count = sum(
+            user_answer.lower().count(f) for f in filler_words
+            )
+
         questions.append({
-            "question_id": q.id,
+            "question_id": str(q.id),
             "question_number": i + 1,
             "question_text": q.text,
             "difficulty": q.difficulty,
@@ -737,33 +777,42 @@ async def get_session_result(db: AsyncSession, session_id: UUID) -> dict:
                 "model_answer": q.answer_key,
             },
             "pronunciation": {
-                "score": None,           # Task 2 hook — Whisper integration
-                "mispronounced_words": [],
-                "filler_count": None,
+                "score": ur.pronunciation_score,
+                "mispronounced_words": mispronounced,
+                "filler_count": filler_count,
+                "tips": p_data.get("tips", []) if isinstance(p_data.get("tips"), list) else [],
+                "fluency_score": p_data.get("fluency_score"),
             },
         })
-
-    # Parse strengths/improvements from gap_analysis
+    
     gap = session.feedback or ""
     strengths = []
     improvements = []
-    if "STRENGTHS" in gap.upper():
-        for line in gap.split("\n"):
-            line = line.strip()
-            if line.startswith(("1.", "2.", "3.", "-", "*")) and len(strengths) < 3:
-                clean = line.lstrip("123456789.-* ").strip()
-                if clean:
-                    strengths.append(clean)
-    if "RECOMMENDATION" in gap.upper() or "WEAKNESS" in gap.upper() or "IMPROVEMENT" in gap.upper():
-        for line in gap.split("\n"):
-            line = line.strip()
-            if line.startswith(("1.", "2.", "3.", "-", "*")) and len(improvements) < 3:
-                clean = line.lstrip("123456789.-* ").strip()
-                if clean:
-                    improvements.append(clean)
+    current_section = None
+    for line in gap.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        line_upper = line.upper()
+        if "STRENGTH" in line_upper:
+            current_section = "strengths"
+            continue
+        elif any(k in line_upper for k in ["WEAKNESS", "IMPROVEMENT", "RECOMMENDATION"]):
+            current_section = "improvements"
+            continue
+        if ":**" in line or line.startswith("#"):
+            continue
+        if line.startswith(("- ", "* ")) or (len(line) > 2 and line[0].isdigit() and line[1] in ".)"):
+            clean = line.lstrip("0123456789.-*) ").replace("**", "").strip()
+            if not clean or len(clean) < 5:
+                continue
+            if current_section == "strengths" and len(strengths) < 3:
+                strengths.append(clean)
+            elif current_section == "improvements" and len(improvements) < 3:
+                improvements.append(clean)
 
     return {
-        "session_id": session.id,
+        "session_id": str(session.id),
         "user_id": session.user_id,
         "interview_type": session.interview_type,
         "status": session.status,
@@ -774,6 +823,7 @@ async def get_session_result(db: AsyncSession, session_id: UUID) -> dict:
         "improvement_delta": session.improvement_delta,
         "gap_analysis": session.feedback,
         "questions": questions,
+        
         "report_summary": {
             "strengths": strengths,
             "improvements": improvements,
@@ -798,7 +848,6 @@ async def get_improvement_history(db: AsyncSession, user_id: str) -> dict:
 
     scores = [s.overall_score for s in sessions if s.overall_score is not None]
 
-    # Score progression
     score_progression = [
         {
             "date": s.created_at.strftime("%Y-%m-%d"),
@@ -809,12 +858,10 @@ async def get_improvement_history(db: AsyncSession, user_id: str) -> dict:
         if s.overall_score is not None
     ]
 
-    # Interviews this month
     now = datetime.utcnow()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     interviews_this_month = sum(1 for s in sessions if s.created_at >= month_start)
 
-    # Skill improvement
     skill_result = await db.execute(
         select(SkillScoreHistory)
         .where(SkillScoreHistory.user_id == user_id)
@@ -832,19 +879,17 @@ async def get_improvement_history(db: AsyncSession, user_id: str) -> dict:
             "skill": skill,
             "initial_score": scores_list[0],
             "current_score": scores_list[-1],
-            "change": f"+{scores_list[-1] - scores_list[0]}" if scores_list[-1] >= scores_list[0]
-                      else str(scores_list[-1] - scores_list[0]),
+            "change": f"+{scores_list[-1] - scores_list[0]}"
+            if scores_list[-1] >= scores_list[0]
+            else str(scores_list[-1] - scores_list[0]),
         }
         for skill, scores_list in skill_map.items()
-        if len(scores_list) >= 1
     ]
 
-    # Consistency
     streak = 0
     longest_gap = 0
     total_weeks = 0
     if sessions:
-        # Current streak (consecutive days)
         today = now.date()
         prev_date = today
         for s in reversed(sessions):
@@ -856,27 +901,18 @@ async def get_improvement_history(db: AsyncSession, user_id: str) -> dict:
             else:
                 break
 
-        # Longest gap
         dates = [s.created_at for s in sessions]
         for i in range(1, len(dates)):
             gap_days = (dates[i] - dates[i - 1]).days
             if gap_days > longest_gap:
                 longest_gap = gap_days
 
-        # Avg per week
         if len(sessions) >= 2:
             total_days = (sessions[-1].created_at - sessions[0].created_at).days or 1
             total_weeks = max(1, total_days / 7)
 
     avg_per_week = round(len(sessions) / total_weeks, 1) if total_weeks > 0 else len(sessions)
 
-    consistency = {
-        "avg_interviews_per_week": avg_per_week,
-        "longest_gap_days": longest_gap,
-        "current_streak": streak,
-    }
-
-    # Milestones
     milestones_result = await db.execute(
         select(UserMilestone)
         .where(UserMilestone.user_id == user_id)
@@ -896,7 +932,11 @@ async def get_improvement_history(db: AsyncSession, user_id: str) -> dict:
         "interviews_this_month": interviews_this_month,
         "score_progression": score_progression,
         "skill_improvement": skill_improvement,
-        "consistency": consistency,
+        "consistency": {
+            "avg_interviews_per_week": avg_per_week,
+            "longest_gap_days": longest_gap,
+            "current_streak": streak,
+        },
         "milestones": milestones,
         "average_score": round(sum(scores) / len(scores), 2) if scores else None,
         "best_score": max(scores) if scores else None,
