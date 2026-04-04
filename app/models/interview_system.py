@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text, JSON
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text, JSON, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,10 +18,10 @@ class DifficultyLevel(str, enum.Enum):
 class KeySkill(Base):
     __tablename__ = "key_skills"
 
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column("uuid_user_id", PG_UUID(as_uuid=True), index=True)
     keyword: Mapped[str] = mapped_column(String, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relationship to questions generated for this skill
     questions = relationship("Question", back_populates="skill", cascade="all, delete-orphan")
@@ -36,7 +36,7 @@ class Question(Base):
     options: Mapped[list[str]] = mapped_column(JSON, default=list, server_default='[]')
     answer_key: Mapped[str] = mapped_column(Text)  # The letter (A, B, C, D) or full text of the correct answer
     difficulty: Mapped[DifficultyLevel] = mapped_column(Enum(DifficultyLevel))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     skill = relationship("KeySkill", back_populates="questions")
 
@@ -44,11 +44,11 @@ class Question(Base):
 class InterviewSession(Base):
     __tablename__ = "interview_sessions"
 
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column("uuid_user_id", PG_UUID(as_uuid=True), index=True)
     status: Mapped[str] = mapped_column(String, default="active")  # active, completed
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)  # The final "Gap Analysis"
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     responses = relationship("UserResponse", back_populates="session", cascade="all, delete-orphan")
 
@@ -64,7 +64,7 @@ class UserResponse(Base):
     audio_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     is_correct: Mapped[bool | None] = mapped_column(nullable=True)
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)  # AI feedback for this specific answer
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     session = relationship("InterviewSession", back_populates="responses")
     question = relationship("Question")

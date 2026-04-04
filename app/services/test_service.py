@@ -7,6 +7,7 @@ from app.repositories.question_repo import QuestionRepository
 from app.repositories.test_session_repo import TestSessionRepository
 from app.repositories.user_answer_repo import UserAnswerRepository
 from uuid import UUID
+from app.schemas.question_schema import QuestionResponse
 from app.schemas.test_session_schema import AnswerResponse, TestSessionResponse
 
 
@@ -138,7 +139,7 @@ class TestService:
         else:
             session.status = "COMPLETED"
 
-    def get_summary(self, session_id: int, user_id: int):
+    def get_summary(self, session_id: int, user_id: UUID):
         session = self.session_repo.get_by_id(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")

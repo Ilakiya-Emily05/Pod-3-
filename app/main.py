@@ -1,32 +1,63 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.config.database import init_db
 from app.config.settings import get_settings
 from app.controllers.router import api_router
+from app.utils.exceptions import (
+    ResumeParseError, resume_parse_error_handler,
+    UnsupportedFileTypeError, unsupported_file_handler,
+    FileTooLargeError, file_too_large_handler,
+    ResumeNotFoundError, not_found_handler,
+    validation_error_handler,
+    unhandled_error_handler,
+)
+
+
+# ── Rate Limiter ─────────────────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address, default_limits=["30/minute"])
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize database (run migrations/create tables)
+    await init_db()
+    yield
+    # Shutdown logic if needed
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
 
     app = FastAPI(
-        title="Power Up API",
+        title="Power Up Unified API",
         description=(
-            "Power Up async FastAPI backend — serving the mobile app and admin dashboard.\n\n"
+            "Unified FastAPI backend integrating Interview Coach and Resume Parser modules.\n\n"
             "**Docs:** `/docs` (Swagger UI) · `/redoc` (ReDoc) · `/openapi.json` (schema)"
         ),
-        version="0.1.0",
+        version="1.0.0",
         docs_url=None,  # served manually below so we can customise
         redoc_url=None,
         openapi_url="/openapi.json",
         contact={"name": "Power Up Engineering"},
         license_info={"name": "Proprietary"},
+        lifespan=lifespan,
     )
 
-    # ── CORS ────────────────────────────────────────────────────────────────
+    # ── Middleware ──────────────────────────────────────────────────────────
+    app.state.limiter = limiter
+    app.add_middleware(SlowAPIMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
@@ -34,6 +65,15 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # ── Exception Handlers ──────────────────────────────────────────────────
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_exception_handler(ResumeParseError, resume_parse_error_handler)
+    app.add_exception_handler(UnsupportedFileTypeError, unsupported_file_handler)
+    app.add_exception_handler(FileTooLargeError, file_too_large_handler)
+    app.add_exception_handler(ResumeNotFoundError, not_found_handler)
+    app.add_exception_handler(RequestValidationError, validation_error_handler)
+    app.add_exception_handler(Exception, unhandled_error_handler)
 
     # ── Swagger UI ───────────────────────────────────────────────────────────
     @app.get("/docs", include_in_schema=False)
@@ -75,10 +115,6 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["health"], summary="Liveness probe")
     async def health() -> JSONResponse:
         return JSONResponse({"status": "ok", "version": app.version})
-
-    @app.on_event("startup")
-    async def startup_event() -> None:
-        await init_db()
 
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(api_router, prefix=settings.api_v1_prefix)
