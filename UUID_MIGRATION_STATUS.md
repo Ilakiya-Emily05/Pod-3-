@@ -53,7 +53,7 @@ Pod 1 and Pod 3 have been successfully consolidated on a **unified UUID-based us
    - Safe migration with gen_random_uuid() backfill
    - Includes downgrade path
 
-5. **g7h8i9j0k1l2** - `convert_behav_tables_to_uuid` (NEW)
+5. **g7h8i9j0k1l2** - `convert_behav_tables_to_uuid`
    - Converts behav_questions.id: INT → UUID
    - Converts behav_options.id: INT → UUID, question_id: INT → UUID
    - Converts behav_option_scores.id: INT → UUID, option_id: INT → UUID
@@ -61,13 +61,13 @@ Pod 1 and Pod 3 have been successfully consolidated on a **unified UUID-based us
    - Maintains referential integrity with temp mapping tables
    - Creates indexes on new UUID columns
 
-**Alembic State:**
-```
-$ alembic current
-g7h8i9j0k1l2 (head)
+6. **h8i9j0k1l2m3** - `convert_pronunciation_results_id_to_uuid` (NEW)
+   - Converts pronunciation_results.id: INT → UUID
+   - Safe conversion with UUID generation for new rows
+   - Creates
 
 $ alembic heads
-g7h8i9j0k1l2 (head)
+h8i9j0k1l2m3 (head)
 ```
 ✅ Single migration head, no branching conflicts
 
@@ -75,6 +75,13 @@ g7h8i9j0k1l2 (head)
 ```
 ce4b0ae28bd6 (create_users_table)
   ↓
+... other migrations ...
+  ↓
+f6a7b8c9d0e1 (convert_resumes_user_id_to_uuid)
+  ↓
+g7h8i9j0k1l2 (convert_behav_tables_to_uuid)
+  ↓
+h8i9j0k1l2m3 (convert_pronunciation_results_id
 ... other migrations ...
   ↓
 f6a7b8c9d0e1 (convert_resumes_user_id_to_uuid)
@@ -96,7 +103,7 @@ g7h8i9j0k1l2 (convert_behav_tables_to_uuid) ← HEAD
 | `grammar.py` | user_id: `Mapped[UUID \| None]` with PG_UUID |
 | `listening.py` | user_id: `Mapped[UUID \| None]` with PG_UUID |
 | `reading.py` | user_id: `Mapped[UUID \| None]` with PG_UUID |
-| `pronunciation_model.py` | user_id: `Mapped[UUID]` with PG_UUID |
+| `pronunciation_model.py` | id: `Integer` → `UUID` (primary key); user_id: `Mapped[UUID \| None]` with PG_UUID |
 | `test_session.py` | user_id: Column(PG_UUID); FK to users.id |
 | `passage_session.py` | user_id: Column(PG_UUID); FK to users.id |
 | `behav_assessment_model.py` | user_id: `Mapped[UUID]` with PG_UUID; also migrated BehavQuestion.id, BehavOption.id, BehavOptionScore.id, BehavUserAnswer.id → UUID |
@@ -459,7 +466,7 @@ alembic downgrade d7f8a9b0c1d2
 - [ ] Document: Final schema state in DATABASE_SCHEMA_DOCUMENTATION.md
 
 ---
-
+6 migrations) | 0% | 100% | 25
 ## Effort Estimation Summary
 
 | Phase | Completed | Remaining | Effort |
@@ -478,13 +485,14 @@ alembic downgrade d7f8a9b0c1d2
 **Status: READY FOR PRODUCTION DEPLOYMENT**
 
 All code and migrations are complete. Pod 1 and Pod 3 are now on a unified UUID-based identity contract across ALL systems:
-- ✅ All user-related models use UUID for user_id
-- ✅ All behavioral assessment tables use UUID for ids and FKs
+- ✅ pronunciation_results table uses UUID for id (no more integer PK)
 - ✅ All services accept UUID parameters
-- ✅ 5 migrations prepared and validated (complete chain)
+- ✅ 6 migrations prepared and validated (complete chain)
 - ✅ JWT tokens standardized with UUID sub claim
 - ✅ Zero data loss during migration
 - ✅ Single migration head (no conflicts)
+
+**Next Action:** Run `alembic upgrade head` during maintenance window to apply all 6
 
 **Next Action:** Run `alembic upgrade head` during maintenance window to apply all 5 migrations.
 
