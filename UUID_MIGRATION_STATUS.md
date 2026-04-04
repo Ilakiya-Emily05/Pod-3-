@@ -64,7 +64,7 @@ Pod 1 and Pod 3 have been successfully consolidated on a **unified UUID-based us
 6. **h8i9j0k1l2m3** - `convert_pronunciation_results_id_to_uuid` (NEW)
    - Converts pronunciation_results.id: INT → UUID
    - Safe conversion with UUID generation for new rows
-   - Creates
+  - Creates index on UUID user_id column
 
 $ alembic heads
 h8i9j0k1l2m3 (head)

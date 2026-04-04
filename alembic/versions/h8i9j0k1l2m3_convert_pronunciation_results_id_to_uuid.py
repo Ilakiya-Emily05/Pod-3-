@@ -70,7 +70,6 @@ def upgrade() -> None:
     # Create indexes
     op.execute("DROP INDEX IF EXISTS ix_pronunciation_results_id")
     op.execute("DROP INDEX IF EXISTS ix_pronunciation_results_user_id")
-    op.create_index("ix_pronunciation_results_id", "pronunciation_results", ["id"], unique=False)
     op.create_index("ix_pronunciation_results_user_id", "pronunciation_results", ["user_id"])
 
 

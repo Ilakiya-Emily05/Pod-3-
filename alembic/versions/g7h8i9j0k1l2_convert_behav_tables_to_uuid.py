@@ -159,7 +159,6 @@ def upgrade() -> None:
         op.drop_column("behav_questions", "id")
         op.alter_column("behav_questions", "new_id", new_column_name="id")
         op.create_primary_key("behav_questions_pkey", "behav_questions", ["id"])
-        op.create_index("ix_behav_questions_id", "behav_questions", ["id"], unique=False)
 
     if _table_exists("behav_options"):
         op.execute("DROP INDEX IF EXISTS ix_behav_options_id")
@@ -177,7 +176,6 @@ def upgrade() -> None:
             ["question_id"],
             ["id"],
         )
-        op.create_index("ix_behav_options_id", "behav_options", ["id"], unique=False)
         op.create_index("ix_behav_options_question_id", "behav_options", ["question_id"])
 
     if _table_exists("behav_option_scores"):
@@ -197,7 +195,6 @@ def upgrade() -> None:
             ["option_id"],
             ["id"],
         )
-        op.create_index("ix_behav_option_scores_id", "behav_option_scores", ["id"], unique=False)
         op.create_index("ix_behav_option_scores_option_id", "behav_option_scores", ["option_id"])
 
     if _table_exists("behav_user_answers"):
@@ -228,7 +225,6 @@ def upgrade() -> None:
             ["option_id"],
             ["id"],
         )
-        op.create_index("ix_behav_user_answers_id", "behav_user_answers", ["id"], unique=False)
         op.create_index("ix_behav_user_answers_question_id", "behav_user_answers", ["question_id"])
         op.create_index("ix_behav_user_answers_option_id", "behav_user_answers", ["option_id"])
 
