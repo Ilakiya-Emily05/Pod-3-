@@ -138,7 +138,7 @@ class TestService:
         else:
             session.status = "COMPLETED"
 
-    def get_summary(self, session_id: int, user_id: int):
+    def get_summary(self, session_id: int, user_id: UUID):
         session = self.session_repo.get_by_id(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")

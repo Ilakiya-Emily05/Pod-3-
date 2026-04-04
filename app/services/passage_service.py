@@ -2,6 +2,7 @@ import asyncio
 
 from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
+from uuid import UUID
 
 from app.repositories.passage_repo import PassageRepository
 from app.services.passage_pool import MAX_POOL, MIN_POOL, LOW_BUFFER, fill_pool, take_random_passage_id
@@ -79,7 +80,7 @@ class PassageService:
 
         return [PassageQuestion(id=q.id, question_text=q.question, options=q.options) for q in questions]
 
-    def submit_answer(self, answer: PassageAnswerRequest, user_id: int) -> PassageAnswerResponse:
+    def submit_answer(self, answer: PassageAnswerRequest, user_id: UUID) -> PassageAnswerResponse:
         session = self.repo.get_passage_session(answer.session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
