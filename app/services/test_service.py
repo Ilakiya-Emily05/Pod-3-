@@ -7,6 +7,7 @@ from app.repositories.question_repo import QuestionRepository
 from app.repositories.test_session_repo import TestSessionRepository
 from app.repositories.user_answer_repo import UserAnswerRepository
 from uuid import UUID
+from app.schemas.question_schema import QuestionResponse
 from app.schemas.test_session_schema import AnswerResponse, TestSessionResponse
 
 
