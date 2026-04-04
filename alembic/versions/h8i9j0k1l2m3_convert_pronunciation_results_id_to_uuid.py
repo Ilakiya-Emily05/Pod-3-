@@ -61,13 +61,15 @@ def upgrade() -> None:
     # Drop the old id column
     op.drop_column("pronunciation_results", "id")
 
-    # Rename new_id to id
-    op.rename_column("pronunciation_results", "new_id", "id")
+    # Rename new_id to id using alter_column
+    op.alter_column("pronunciation_results", "new_id", new_column_name="id")
 
     # Create new primary key
     op.create_primary_key("pronunciation_results_pkey", "pronunciation_results", ["id"])
 
-    # Create index
+    # Create indexes
+    op.execute("DROP INDEX IF EXISTS ix_pronunciation_results_id")
+    op.execute("DROP INDEX IF EXISTS ix_pronunciation_results_user_id")
     op.create_index("ix_pronunciation_results_id", "pronunciation_results", ["id"], unique=False)
     op.create_index("ix_pronunciation_results_user_id", "pronunciation_results", ["user_id"])
 

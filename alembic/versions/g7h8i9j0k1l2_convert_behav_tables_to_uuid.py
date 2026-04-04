@@ -143,31 +143,31 @@ def upgrade() -> None:
 
     # Drop old FKs before column changes
     if _table_exists("behav_options"):
-        op.drop_constraint("behav_options_question_id_fkey", "behav_options", type_="foreignkey")
+        op.execute("ALTER TABLE behav_options DROP CONSTRAINT IF EXISTS behav_options_question_id_fkey")
 
     if _table_exists("behav_option_scores"):
-        op.drop_constraint("behav_option_scores_option_id_fkey", "behav_option_scores", type_="foreignkey")
+        op.execute("ALTER TABLE behav_option_scores DROP CONSTRAINT IF EXISTS behav_option_scores_option_id_fkey")
 
     if _table_exists("behav_user_answers"):
-        op.drop_constraint("behav_user_answers_question_id_fkey", "behav_user_answers", type_="foreignkey")
-        op.drop_constraint("behav_user_answers_option_id_fkey", "behav_user_answers", type_="foreignkey")
+        op.execute("ALTER TABLE behav_user_answers DROP CONSTRAINT IF EXISTS behav_user_answers_question_id_fkey")
+        op.execute("ALTER TABLE behav_user_answers DROP CONSTRAINT IF EXISTS behav_user_answers_option_id_fkey")
 
-    # Drop old columns and rename new ones
+    # Drop old columns and create new structure
     if _table_exists("behav_questions"):
-        op.drop_index("ix_behav_questions_id", table_name="behav_questions")
+        op.execute("DROP INDEX IF EXISTS ix_behav_questions_id")
         op.drop_constraint("behav_questions_pkey", "behav_questions", type_="primary")
         op.drop_column("behav_questions", "id")
-        op.rename_column("behav_questions", "new_id", "id")
+        op.alter_column("behav_questions", "new_id", new_column_name="id")
         op.create_primary_key("behav_questions_pkey", "behav_questions", ["id"])
         op.create_index("ix_behav_questions_id", "behav_questions", ["id"], unique=False)
 
     if _table_exists("behav_options"):
-        op.drop_index("ix_behav_options_id", table_name="behav_options")
+        op.execute("DROP INDEX IF EXISTS ix_behav_options_id")
         op.drop_constraint("behav_options_pkey", "behav_options", type_="primary")
         op.drop_column("behav_options", "id")
         op.drop_column("behav_options", "question_id")
-        op.rename_column("behav_options", "new_id", "id")
-        op.rename_column("behav_options", "new_question_id", "question_id")
+        op.alter_column("behav_options", "new_id", new_column_name="id")
+        op.alter_column("behav_options", "new_question_id", new_column_name="question_id")
         op.create_primary_key("behav_options_pkey", "behav_options", ["id"])
         op.alter_column("behav_options", "question_id", nullable=False)
         op.create_foreign_key(
@@ -181,12 +181,13 @@ def upgrade() -> None:
         op.create_index("ix_behav_options_question_id", "behav_options", ["question_id"])
 
     if _table_exists("behav_option_scores"):
-        op.drop_index("ix_behav_option_scores_id", table_name="behav_option_scores")
+        op.execute("DROP INDEX IF EXISTS ix_behav_option_scores_id")
+        op.execute("DROP INDEX IF EXISTS ix_behav_option_scores_option_id")
         op.drop_constraint("behav_option_scores_pkey", "behav_option_scores", type_="primary")
         op.drop_column("behav_option_scores", "id")
         op.drop_column("behav_option_scores", "option_id")
-        op.rename_column("behav_option_scores", "new_id", "id")
-        op.rename_column("behav_option_scores", "new_option_id", "option_id")
+        op.alter_column("behav_option_scores", "new_id", new_column_name="id")
+        op.alter_column("behav_option_scores", "new_option_id", new_column_name="option_id")
         op.create_primary_key("behav_option_scores_pkey", "behav_option_scores", ["id"])
         op.alter_column("behav_option_scores", "option_id", nullable=False)
         op.create_foreign_key(
@@ -200,14 +201,16 @@ def upgrade() -> None:
         op.create_index("ix_behav_option_scores_option_id", "behav_option_scores", ["option_id"])
 
     if _table_exists("behav_user_answers"):
-        op.drop_index("ix_behav_user_answers_id", table_name="behav_user_answers")
+        op.execute("DROP INDEX IF EXISTS ix_behav_user_answers_id")
+        op.execute("DROP INDEX IF EXISTS ix_behav_user_answers_question_id")
+        op.execute("DROP INDEX IF EXISTS ix_behav_user_answers_option_id")
         op.drop_constraint("behav_user_answers_pkey", "behav_user_answers", type_="primary")
         op.drop_column("behav_user_answers", "id")
         op.drop_column("behav_user_answers", "question_id")
         op.drop_column("behav_user_answers", "option_id")
-        op.rename_column("behav_user_answers", "new_id", "id")
-        op.rename_column("behav_user_answers", "new_question_id", "question_id")
-        op.rename_column("behav_user_answers", "new_option_id", "option_id")
+        op.alter_column("behav_user_answers", "new_id", new_column_name="id")
+        op.alter_column("behav_user_answers", "new_question_id", new_column_name="question_id")
+        op.alter_column("behav_user_answers", "new_option_id", new_column_name="option_id")
         op.create_primary_key("behav_user_answers_pkey", "behav_user_answers", ["id"])
         op.alter_column("behav_user_answers", "question_id", nullable=False)
         op.alter_column("behav_user_answers", "option_id", nullable=False)
