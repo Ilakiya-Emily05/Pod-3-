@@ -10,13 +10,13 @@ from app.models.interview_system import DifficultyLevel
 
 class KeywordIngest(BaseModel):
     """Payload sent by teammate's module to store keywords for a user."""
-    user_id: UUID
+    user_id: str
     keywords: list[str]
 
 
 class KeySkillOut(BaseModel):
     id: UUID
-    user_id: UUID
+    user_id: str
     keyword: str
 
     model_config = {"from_attributes": True}
@@ -63,10 +63,10 @@ class PracticeAnswerFeedback(BaseModel):
 
 class StartInterviewRequest(BaseModel):
     """Start a new mock interview session."""
-    user_id: UUID
+    user_id: str
 
 
-# ── Mock Session List / Result Schemas (for frontend) ────────────────────────
+# ── Mock Session List / Result Schemas ────────────────────────────────────────
 
 class MockSessionOut(BaseModel):
     """Summary of a single mock interview session."""
@@ -100,3 +100,39 @@ class BatchSessionOut(BaseModel):
     session_id: UUID
     questions: list[QuestionOut]
 
+
+# ── Final Report Schemas ─────────────────────────────────────────────────────
+
+class ReportScoreBreakdown(BaseModel):
+    technical_skills: int
+    communication: int
+    problem_solving: int
+    behavioral_competency: int
+
+
+class ReportStrengthItem(BaseModel):
+    area: str
+    description: str
+    evidence: str
+
+
+class ReportImprovementItem(BaseModel):
+    area: str
+    description: str
+    recommendation: str
+    priority: str
+
+
+class FinalReportOut(BaseModel):
+    report_id: UUID
+    session_id: UUID
+    overall_score: int
+    performance_level: str
+    score_breakdown: ReportScoreBreakdown
+    strengths: list[ReportStrengthItem]
+    improvement_areas: list[ReportImprovementItem]
+    ai_narrative: str
+    next_steps: list[str]
+    comparison_to_peers: dict
+
+    model_config = {"from_attributes": True}
