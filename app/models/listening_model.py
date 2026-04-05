@@ -1,12 +1,13 @@
 # app/models/listening_models.py
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text
 from sqlalchemy.sql import func
-from app.db.base import Base
+from app.models.base import Base
 from sqlalchemy.dialects.postgresql import JSON
 from datetime import datetime
 
 class ListeningAttempt(Base):
     __tablename__ = "listening_attempts"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(Integer, primary_key=True, index=True)
     passage = Column(Text, nullable=False)
