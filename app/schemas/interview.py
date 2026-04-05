@@ -71,6 +71,7 @@ class StartInterviewRequest(BaseModel):
 class MockSessionOut(BaseModel):
     """Summary of a single mock interview session."""
     session_id: UUID
+    user_id: str
     status: str
     created_at: datetime
     response_count: int
@@ -90,6 +91,7 @@ class UserResponseOut(BaseModel):
 class MockSessionResultOut(BaseModel):
     """Full result for a completed mock interview session."""
     session_id: UUID
+    user_id: str
     status: str
     gap_analysis: str | None = None
     responses: list[UserResponseOut]
@@ -98,6 +100,7 @@ class MockSessionResultOut(BaseModel):
 class BatchSessionOut(BaseModel):
     """Output for a batch mock interview session (10 questions for 5 mins)."""
     session_id: UUID
+    user_id: str
     questions: list[QuestionOut]
 
 
@@ -126,6 +129,7 @@ class ReportImprovementItem(BaseModel):
 class FinalReportOut(BaseModel):
     report_id: UUID
     session_id: UUID
+    user_id: str
     overall_score: int
     performance_level: str
     score_breakdown: ReportScoreBreakdown
