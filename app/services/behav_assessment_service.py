@@ -39,7 +39,7 @@ async def get_dynamic_questions(db: AsyncSession, user_id: UUID) -> dict[str, An
     4. Returns the attempt_id and the newly generated questions.
     """
     # 1. Create a new attempt
-    attempt = BehavAttempt(user_id=user_id, status=AttemptStatus.IN_PROGRESS)
+    attempt = BehavAttempt(user_id=str(user_id), status=AttemptStatus.IN_PROGRESS)
     db.add(attempt)
     await db.flush()
 
@@ -66,7 +66,7 @@ async def get_adaptive_questions_for_attempt(
 
 
 async def submit_answer(
-    db: AsyncSession, attempt_id: UUID, question_id: int, option_key: str
+    db: AsyncSession, attempt_id: UUID, question_id: UUID, option_key: str
 ) -> None:
     stmt = select(BehavOption).where(
         BehavOption.question_id == question_id, BehavOption.option_key == option_key

@@ -22,6 +22,12 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     from app.models import user  # noqa: F401
-
     async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
+        try:
+            await connection.run_sync(Base.metadata.create_all)
+        except Exception:  # pragma: no cover - runtime DB mismatch (handled at runtime)
+            import logging
+
+            logging.exception(
+                "Database initialization: failed to create tables. Likely schema mismatch with existing DB. Skipping create_all."
+            )

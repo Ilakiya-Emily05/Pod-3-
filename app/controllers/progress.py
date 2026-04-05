@@ -20,7 +20,7 @@ class ProgressController:
         """Start or resume a learning module."""
         # Check if progress already exists
         query = select(UserProgress).where(
-            UserProgress.user_id == data.user_id,
+            UserProgress.user_id == str(data.user_id),
             UserProgress.module_type == data.module_type,
             UserProgress.module_id == data.module_id,
         )
@@ -33,7 +33,7 @@ class ProgressController:
 
         # Create new progress record
         new_progress = UserProgress(
-            user_id=data.user_id,
+            user_id=str(data.user_id),
             module_type=data.module_type,
             module_id=data.module_id,
             status="in_progress",
@@ -51,7 +51,7 @@ class ProgressController:
     ) -> UserProgress:
         """Mark a module as completed with score."""
         query = select(UserProgress).where(
-            UserProgress.user_id == user_id,
+            UserProgress.user_id == str(user_id),
             UserProgress.module_type == module_type,
             UserProgress.module_id == module_id,
         )
@@ -61,7 +61,7 @@ class ProgressController:
         if not progress:
             # Create new progress record if doesn't exist
             progress = UserProgress(
-                user_id=user_id,
+                user_id=str(user_id),
                 module_type=module_type,
                 module_id=module_id,
                 status="completed",
@@ -89,7 +89,7 @@ class ProgressController:
         """Get all progress records for a user."""
         query = (
             select(UserProgress)
-            .where(UserProgress.user_id == user_id)
+            .where(UserProgress.user_id == str(user_id))
             .order_by(UserProgress.created_at.desc())
         )
         result = await self.db.execute(query)
@@ -98,13 +98,13 @@ class ProgressController:
     async def get_user_progress_summary(self, user_id: UUID) -> dict:
         """Get summarized progress for a user."""
         # Total modules started
-        total_query = select(func.count(UserProgress.id)).where(UserProgress.user_id == user_id)
+        total_query = select(func.count(UserProgress.id)).where(UserProgress.user_id == str(user_id))
         total_result = await self.db.execute(total_query)
         total_started = total_result.scalar() or 0
 
         # Total modules completed
         completed_query = select(func.count(UserProgress.id)).where(
-            UserProgress.user_id == user_id,
+            UserProgress.user_id == str(user_id),
             UserProgress.status == "completed",
         )
         completed_result = await self.db.execute(completed_query)
@@ -112,7 +112,7 @@ class ProgressController:
 
         # Average score (only for completed modules)
         avg_score_query = select(func.avg(UserProgress.score)).where(
-            UserProgress.user_id == user_id,
+            UserProgress.user_id == str(user_id),
             UserProgress.status == "completed",
             UserProgress.score.isnot(None),
         )
@@ -121,7 +121,7 @@ class ProgressController:
 
         # Modules by type
         type_query = select(UserProgress.module_type, func.count(UserProgress.id)).where(
-            UserProgress.user_id == user_id,
+            UserProgress.user_id == str(user_id),
             UserProgress.status == "completed",
         )
         type_query = type_query.group_by(UserProgress.module_type)

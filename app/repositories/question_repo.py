@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
@@ -15,7 +17,7 @@ class QuestionRepository:
         self.db.refresh(question)
         return question
 
-    def get_question_by_id(self, question_id: int) -> Question | None:
+    def get_question_by_id(self, question_id: UUID) -> Question | None:
         return self.db.query(Question).filter(Question.id == question_id).first()
 
     def get_questions_by_topic(self, topic: str) -> list[Question]:
@@ -39,7 +41,7 @@ class QuestionRepository:
             q = q.filter(Question.is_active == True)
         return q.order_by(func.random()).limit(limit).all()
 
-    def get_random_question(self, topic: str, subtopic: str, exclude_ids: list[int]) -> Question | None:
+    def get_random_question(self, topic: str, subtopic: str, exclude_ids: list[UUID]) -> Question | None:
         query = self.db.query(Question).filter(Question.topic == topic, Question.subtopic == subtopic)
         if exclude_ids:
             query = query.filter(~Question.id.in_(exclude_ids))

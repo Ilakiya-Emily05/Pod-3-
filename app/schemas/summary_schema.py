@@ -1,10 +1,11 @@
 from typing import List
+from uuid import UUID
 
 from pydantic import BaseModel
 
 
 class TestSummaryResponse(BaseModel):
-    session_id: int
+    session_id: UUID
     total_questions: int
     total_correct: int
     accuracy: float

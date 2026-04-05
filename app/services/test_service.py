@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -36,11 +38,11 @@ class TestService:
         self.question_agent.ensure_questions(topic, subtopic, session_id=None)
         return self.question_repo.get_by_topic(topic, subtopic, self.LIMIT)
 
-    def start_test(self, user_id: int) -> TestSessionResponse:
+    def start_test(self, user_id: UUID) -> TestSessionResponse:
         first_topic = list(GRAMMAR_FLOW.keys())[0]
         first_subtopic = GRAMMAR_FLOW[first_topic][0]
 
-        session = self.session_repo.create_session(user_id=user_id, topic=first_topic, subtopic=first_subtopic)
+        session = self.session_repo.create_session(user_id=str(user_id), topic=first_topic, subtopic=first_subtopic)
         return TestSessionResponse(
             session_id=session.id,
             current_topic=session.current_topic,
@@ -50,7 +52,7 @@ class TestService:
             total_correct_answers=session.total_correct,
         )
 
-    def get_next_question(self, session_id: int) -> QuestionResponse:
+    def get_next_question(self, session_id: UUID) -> QuestionResponse:
         session = self.session_repo.get_by_id(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -73,7 +75,7 @@ class TestService:
             options=question.options,
         )
 
-    def submit_answer(self, session_id: int, question_id: int, selected_answer: str) -> AnswerResponse:
+    def submit_answer(self, session_id: UUID, question_id: UUID, selected_answer: str) -> AnswerResponse:
         session = self.session_repo.get_by_id(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -138,12 +140,12 @@ class TestService:
         else:
             session.status = "COMPLETED"
 
-    def get_summary(self, session_id: int, user_id: int):
+    def get_summary(self, session_id: UUID, user_id: UUID):
         session = self.session_repo.get_by_id(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
-        if session.user_id != user_id:
+        if session.user_id != str(user_id):
             raise HTTPException(status_code=403, detail="Unauthorized: This session does not belong to you")
 
         accuracy = 0.0 if session.total_questions == 0 else round((session.total_correct / session.total_questions) * 100, 2)

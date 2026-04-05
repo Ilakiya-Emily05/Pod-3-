@@ -5,14 +5,14 @@ from pydantic import BaseModel, ConfigDict
 
 class OptionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    id: int
+    id: UUID
     option_key: str
     option_text: str
 
 
 class QuestionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    id: int
+    id: UUID
     question_text: str
     options: dict[str, str]  # A,B,C,D → option text
 
@@ -24,7 +24,7 @@ class AssessmentSessionResponse(BaseModel):
 
 class AnswerRequest(BaseModel):
     attempt_id: UUID
-    question_id: int
+    question_id: UUID
     option_key: str  # A,B,C,D
 
 

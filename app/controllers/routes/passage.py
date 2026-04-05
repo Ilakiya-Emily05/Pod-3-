@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
 
@@ -31,8 +33,13 @@ async def start_reading(
 
 
 @router.get("/{session_id}/passage", response_model=PassageResponse)
+<<<<<<< Updated upstream
 def get_passage(
     session_id: int,
+=======
+async def get_passage(
+    session_id: UUID,
+>>>>>>> Stashed changes
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -42,8 +49,13 @@ def get_passage(
 
 
 @router.get("/{session_id}/questions", response_model=list[PassageQuestion])
+<<<<<<< Updated upstream
 def get_questions(
     session_id: int,
+=======
+async def get_questions(
+    session_id: UUID,
+>>>>>>> Stashed changes
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -65,8 +77,13 @@ def submit_answer(
 
 
 @router.get("/{session_id}/summary", response_model=PassageSummaryResponse)
+<<<<<<< Updated upstream
 def get_summary(
     session_id: int,
+=======
+async def get_summary(
+    session_id: UUID,
+>>>>>>> Stashed changes
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

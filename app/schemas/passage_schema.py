@@ -1,32 +1,33 @@
 from typing import Dict, List
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
 
 class PassageStartResponse(BaseModel):
-    session_id: int
+    session_id: UUID
     status: str
 
 
 class PassageResponse(BaseModel):
-    session_id: int
+    session_id: UUID
     passage: str
 
 
 class PassageQuestion(BaseModel):
-    id: int
+    id: UUID
     question_text: str
     options: Dict[str, str]
 
 
 class PassageQuestionsResponse(BaseModel):
-    session_id: int
+    session_id: UUID
     questions: List[PassageQuestion]
 
 
 class PassageAnswerRequest(BaseModel):
-    session_id: int
-    question_id: int
+    session_id: UUID
+    question_id: UUID
     selected_answer: str
 
 
@@ -38,7 +39,7 @@ class PassageAnswerResponse(BaseModel):
 class PassageSummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    session_id: int
+    session_id: UUID
     total_questions: int
     total_correct: int
     accuracy: float
