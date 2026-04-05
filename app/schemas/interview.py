@@ -10,13 +10,13 @@ from app.models.interview_system import DifficultyLevel
 
 class KeywordIngest(BaseModel):
     """Payload sent by teammate's module to store keywords for a user."""
-    user_id: str
+    user_id: UUID
     keywords: list[str]
 
 
 class KeySkillOut(BaseModel):
     id: UUID
-    user_id: str
+    user_id: UUID
     keyword: str
 
     model_config = {"from_attributes": True}
@@ -63,15 +63,14 @@ class PracticeAnswerFeedback(BaseModel):
 
 class StartInterviewRequest(BaseModel):
     """Start a new mock interview session."""
-    user_id: str
+    user_id: UUID
 
 
-# ── Mock Session List / Result Schemas ────────────────────────────────────────
+# ── Mock Session List / Result Schemas (for frontend) ────────────────────────
 
 class MockSessionOut(BaseModel):
     """Summary of a single mock interview session."""
     session_id: UUID
-    user_id: str
     status: str
     created_at: datetime
     response_count: int
@@ -91,7 +90,6 @@ class UserResponseOut(BaseModel):
 class MockSessionResultOut(BaseModel):
     """Full result for a completed mock interview session."""
     session_id: UUID
-    user_id: str
     status: str
     gap_analysis: str | None = None
     responses: list[UserResponseOut]
@@ -100,43 +98,4 @@ class MockSessionResultOut(BaseModel):
 class BatchSessionOut(BaseModel):
     """Output for a batch mock interview session (10 questions for 5 mins)."""
     session_id: UUID
-    user_id: str
     questions: list[QuestionOut]
-
-
-# ── Final Report Schemas ─────────────────────────────────────────────────────
-
-class ReportScoreBreakdown(BaseModel):
-    technical_skills: int
-    communication: int
-    problem_solving: int
-    behavioral_competency: int
-
-
-class ReportStrengthItem(BaseModel):
-    area: str
-    description: str
-    evidence: str
-
-
-class ReportImprovementItem(BaseModel):
-    area: str
-    description: str
-    recommendation: str
-    priority: str
-
-
-class FinalReportOut(BaseModel):
-    report_id: UUID
-    session_id: UUID
-    user_id: str
-    overall_score: int
-    performance_level: str
-    score_breakdown: ReportScoreBreakdown
-    strengths: list[ReportStrengthItem]
-    improvement_areas: list[ReportImprovementItem]
-    ai_narrative: str
-    next_steps: list[str]
-    comparison_to_peers: dict
-
-    model_config = {"from_attributes": True}
