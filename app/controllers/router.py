@@ -1,5 +1,14 @@
 from fastapi import APIRouter
 
+from app.controllers.routes import (
+    auth_router,
+    behav_assessment_router,
+    grammar_router,
+    listening_router,
+    onboarding_router,
+    reading_router,
+    sentence_framing_router,
+)
 from app.controllers.routes.admin import router as admin_router
 from app.controllers.routes.analytics import router as analytics_router
 from app.controllers.routes.auth import router as auth_router
@@ -36,3 +45,4 @@ api_router.include_router(audio_router)
 api_router.include_router(listening_module_router)
 api_router.include_router(listening_test_router)
 api_router.include_router(question_router)
+api_router.include_router(sentence_framing_router)

@@ -6,7 +6,7 @@ from httpx import ASGITransport, AsyncClient
 
 # Patch before importing anything that might trigger engine creation
 with patch("sqlalchemy.ext.asyncio.create_async_engine"), \
-     patch("langchain_openai.AzureChatOpenAI"):
+     patch("langchain_openai.AzureChatOpenAI", create=True):
     from app.config.database import get_db
     from app.main import create_app
     from app.utils.auth import get_current_user_id
@@ -62,7 +62,7 @@ async def test_fetch_questions(client: AsyncClient) -> None:
     """
     Test generating dynamic questions.
     """
-    response = await client.get("/api/v1/behav-assessment/questions")
+    response = await client.get("/api/v1/behavioral/questions")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, dict)
@@ -75,24 +75,96 @@ async def test_fetch_questions(client: AsyncClient) -> None:
 
 
 @pytest.mark.integration
-async def test_get_result(client: AsyncClient) -> None:
+async def test_submit_questions_valid(client: AsyncClient) -> None:
     """
-    Test retrieving results with a valid attempt_id.
+    Test submitting multiple answers (bulk) to the consolidated /answer endpoint.
     """
-    # Use a dummy UUID; the mock is set to return a successful result regardless of which UUID is passed
     attempt_id = uuid.uuid4()
-    response = await client.get(f"/api/v1/behav-assessment/result?attempt_id={attempt_id}")
-    assert response.status_code == 200
-    data = response.json()
-    assert "attempt_id" in data
-    assert "hexaco_scores" in data
-    assert "status" in data
+    payload = {
+        "attempt_id": str(attempt_id),
+        "answers": [
+            {"attempt_id": str(attempt_id), "question_id": 1, "option_key": "A"},
+            {"attempt_id": str(attempt_id), "question_id": 2, "option_key": "B"}
+        ]
+    }
+    with patch("app.services.behav_assessment_service.submit_bulk_answers", new_callable=AsyncMock) as mock_submit:
+        response = await client.post("/api/v1/behavioral/answer", json=payload)
+        assert response.status_code == 200
+        assert "recorded" in response.json()["message"]
+        mock_submit.assert_called_once()
 
 
 @pytest.mark.integration
 async def test_submit_answer_validation(client: AsyncClient) -> None:
     """
-    Test submitting an answer with invalid schema (missing attempt_id).
+    Test submitting an answer with invalid schema (passing a single object instead of bulk list).
     """
-    response = await client.post("/api/v1/behav-assessment/answer", json={"question_id": 1, "option_key": "A"})
+    response = await client.post("/api/v1/behavioral/answer", json={"question_id": 1, "option_key": "A"})
     assert response.status_code == 422
+
+
+@pytest.mark.integration
+async def test_complete_assessment(client: AsyncClient) -> None:
+    """
+    Test the assessment completion endpoint.
+    """
+    user_id = uuid.uuid4()
+    session_id = uuid.uuid4()
+    payload = {"user_id": str(user_id), "session_id": str(session_id)}
+    
+    with patch("app.services.behav_learning_hook.behav_learning_service.process_assessment_completion", new_callable=AsyncMock) as mock_complete:
+        from app.schemas.behav_assessment_schemas import BehavioralCompleteResponse, ModuleRecommendation
+        mock_complete.return_value = BehavioralCompleteResponse(
+            user_id=user_id,
+            hexaco_profile={"openness": 88.0},
+            personality_summary="Creative",
+            recommended_modules=[ModuleRecommendation(module="creative_thinking", reason="High openness", priority="medium")],
+            learning_path_updated=True
+        )
+        
+        response = await client.post("/api/v1/behavioral/complete", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["user_id"] == str(user_id)
+        assert "hexaco_profile" in data
+
+
+@pytest.mark.integration
+async def test_get_profile(client: AsyncClient) -> None:
+    """
+    Test retrieving the behavioral profile.
+    """
+    user_id = uuid.uuid4()
+    with patch("app.services.behav_learning_hook.behav_learning_service.get_user_profile", new_callable=AsyncMock) as mock_profile:
+        from app.schemas.behav_assessment_schemas import BehavioralProfileResponse, TraitScore
+        mock_profile.return_value = BehavioralProfileResponse(
+            user_id=user_id,
+            completed_at="2026-03-30T10:00:00",
+            hexaco_scores={"openness": TraitScore(score=88.0, level="high")},
+            strengths=["Creativity"],
+            development_areas=[],
+            ai_personality_report="You are highly creative.",
+            needs_adaptive_test=True
+        )
+        
+        response = await client.get(f"/api/v1/behavioral/profile/{user_id}")
+        assert response.status_code == 200
+        assert response.json()["user_id"] == str(user_id)
+
+
+@pytest.mark.integration
+async def test_get_recommendations(client: AsyncClient) -> None:
+    """
+    Test retrieving behavioral recommendations.
+    """
+    user_id = uuid.uuid4()
+    with patch("app.services.behav_learning_hook.behav_learning_service.get_recommendations", new_callable=AsyncMock) as mock_recs:
+        from app.schemas.behav_assessment_schemas import ModuleRecommendation
+        mock_recs.return_value = [
+            ModuleRecommendation(module="creative_thinking", reason="Strategic necessity", priority="medium")
+        ]
+        
+        response = await client.get(f"/api/v1/behavioral/recommendations/{user_id}")
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
+        assert response.json()[0]["module"] == "creative_thinking"

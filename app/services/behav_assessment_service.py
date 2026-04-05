@@ -221,6 +221,7 @@ async def calculate_result(db: AsyncSession, attempt_id: UUID) -> dict[str, Any]
         "strong_traits": strong_traits,
         "comparative_low_traits": comparative_low_traits,
         "recommendation": recommendation,
+        "needs_adaptive_test": len(weak_traits) > 0,
     }
 
     # Persist in BehavAttempt

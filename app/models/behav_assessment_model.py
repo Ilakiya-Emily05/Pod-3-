@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import ARRAY, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -88,3 +88,18 @@ class BehavUserAnswer(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     attempt: Mapped["BehavAttempt"] = relationship("BehavAttempt", back_populates="answers")
+
+
+class BehavProfile(Base):
+    __tablename__ = "behavioral_profiles"
+    __table_args__ = {"extend_existing": True}
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id"), unique=True)
+    session_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("behav_attempts.id"))
+    hexaco_scores: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    ai_report: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recommended_modules: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
+    strengths: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    development_areas: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    completed_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())

@@ -26,6 +26,15 @@ class UserProgress(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     score: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
+    
+    # HEXACO traits (for behavioral module tracking)
+    honesty_humility: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
+    emotionality: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
+    extraversion: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
+    agreeableness: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
+    conscientiousness: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
+    openness: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
+
     total_questions: Mapped[int | None] = mapped_column(nullable=True)
     correct_answers: Mapped[int | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -10,6 +10,7 @@ from app.services.behav_ai_service import AIQuestion, AIOption
 @pytest.mark.unit
 async def test_get_adaptive_questions_for_attempt():
     db = AsyncMock()
+    db.add = MagicMock()
     attempt_id = uuid.uuid4()
     traits = ["Honesty-Humility"]
 
@@ -52,6 +53,7 @@ async def test_calculate_result_already_submitted():
 @patch("app.services.behav_assessment_service.save_questions_bulk")
 async def test_get_dynamic_questions_calls_ai(mock_save, mock_gen) -> None:
     db = AsyncMock()
+    db.add = MagicMock()
     user_id = uuid.uuid4()
 
     mock_gen.return_value = []
@@ -67,6 +69,7 @@ async def test_get_dynamic_questions_calls_ai(mock_save, mock_gen) -> None:
 @pytest.mark.unit
 async def test_submit_answer_integration_logic() -> None:
     db = AsyncMock()
+    db.add = MagicMock()
     attempt_id = uuid.uuid4()
     question_id = 1
     option_key = "A"
@@ -91,6 +94,7 @@ async def test_submit_answer_integration_logic() -> None:
 @pytest.mark.unit
 async def test_submit_bulk_answers_integration_logic() -> None:
     db = AsyncMock()
+    db.add = MagicMock()
     attempt_id = uuid.uuid4()
     
     class MockAns:
@@ -123,6 +127,7 @@ async def test_submit_bulk_answers_integration_logic() -> None:
 @pytest.mark.unit
 async def test_calculate_result_integration_logic() -> None:
     db = AsyncMock()
+    db.add = MagicMock()
     attempt_id = uuid.uuid4()
 
     # Mock attempt with answers
@@ -212,6 +217,7 @@ async def test_calculate_result_invalid_attempt() -> None:
 @pytest.mark.unit
 async def test_save_questions_bulk() -> None:
     db = AsyncMock()
+    db.add = MagicMock()
     
     class MockOption:
         def __init__(self, text, score):
