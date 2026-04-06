@@ -23,7 +23,9 @@ class KeySkill(Base):
     keyword: Mapped[str] = mapped_column(String, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    questions = relationship("Question", back_populates="skill", cascade="all, delete-orphan")
+    questions: Mapped[list["Question"]] = relationship(
+        "Question", back_populates="skill", cascade="all, delete-orphan"
+    )
 
 
 class Question(Base):
@@ -33,12 +35,12 @@ class Question(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     skill_id: Mapped[UUID] = mapped_column(ForeignKey("key_skills.id"))
     text: Mapped[str] = mapped_column(Text)
-    options: Mapped[list[str]] = mapped_column(JSON, default=list, server_default='[]')
+    options: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
     answer_key: Mapped[str] = mapped_column(Text)
     difficulty: Mapped[DifficultyLevel] = mapped_column(Enum(DifficultyLevel))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    skill = relationship("KeySkill", back_populates="questions")
+    skill: Mapped["KeySkill"] = relationship("KeySkill", back_populates="questions")
 
 
 class InterviewSession(Base):
@@ -51,18 +53,18 @@ class InterviewSession(Base):
     interview_type: Mapped[str] = mapped_column(String, default="technical")
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # ── Timestamps ──────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    # ── Scores ──────────────────────────────────────────────────────
     overall_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     improvement_delta: Mapped[float | None] = mapped_column(Float, nullable=True)
     duration_mins: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    responses = relationship("UserResponse", back_populates="session", cascade="all, delete-orphan")
+    responses: Mapped[list["UserResponse"]] = relationship(
+        "UserResponse", back_populates="session", cascade="all, delete-orphan"
+    )
 
 
 class UserResponse(Base):
@@ -70,28 +72,28 @@ class UserResponse(Base):
     __table_args__ = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    session_id: Mapped[UUID | None] = mapped_column(ForeignKey("interview_sessions.id"), nullable=True)
+    session_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("interview_sessions.id"), nullable=True
+    )
     question_id: Mapped[UUID] = mapped_column(ForeignKey("questions.id"))
 
-    # ── Answer ──────────────────────────────────────────────────────
     user_answer: Mapped[str] = mapped_column(Text)
     is_correct: Mapped[bool | None] = mapped_column(nullable=True)
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # ── Audio / Confidence ──────────────────────────────────────────
     confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     audio_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     audio_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # ── Pronunciation (Task 2) ───────────────────────────────────────
     pronunciation_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     pronunciation_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
-    # ── Timestamps & Position ───────────────────────────────────────
     question_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
     answered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     time_taken_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    session = relationship("InterviewSession", back_populates="responses", lazy="raise")
-    question = relationship("Question", lazy="raise")
+    session: Mapped["InterviewSession"] = relationship(
+        "InterviewSession", back_populates="responses", lazy="raise"
+    )
+    question: Mapped["Question"] = relationship("Question", lazy="raise")
