@@ -99,4 +99,3 @@ class BatchSessionOut(BaseModel):
     """Output for a batch mock interview session (10 questions for 5 mins)."""
     session_id: UUID
     questions: list[QuestionOut]
-
