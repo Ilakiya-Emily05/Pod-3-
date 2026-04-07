@@ -19,6 +19,13 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://user:password@localhost:5432/powerup_db"
 
+    azure_openai_endpoint: str | None = None
+    azure_openai_api_key: str | None = None
+    azure_openai_api_version: str | None = None
+    azure_openai_deployment: str | None = None
+
+    static_audio_dir: str = "static/audio"
+
     cors_origins: str = "*"
     google_tokeninfo_url: str = "https://oauth2.googleapis.com/tokeninfo"
     google_token_url: str = "https://oauth2.googleapis.com/token"
