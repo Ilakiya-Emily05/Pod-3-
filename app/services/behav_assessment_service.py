@@ -118,7 +118,9 @@ async def submit_bulk_answers(db: AsyncSession, attempt_id: UUID, answers: list[
     await db.commit()
 
 
-async def calculate_result(db: AsyncSession, attempt_id: UUID) -> dict[str, Any]:
+async def calculate_result(
+    db: AsyncSession, attempt_id: UUID, trigger_hooks: bool = True
+) -> dict[str, Any]:
     # Fetch attempt with answers
     stmt = (
         select(BehavAttempt)
@@ -231,6 +233,14 @@ async def calculate_result(db: AsyncSession, attempt_id: UUID) -> dict[str, Any]
     attempt.overall_report = ai_report_json
     await db.commit()
 
+    # ── Post-Evaluation Hook ────────────────────────────────────────────────
+    # Calls Learning Path service to recommend modules based on personality results.
+    # Wire this as a non-blocking background task.
+    if trigger_hooks:
+        import asyncio
+
+        asyncio.create_task(_trigger_learning_path_hook(attempt.user_id, attempt.id))
+
     return {
         "attempt_id": attempt.id,
         "status": attempt.status,
@@ -279,3 +289,24 @@ async def save_questions_bulk(db: AsyncSession, questions_data: list[Any]) -> li
     )
     result = await db.execute(stmt)
     return list(result.unique().scalars().all())
+
+
+async def _trigger_learning_path_hook(user_id: UUID, attempt_id: UUID) -> None:
+    """
+    Background hook to process learning path updates without blocking
+    the main assessment response.
+    """
+    from app.config.database import AsyncSessionLocal
+    from app.services.behav_learning_hook import behav_learning_service
+
+    try:
+        async with AsyncSessionLocal() as db:
+            await behav_learning_service.process_assessment_completion(
+                db, user_id, attempt_id, internal_call=True
+            )
+    except Exception as e:
+        # Since this is a background task, we must handle exceptions
+        # to prevent it from crashing the event loop silently or noisily.
+        import logging
+
+        logging.getLogger(__name__).error(f"Error in Learning Path hook: {e!s}")

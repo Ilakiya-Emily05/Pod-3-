@@ -1,16 +1,17 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import ARRAY, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
 
-class AttemptStatus(str, Enum):
+class AttemptStatus(StrEnum):
     IN_PROGRESS = "in_progress"
     SUBMITTED = "submitted"
 
@@ -82,9 +83,11 @@ class BehavUserAnswer(Base):
     attempt_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("behav_attempts.id")
     )
+
     question_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("behav_questions.id"))
     option_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("behav_options.id"))
     user_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), index=True)  # Kept for backward compatibility
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     attempt: Mapped["BehavAttempt"] = relationship("BehavAttempt", back_populates="answers")
@@ -95,7 +98,9 @@ class BehavProfile(Base):
     __table_args__ = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id"), unique=True)
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id"), unique=True
+    )
     session_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("behav_attempts.id"))
     hexaco_scores: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     ai_report: Mapped[str | None] = mapped_column(Text, nullable=True)

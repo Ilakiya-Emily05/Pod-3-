@@ -1,13 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import get_db
 from app.schemas.sentence_framing import (
     CategoryRead,
-    ExerciseListItem,
-    SentenceExerciseRead,
+    SentenceFramingRead,
+    SentenceGenerateRequest,
     SentenceSubmissionCreate,
     SentenceSubmissionRead,
 )
@@ -17,83 +17,95 @@ from app.utils.auth import get_current_user_id
 router = APIRouter(prefix="/sentence-framing", tags=["sentence-framing"])
 
 
-async def get_dummy_user_id() -> UUID:
-    """Returns a static dummy user ID for local testing."""
-    return UUID("00000000-0000-0000-0000-000000000000")
+# async def get_dummy_user_id() -> UUID:
+#     """Returns a static dummy user ID for local testing."""
+#     return UUID("00000000-0000-0000-0000-000000000000")
 
 
 @router.get("/exercises", response_model=dict[str, list[CategoryRead]])
 async def list_sentence_categories(
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
-    # user_id: UUID = Depends(get_dummy_user_id)
+    user_id: UUID = Depends(get_current_user_id),
+    # user_id: UUID = Depends(get_dummy_user_id),
 ):
+    """
+    Returns a unified list of categories and subcategories.
+    Each subcategory includes an 'exercise_id' trigger for dynamic generation.
+    """
     service = SentenceFramingService(db)
     return {"categories": await service.get_categories()}
 
 
-@router.get("/exercises/subcategory/{subcategory_id}", response_model=list[ExerciseListItem])
-async def list_exercises_in_subcategory(
-    subcategory_id: str,
-    db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
-    # user_id: UUID = Depends(get_dummy_user_id)
-):
-    service = SentenceFramingService(db)
-    exercises = await service.get_exercises_by_subcategory(subcategory_id)
-    return [ExerciseListItem.model_validate(ex) for ex in exercises]
-
-
-@router.get("/exercise/{exercise_id}", response_model=SentenceExerciseRead)
+@router.get("/exercise/{exercise_id}", response_model=SentenceFramingRead)
 async def get_sentence_exercise(
     exercise_id: UUID,
+    cefr_level: str = Query("B1", description="Target CEFR level (A1-C2)"),
+    topic: str | None = Query(None, description="Optional custom topic for the exercise"),
+    difficulty: str = Query("Professional", description="Difficulty level"),
+    industry: str = Query("General Professional", description="Professional industry context"),
+    exercise_type: str = Query("fill_in_blank", description="Type of exercise"),
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
-    # user_id: UUID = Depends(get_dummy_user_id)
+    user_id: UUID = Depends(get_current_user_id),
+    # user_id: UUID = Depends(get_dummy_user_id),
 ):
+    """
+    Generates a dynamic AI exercise based on a subcategory trigger (exercise_id).
+    Accepts query parameters for on-the-fly customization.
+    """
     service = SentenceFramingService(db)
-    exercise = await service.get_exercise(exercise_id)
-    if not exercise:
+    params = SentenceGenerateRequest(
+        cefr_level=cefr_level,
+        topic=topic,
+        difficulty=difficulty,
+        industry=industry,
+        exercise_type=exercise_type,
+    )
+    try:
+        exercise = await service.get_exercise(exercise_id, params=params)
+        if not exercise:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Exercise category not found"
+            )
+        return SentenceFramingRead.model_validate(exercise)
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Exercise not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Exercise generation failed: {e!s}",
         )
-    return SentenceExerciseRead.model_validate(exercise)
 
 
-@router.post(
-    "/submit", 
-    response_model=SentenceSubmissionRead, 
-    status_code=status.HTTP_201_CREATED
-)
+@router.post("/submit", response_model=SentenceSubmissionRead, status_code=status.HTTP_201_CREATED)
 async def submit_sentence_response(
     payload: SentenceSubmissionCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
-    # user_id: UUID = Depends(get_dummy_user_id)
+    user_id: UUID = Depends(get_current_user_id),
+    # user_id: UUID = Depends(get_dummy_user_id),
 ):
+    """
+    Submits a user response for evaluation against the dynamically generated exercise.
+    Evaluation is AI-driven and CEFR-mapped.
+    """
     service = SentenceFramingService(db)
     try:
         submission = await service.submit_response(user_id, payload)
         return SentenceSubmissionRead.model_validate(submission)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f"Submission failed: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Submission failed: {e!s}"
         )
 
 
 @router.get("/progress/{user_id}")
 async def get_sentence_progress(
-    user_id: UUID, 
+    user_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: UUID = Depends(get_current_user_id)
-    # current_user: UUID = Depends(get_dummy_user_id)
+    current_user: UUID = Depends(get_current_user_id),
+    # current_user: UUID = Depends(get_dummy_user_id),
 ):
+    """
+    Returns user progress for the Sentence Framing module.
+    """
     service = SentenceFramingService(db)
     return await service.get_user_progress(user_id)

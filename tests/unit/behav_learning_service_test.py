@@ -2,6 +2,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from app.services.behav_learning_hook import BehavioralLearningService
 
 
@@ -26,9 +27,12 @@ def test_generate_recommendations_low_scores(service):
 
     assert any(r.module == "business_ethics" and r.priority == "high" for r in recs)
     assert any(r.module == "time_management" and r.priority == "medium" for r in recs)
-    
+
     # Check that reasons contain specific templates
-    assert "Identified as a primary development area" in recs[0].reason or "comparatively lower" in recs[0].reason
+    assert (
+        "Identified as a primary development area" in recs[0].reason
+        or "comparatively lower" in recs[0].reason
+    )
 
 
 @pytest.mark.unit

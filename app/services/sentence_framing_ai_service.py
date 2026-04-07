@@ -1,26 +1,14 @@
 from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic import BaseModel, Field
 
 from app.config.settings import get_settings
+from app.schemas.sentence_framing import SentenceFramingQuestion
 
 
-class AIGeneratedExercise(BaseModel):
-    category: str = Field(description="Main category of the exercise")
-    subcategory: str = Field(description="Subcategory of the exercise")
-    exercise_type: str = Field(description="Type: free_form, fill_in_blank, or reorder")
-    scenario: str = Field(description="The professional scenario description")
-    sender_role: str = Field(description="Role of the person sending the message")
-    recipient: str = Field(description="Person receiving the message")
-    tone: str = Field(description="Desired professional tone")
-    template: str | None = Field(None, description="Template with blanks if fill_in_blank")
-    hints: list[str] = Field(default_factory=list, description="3 helpful hints for the user")
-    example_answer: str = Field(description="A model professional response")
-
-
-class AIEvaluationResult(BaseModel):
+class SentenceFramingEvaluation(BaseModel):
     overall_score: int = Field(ge=0, le=100)
     structure_score: int = Field(ge=0, le=100)
     structure_comment: str
@@ -33,28 +21,42 @@ class AIEvaluationResult(BaseModel):
     content_comment: str
     content_suggestions: list[str] = Field(default_factory=list)
     improved_version: str
+    cefr_level: str = Field(
+        description="Estimated CEFR Level (A1, A2, B1, B2, C1, C2) based on the response quality."
+    )
 
 
-def get_llm_mini():
-    """Initialize GPT-4o-mini for cost-effective evaluation."""
+def get_llm():
+    """Lazily initialize the LLM. Supports both Azure and Standard OpenAI."""
     settings = get_settings()
-    if settings.openai_api_key:
+    api_key = settings.openai_api_key
+    if api_key:
         return ChatOpenAI(
-            model="gpt-4o-mini",
-            api_key=settings.openai_api_key,
+            model="gpt-4o",
+            api_key=api_key,
+            temperature=0.7,
+        )
+
+    # Fallback to Azure if configured
+    if settings.azure_openai_api_key and settings.azure_openai_endpoint:
+        return AzureChatOpenAI(
+            azure_deployment=settings.azure_openai_deployment,
+            api_version=settings.azure_openai_api_version,
+            azure_endpoint=settings.azure_openai_endpoint,
+            api_key=settings.azure_openai_api_key,
             temperature=0.7,
         )
     return None
 
 
 async def generate_sentence_exercise(
-    category: str,
-    subcategory: str | None = None,
+    cefr_level: str,
+    topic: str | None = None,
     difficulty: str = "intermediate",
     industry: str | None = None,
     exercise_type: str = "free_form",
-) -> AIGeneratedExercise | None:
-    llm = get_llm_mini()
+) -> SentenceFramingQuestion | None:
+    llm = get_llm()
     if not llm:
         return None
 
@@ -62,27 +64,33 @@ async def generate_sentence_exercise(
         [
             (
                 "system",
-                "You are an expert in professional communication. Generate a unique, realistic business writing exercise.",
+                "You are an expert in professional communication and English language coaching. "
+                "Generate a unique, realistic business writing exercise tailored to a specific CEFR level.",
             ),
             (
                 "user",
                 (
                     "Create a sentence framing exercise with the following parameters:\n"
-                    f"Category: {category}\n"
-                    f"Subcategory: {subcategory or 'Any relevant'}\n"
+                    f"CEFR Level: {cefr_level}\n"
+                    f"Topic/Context: {topic or 'Any professional business situation'}\n"
                     f"Difficulty: {difficulty}\n"
                     f"Industry: {industry or 'General Professional'}\n"
                     f"Exercise Type: {exercise_type}\n\n"
-                    "For 'fill_in_blank' type, the 'template' MUST include underscores (at least 15 underscores like '_______________') where the user needs to fill in the critical parts of the sentence. "
-                    "The template should provide structure but leave the specific professional framing to the user. "
-                    "Hints must be exactly 3 concise, actionable tips for writing this specific scenario. "
-                    "Ensure the scenario is specific and practical. Return structured output."
+                    "Instructions:\n"
+                    "1. For 'fill_in_blank' type, the 'template' MUST include underscores (at least 15 underscores like '_______________') where the user needs to fill in the critical parts of the sentence.\n"
+                    "2. For 'reorder' type, the 'template' should be a list of sentences to be reordered.\n"
+                    "3. Hints must be exactly 3 concise, actionable tips.\n"
+                    "4. Scenario must be realistic and professional. Avoid placeholders like [Name].\n"
+                    "5. PROFESSIONAL STRUCTURE: If the scenario involves an email, the 'template' MUST include a 'Subject:' line, a professional salutation (e.g., 'Dear Team,'), and a structured body. Even for short messages, ensure the tone and format are appropriate for a professional setting.\n"
+                    "6. NO BRACKETS: Do NOT use brackets like [Your Name] or [Company]. Use realistic, specific details instead.\n"
+                    "Return structured output according to SentenceFramingQuestion."
                 ),
             ),
         ]
     )
 
-    chain = prompt | llm.with_structured_output(AIGeneratedExercise)
+    # LangChain pipe operator: prompt | llm | parser (via with_structured_output)
+    chain = prompt | llm.with_structured_output(SentenceFramingQuestion)
     result = await chain.ainvoke({})
     return result
 
@@ -93,63 +101,50 @@ async def evaluate_sentence_response(
     user_response: str,
     exercise_type: str = "free_form",
     difficulty: str = "intermediate",
-) -> AIEvaluationResult | None:
-    llm = get_llm_mini()
+    cefr_level: str = "B1",
+) -> SentenceFramingEvaluation | None:
+    llm = get_llm()
     if not llm:
         return None
 
-    # Adjust constraints based on difficulty
-    difficulty_instructions = ""
-    if difficulty.lower() == "executive":
-        difficulty_instructions = (
-            "EXECUTIVE LEVEL: Be extremely strict. Demand high-level vocabulary, perfect strategic framing, "
-            "and sophisticated tone. A simple 'good' email is not enough for a 90+ score; it must be exceptional."
-        )
-    elif difficulty.lower() == "basic":
-        difficulty_instructions = (
-            "BASIC LEVEL: Be encouraging. Focus on clarity and basic professional structure. "
-            "Do not penalize for lack of advanced vocabulary."
-        )
-
-    type_instructions = ""
-    if exercise_type == "fill_in_blank":
-        type_instructions = "TYPE: Fill-in-the-blank. Evaluate how well the user completed the missing parts and integrated them into the overall flow."
-    elif exercise_type == "reorder":
-        type_instructions = "TYPE: Sentence Reordering. Evaluate if the user has organized the sentences into the most logical and professionally effective sequence."
+    difficulty_instructions = (
+        f"The user is aiming for {cefr_level} proficiency ({difficulty} difficulty). "
+        "Adjust your grading strictness accordingly. An executive level response should be high-level "
+        "while a basic level response should focus on clarity and fundamental structure."
+    )
 
     prompt = ChatPromptTemplate.from_messages(
         [
             (
                 "system",
-                "You are an elite business communication coach. Evaluate the following user response with high precision and fairness. "
-                f"\n\n{difficulty_instructions}\n"
-                f"\n\n{type_instructions}\n"
-                "\n\nSCORING RUBRIC:\n"
-                "- Structure (80-100): Professional layout (Greeting, Intro, Body, Action, Closing) should get at least 80. Only dock points if it's messy or confusing.\n"
-                "- Tone (80-100): Balanced professional/courteous. Avoid 'heavy' or 'panic-mode' words (e.g., use 'challenges' instead of 'serious issues').\n"
-                "- Grammar (80-100): DO NOT confuse style/phrasing with grammar. If it's technically correct (spelling/syntax), the score should be 90-100. Mention phrasing issues as 'Style/Clarity' points, not grammar errors.\n"
-                "- Content (0-100): If specific and actionable, 90-100. If vague or missing key info, 70-80.\n"
-                "\n\nCRITICAL CONSTRAINTS:\n"
-                "1. NO NITPICKING: If a response is professional and clear, it MUST be in the 95-100 range. Avoid deducting points just to have 'room for improvement'.\n"
-                "2. NO PLACEHOLDERS: IMPROVED VERSION MUST NOT use ANY placeholders, brackets, or generic labels like '[Your Name]', '[Company Name]', '[Date]', or '[... details]'. You MUST invent realistic names, specific company names, actual dates, and specific details based on the scenario to make it a 100% ready-to-send email.\n"
-                "3. BE SPECIFIC: Comments must specify EXACTLY what is missing or what word was misused.\n"
+                "You are an elite business communication coach. Evaluate the following user response with high precision and fairness.\n"
+                f"{difficulty_instructions}\n\n"
+                "SCORING RUBRIC:\n"
+                "- Structure (0-100): Professional layout (Greeting, Intro, Body, Action, Closing).\n"
+                "- Tone (0-100): Balanced professional/courteous.\n"
+                "- Grammar (0-100): Technical correctness (spelling/syntax).\n"
+                "- Content (0-100): Specificity and actionability.\n\n"
+                "CRITICAL CONSTRAINTS:\n"
+                "1. IMPROVED VERSION MUST NOT use ANY placeholders (like [Your Name]). Invent realistic details.\n"
+                "2. BE SPECIFIC: Comments must specify EXACTLY what is missing or what word was misused.\n"
+                "3. CEFR MAPPING: Provide a CEFR level (A1-C2) that best matches the response quality.",
             ),
             (
                 "user",
                 (
                     "Evaluate this professional communication:\n\n"
                     f"Scenario: {scenario}\n"
+                    f"Exercise Type: {exercise_type}\n"
                     f"Expected Tone: {context.get('tone', 'professional')}\n"
                     f"Sender Role: {context.get('sender_role', 'Professional')}\n"
                     f"Recipient: {context.get('recipient', 'Colleague')}\n\n"
                     f"User's Response: {user_response}\n\n"
-                    "Provide scores (0-100) and detailed feedback for: Structure, Tone, Grammar, and Content. "
-                    "In the 'improved_version', provide a polished, natural, and HIGHLY SPECIFIC response with NO placeholders."
+                    "Provide detailed feedback and scores in structured format."
                 ),
             ),
         ]
     )
 
-    chain = prompt | llm.with_structured_output(AIEvaluationResult)
+    chain = prompt | llm.with_structured_output(SentenceFramingEvaluation)
     result = await chain.ainvoke({})
     return result

@@ -1,10 +1,9 @@
-import os
-
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic import BaseModel, Field
 
 from app.config.settings import get_settings
+
 
 # Configuration from environment variables
 def get_llm():
@@ -31,9 +30,7 @@ def get_llm():
 
 
 class AIAnalysisReport(BaseModel):
-    summary: str = Field(
-        description="A brief overview of the learner's core personality profile."
-    )
+    summary: str = Field(description="A brief overview of the learner's core personality profile.")
     strength: str = Field(
         description="Highlight the most prominent positive traits (scores >= 40)."
     )
@@ -81,7 +78,10 @@ async def generate_personality_report(hexaco_scores: dict) -> dict:
 
     prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", "You are an Educational and Behavioral Development Expert specialized in the HEXACO model."),
+            (
+                "system",
+                "You are an Educational and Behavioral Development Expert specialized in the HEXACO model.",
+            ),
             (
                 "user",
                 "Analyze the following HEXACO trait scores (Max 5.0 each) to provide a personal growth report for a learner.\n"
@@ -162,7 +162,9 @@ async def generate_assessment_questions() -> list[AIQuestion]:
         #     )
         #     for t, q in mock_questions
         # ]
-        raise ValueError("AI Service Unconfigured: Please provide an API Key to generate questions.")
+        raise ValueError(
+            "AI Service Unconfigured: Please provide an API Key to generate questions."
+        )
 
     chain = prompt | llm.with_structured_output(HEXACOQuestionList)
     result = await chain.ainvoke({"traits": ", ".join(traits)})
@@ -218,7 +220,9 @@ async def generate_adaptive_questions(traits: list[str]) -> list[AIQuestion]:
         #             )
         #         )
         # return adaptive_mocks
-        raise ValueError("AI Service Unconfigured: Please provide an API Key to generate adaptive questions.")
+        raise ValueError(
+            "AI Service Unconfigured: Please provide an API Key to generate adaptive questions."
+        )
 
     chain = prompt | llm.with_structured_output(HEXACOQuestionList)
     result = await chain.ainvoke({"traits": ", ".join(traits), "count": len(traits) * 3})

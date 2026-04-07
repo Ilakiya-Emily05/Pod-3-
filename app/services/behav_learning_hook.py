@@ -1,9 +1,14 @@
 from datetime import datetime
-from typing import Any, List
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+try:
+    from app.services.progress_service import ProgressService
+except ImportError:
+    ProgressService = None
 
 from app.models.behav_assessment_model import BehavProfile
 from app.schemas.behav_assessment_schemas import (
@@ -16,79 +21,132 @@ from app.services import behav_assessment_service
 
 
 class BehavioralLearningService:
-
     TRAIT_THRESHOLD = 50  # Below this suggests development need
 
     MODULE_MAPPING = {
         "honesty_humility": {
             "name": "Honesty-Humility",
             "low_modules": [
-                {"name": "business_ethics", "reason": "Focus on ethical decision-making and professional integrity."},
-                {"name": "client_trust", "reason": "Learn strategies for building and maintaining long-term client trust."}
+                {
+                    "name": "business_ethics",
+                    "reason": "Focus on ethical decision-making and professional integrity.",
+                },
+                {
+                    "name": "client_trust",
+                    "reason": "Learn strategies for building and maintaining long-term client trust.",
+                },
             ],
         },
         "emotionality": {
             "name": "Emotionality",
             "high_modules": [
-                {"name": "stress_management", "reason": "Techniques for maintaining composure in high-pressure environments."},
-                {"name": "emotional_regulation", "reason": "Developing resilience and emotional stability during setbacks."}
+                {
+                    "name": "stress_management",
+                    "reason": "Techniques for maintaining composure in high-pressure environments.",
+                },
+                {
+                    "name": "emotional_regulation",
+                    "reason": "Developing resilience and emotional stability during setbacks.",
+                },
             ],
             "low_modules": [
-                {"name": "empathy_training", "reason": "Enhancing social sensitivity and emotional connection with others."},
-                {"name": "active_listening", "reason": "Improving response accuracy through focused auditory engagement."}
+                {
+                    "name": "empathy_training",
+                    "reason": "Enhancing social sensitivity and emotional connection with others.",
+                },
+                {
+                    "name": "active_listening",
+                    "reason": "Improving response accuracy through focused auditory engagement.",
+                },
             ],
         },
         "extraversion": {
             "name": "Extraversion",
             "low_modules": [
-                {"name": "networking_skills", "reason": "Building confidence and strategy for effective professional networking."},
-                {"name": "gd_preparation", "reason": "Improving group discussion performance and social leadership."},
-                {"name": "public_speaking", "reason": "Developing authoritative and engaging presentation skills."}
+                {
+                    "name": "networking_skills",
+                    "reason": "Building confidence and strategy for effective professional networking.",
+                },
+                {
+                    "name": "gd_preparation",
+                    "reason": "Improving group discussion performance and social leadership.",
+                },
+                {
+                    "name": "public_speaking",
+                    "reason": "Developing authoritative and engaging presentation skills.",
+                },
             ],
         },
         "agreeableness": {
             "name": "Agreeableness",
             "low_modules": [
-                {"name": "conflict_resolution", "reason": "Strategies for managing disagreements with diplomacy and tact."},
-                {"name": "team_collaboration", "reason": "Fostering a supportive and harmonious team environment."}
+                {
+                    "name": "conflict_resolution",
+                    "reason": "Strategies for managing disagreements with diplomacy and tact.",
+                },
+                {
+                    "name": "team_collaboration",
+                    "reason": "Fostering a supportive and harmonious team environment.",
+                },
             ],
         },
         "conscientiousness": {
             "name": "Conscientiousness",
             "low_modules": [
-                {"name": "time_management", "reason": "Mastering task prioritization and efficient scheduling."},
-                {"name": "professional_etiquette", "reason": "Understanding workplace norms and professional reliability."},
-                {"name": "goal_setting", "reason": "Learning systematic approaches to achieving long-term objectives."}
+                {
+                    "name": "time_management",
+                    "reason": "Mastering task prioritization and efficient scheduling.",
+                },
+                {
+                    "name": "professional_etiquette",
+                    "reason": "Understanding workplace norms and professional reliability.",
+                },
+                {
+                    "name": "goal_setting",
+                    "reason": "Learning systematic approaches to achieving long-term objectives.",
+                },
             ],
         },
         "openness": {
             "name": "Openness",
             "low_modules": [
-                {"name": "growth_mindset", "reason": "Cultivating openness to feedback and continuous learning."},
-                {"name": "feedback_reception", "reason": "Developing a constructive approach to receiving and utilizing critique."},
-                {"name": "creative_thinking", "reason": "Techniques for innovative problem-solving and brainstorming."}
+                {
+                    "name": "growth_mindset",
+                    "reason": "Cultivating openness to feedback and continuous learning.",
+                },
+                {
+                    "name": "feedback_reception",
+                    "reason": "Developing a constructive approach to receiving and utilizing critique.",
+                },
+                {
+                    "name": "creative_thinking",
+                    "reason": "Techniques for innovative problem-solving and brainstorming.",
+                },
             ],
         },
     }
 
-    async def get_session_scores(self, db: AsyncSession, session_id: UUID) -> dict[str, Any]:
+    async def get_session_scores(
+        self, db: AsyncSession, session_id: UUID, trigger_hooks: bool = True
+    ) -> dict[str, Any]:
         # 1. Fetch scores from session
-        result = await behav_assessment_service.calculate_result(db, session_id)
+        result = await behav_assessment_service.calculate_result(
+            db, session_id, trigger_hooks=trigger_hooks
+        )
         return result
 
     def calculate_hexaco_profile(self, scores_result: dict[str, Any]) -> dict[str, float]:
         # 2. Calculate HEXACO profile
         return scores_result["hexaco_scores"]
 
-
-    def generate_recommendations(self, profile: dict[str, float]) -> List[ModuleRecommendation]:
+    def generate_recommendations(self, profile: dict[str, float]) -> list[ModuleRecommendation]:
         # 4. Map to recommended modules using Comparative and Absolute logic
         recommendations = []
-        
+
         # Identify comparative points (lowest score in profile)
         # Avoid identifying a "low" if everything is a perfect 100
         min_score = min(profile.values()) if profile else 100
-        
+
         # Absolute Score Definitions
         ABS_LOW_THRESHOLD = 60
         CRITICAL_LOW = 40
@@ -100,7 +158,7 @@ class BehavioralLearningService:
 
             mapping = self.MODULE_MAPPING[trait]
             trait_name = mapping.get("name", trait.replace("_", " ").title())
-            
+
             target_modules = []
             priority = "medium"
             reason_suffix = ""
@@ -116,14 +174,18 @@ class BehavioralLearningService:
                 # 2. Absolute Low - Priority High/Medium (Remedial)
                 target_modules = mapping.get("low_modules", [])
                 priority = "high" if score < CRITICAL_LOW else "medium"
-                reason_suffix = f"This is Identified as a primary development area for {trait_name}."
-            
+                reason_suffix = (
+                    f"This is Identified as a primary development area for {trait_name}."
+                )
+
             elif score == min_score and score < 100:
                 # 3. Comparative Low - Priority Medium (Relative Weakness)
                 # Only trigger if not already handled as High or Very High
                 target_modules = mapping.get("low_modules", [])
                 priority = "medium"
-                reason_suffix = f"This trait is comparatively lower than your other strengths in {trait_name}."
+                reason_suffix = (
+                    f"This trait is comparatively lower than your other strengths in {trait_name}."
+                )
 
             # --- POPULATE MODULES ---
             for mod_info in target_modules:
@@ -136,7 +198,7 @@ class BehavioralLearningService:
                 )
 
         # Sort: priority high first, then alphabetical for consistent delivery
-        return sorted(recommendations, key=lambda x: (x.priority == "high"), reverse=True)
+        return sorted(recommendations, key=lambda x: x.priority == "high", reverse=True)
 
     def _get_trait_level(self, score: float) -> str:
         """Categorizes a score into high, moderate, or low based on specified thresholds."""
@@ -147,62 +209,93 @@ class BehavioralLearningService:
         else:
             return "low"
 
-    def _identify_strengths_and_areas(self, profile: dict[str, float], weak_traits: list[str]) -> tuple[list[str], list[str]]:
+    def _identify_strengths_and_areas(
+        self, profile: dict[str, float], weak_traits: list[str]
+    ) -> tuple[list[str], list[str]]:
         """Identifies strengths (>=80) and development areas (weak_traits or <60)."""
         strengths = []
         development_areas = []
-        
+
         for trait_key, score in profile.items():
             display_name = trait_key.replace("_", " ").title()
             if score >= 80:
                 strengths.append(display_name)
             elif score < 60 or display_name in weak_traits:
                 development_areas.append(display_name)
-                
+
         # Remove duplicates while preserving order
         return list(dict.fromkeys(strengths)), list(dict.fromkeys(development_areas))
 
     def _calculate_overall_score(self, profile_scores: dict[str, float]) -> float:
         # Simple average of the 6 HEXACO traits (since each trait is 0-100)
-        traits = ["honesty_humility", "emotionality", "extraversion", "agreeableness", "conscientiousness", "openness"]
+        traits = [
+            "honesty_humility",
+            "emotionality",
+            "extraversion",
+            "agreeableness",
+            "conscientiousness",
+            "openness",
+        ]
         scores = [profile_scores.get(t, 0.0) for t in traits]
         return sum(scores) / len(traits) if traits else 0.0
 
-    async def update_learning_path(self, user_id: UUID, recommendations: List[ModuleRecommendation]):
+    async def update_learning_path(
+        self, user_id: UUID, recommendations: list[ModuleRecommendation]
+    ) -> None:
         # Call Learning Path Service (Vaaheesan)
         # Note: Vaaheesan should plug in learning_path_client here.
-        payload = [{
-            'name': r.module,
-            'source': 'behavioral_assessment',
-            'priority': r.priority,
-            'reason': r.reason
-        } for r in recommendations]
-        
+        [
+            {
+                "name": r.module,
+                "source": "behavioral_assessment",
+                "priority": r.priority,
+                "reason": r.reason,
+            }
+            for r in recommendations
+        ]
+
         # await learning_path_client.add_modules(user_id=user_id, modules=payload)
         pass
 
-    async def report_completion(self, user_id: UUID, profile_scores: dict[str, float]):
-        # Call Progress Tracking (Krishanth)
-        # Note: Krishanth should plug in progress_tracking_client here.
+    async def report_completion(
+        self, db: AsyncSession, user_id: UUID, profile_scores: dict[str, float]
+    ) -> None:
+        """Report behavioral assessment completion to the progress tracking service.
+
+        This records a single progress entry for the behavioral module using the
+        existing ProgressService APIs.
+        """
+        if ProgressService is None:
+            return
+
         overall_score = self._calculate_overall_score(profile_scores)
-        
-        metadata = {'hexaco_profile': profile_scores}
-        
-        # await progress_tracking_client.record(
-        #     user_id=user_id,
-        #     module='behavioral',
-        #     topic='hexaco_assessment',
-        #     score=overall_score,
-        #     metadata=metadata
-        # )
-        pass
+
+        # Decide a simple is_correct/mastery flag for the behavioral module.
+        # Thresholds can be adjusted; using 60 as a reasonable completion threshold.
+        is_mastery = overall_score >= 60
+
+        svc = ProgressService(db)
+        try:
+            await svc.record_progress(
+                str(user_id),
+                module="behavioral",
+                topic="hexaco_assessment",
+                subtopic="overall",
+                is_correct=is_mastery,
+                time_spent_secs=0,
+            )
+        except Exception:
+            # Do not raise on reporting failure; it's non-critical for assessment completion.
+            return
 
     async def process_assessment_completion(
-        self, db: AsyncSession, user_id: UUID, session_id: UUID
+        self, db: AsyncSession, user_id: UUID, session_id: UUID, internal_call: bool = False
     ) -> BehavioralCompleteResponse:
-        
-        # 1. Fetch scores from session
-        scores_result = await self.get_session_scores(db, session_id)
+
+        # 1. Fetch scores from session, but avoid re-triggering the same hook if we're already in it.
+        scores_result = await self.get_session_scores(
+            db, session_id, trigger_hooks=not internal_call
+        )
 
         # 2. Calculate HEXACO profile
         hexaco_profile = self.calculate_hexaco_profile(scores_result)
@@ -219,7 +312,7 @@ class BehavioralLearningService:
         await self.update_learning_path(user_id, recommendations)
 
         # 6. Report to progress tracking
-        await self.report_completion(user_id, hexaco_profile)
+        await self.report_completion(db, user_id, hexaco_profile)
 
         # --- Persist the Behavioral Profile ---
         profile_stmt = select(BehavProfile).where(BehavProfile.user_id == user_id)
@@ -228,8 +321,10 @@ class BehavioralLearningService:
 
         # Identify strengths and development areas using the new strategy
         weak_traits_display = scores_result.get("weak_traits", [])
-        strengths, development_areas = self._identify_strengths_and_areas(hexaco_profile, weak_traits_display)
-        
+        strengths, development_areas = self._identify_strengths_and_areas(
+            hexaco_profile, weak_traits_display
+        )
+
         ai_summary = ai_report.get("summary", "") if isinstance(ai_report, dict) else str(ai_report)
 
         if not profile:
@@ -286,7 +381,9 @@ class BehavioralLearningService:
             needs_adaptive_test=len(profile.development_areas or []) > 0,
         )
 
-    async def get_recommendations(self, db: AsyncSession, user_id: UUID) -> List[ModuleRecommendation]:
+    async def get_recommendations(
+        self, db: AsyncSession, user_id: UUID
+    ) -> list[ModuleRecommendation]:
         stmt = select(BehavProfile).where(BehavProfile.user_id == user_id)
         result = await db.execute(stmt)
         profile = result.scalar_one_or_none()
