@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from app.services.listening1 import generate_passage, generate_questions_from_passage
+from app.services.listening_question import generate_passage, generate_questions_from_passage
 from app.services.pronun_question import generate_pronunciation_questions
 from app.services.tts_service import text_to_speech
 

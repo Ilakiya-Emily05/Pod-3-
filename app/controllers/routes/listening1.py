@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.config.database import get_db
 from app.models.listening1 import ListeningSession
 from app.schemas.pronun import ListeningModuleOut
-from app.services.listening1 import generate_listening_module
+from app.services.listening_question import generate_listening_module
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/listening", tags=["Listening"])

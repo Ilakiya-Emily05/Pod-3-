@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.config.database import get_db
 from app.config.settings import get_settings
 from app.models.listening1 import ListeningSession
-from app.services.listening1 import evaluate_answers_batch
+from app.services.listening_question import evaluate_answers_batch
 from app.services.transcription import transcribe_audio
 
 logger = logging.getLogger(__name__)

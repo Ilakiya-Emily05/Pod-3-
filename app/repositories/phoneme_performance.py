@@ -45,9 +45,9 @@ def upsert_phoneme(
             "correct_attempts": PhonemePerformance.correct_attempts + correct_attempts,
             # Recompute accuracy from the new cumulative totals
             "accuracy_pct": (
-                (PhonemePerformance.correct_attempts + correct_attempts)
+                (PhonemePerformance.correct_attempts + correct_attempts)*100.0
                 / (PhonemePerformance.total_attempts + total_attempts)
-                * 100
+                
             ),
             "last_attempted_at": now,
         },

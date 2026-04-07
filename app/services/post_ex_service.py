@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.pronunciation import PhonemePerformance, UserPronunciationProfile
 from app.repositories.phoneme_performance import upsert_phoneme
 from app.services.leveling import update_level_progress
+import uuid
 
 logger = logging.getLogger(__name__)
 
