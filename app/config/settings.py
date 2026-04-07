@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     azure_openai_deployment: str | None = None
 
     static_audio_dir: str = "static/audio"
+    temp_dir: str = "temp"
 
     cors_origins: str = "*"
     google_tokeninfo_url: str = "https://oauth2.googleapis.com/tokeninfo"
