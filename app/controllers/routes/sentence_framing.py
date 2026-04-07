@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -15,18 +16,15 @@ from app.services.sentence_framing_service import SentenceFramingService
 from app.utils.auth import get_current_user_id
 
 router = APIRouter(prefix="/sentence-framing", tags=["sentence-framing"])
+logger = logging.getLogger(__name__)
 
-
-# async def get_dummy_user_id() -> UUID:
-#     """Returns a static dummy user ID for local testing."""
-#     return UUID("00000000-0000-0000-0000-000000000000")
 
 
 @router.get("/exercises", response_model=dict[str, list[CategoryRead]])
+
 async def list_sentence_categories(
     db: AsyncSession = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id),
-    # user_id: UUID = Depends(get_dummy_user_id),
 ):
     """
     Returns a unified list of categories and subcategories.
@@ -46,7 +44,6 @@ async def get_sentence_exercise(
     exercise_type: str = Query("fill_in_blank", description="Type of exercise"),
     db: AsyncSession = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id),
-    # user_id: UUID = Depends(get_dummy_user_id),
 ):
     """
     Generates a dynamic AI exercise based on a subcategory trigger (exercise_id).
@@ -68,9 +65,10 @@ async def get_sentence_exercise(
             )
         return SentenceFramingRead.model_validate(exercise)
     except Exception as e:
+        logger.error(f"Sentence exercise generation failed: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Exercise generation failed: {e!s}",
+            detail="An internal error occurred during exercise generation.",
         )
 
 
@@ -79,7 +77,6 @@ async def submit_sentence_response(
     payload: SentenceSubmissionCreate,
     db: AsyncSession = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id),
-    # user_id: UUID = Depends(get_dummy_user_id),
 ):
     """
     Submits a user response for evaluation against the dynamically generated exercise.
@@ -92,8 +89,10 @@ async def submit_sentence_response(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
+        logger.error(f"Sentence submission failed: {e!s}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Submission failed: {e!s}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An internal error occurred during submission processing.",
         )
 
 
@@ -102,7 +101,6 @@ async def get_sentence_progress(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: UUID = Depends(get_current_user_id),
-    # current_user: UUID = Depends(get_dummy_user_id),
 ):
     """
     Returns user progress for the Sentence Framing module.

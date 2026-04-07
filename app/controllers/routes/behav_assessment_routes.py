@@ -1,7 +1,7 @@
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import get_db
@@ -16,22 +16,16 @@ from app.schemas.behav_assessment_schemas import (
 )
 from app.services import behav_assessment_service
 from app.services.behav_learning_hook import behav_learning_service
+from app.utils.auth import get_current_user_id
 
 router = APIRouter(prefix="/behavioral", tags=["behavioral-assessment"])
-
-
-async def get_dummy_user_id() -> UUID:
-    """Returns a static dummy user ID for local testing."""
-    return UUID("00000000-0000-0000-0000-000000000000")
 
 
 @router.get("/questions", response_model=AssessmentSessionResponse)
 async def fetch_questions(
     db: AsyncSession = Depends(get_db),
-    # user_id: UUID = Depends(get_current_user_id),
-    user_id: UUID = Depends(get_dummy_user_id),
+    user_id: UUID = Depends(get_current_user_id),
 ) -> dict[str, Any]:
-    # user_id = UUID("00000000-0000-0000-0000-000000000000")  # Temporary bypass
     """
     Dynamically generates 10 questions and creates a new assessment attempt.
     Returns the attempt_id and the questions.
@@ -53,8 +47,7 @@ async def fetch_questions(
 async def submit_questions(
     request: AnswerRequest,
     db: AsyncSession = Depends(get_db),
-    # user_id: UUID = Depends(get_current_user_id),
-    user_id: UUID = Depends(get_dummy_user_id),
+    user_id: UUID = Depends(get_current_user_id),
 ) -> dict[str, Any]:
     """
     Records multiple answers for a specific attempt.
@@ -68,8 +61,7 @@ async def get_adaptive_questions(
     attempt_id: UUID = Query(...),
     weak_traits: list[str] = Query(...),
     db: AsyncSession = Depends(get_db),
-    # user_id: UUID = Depends(get_current_user_id),
-    user_id: UUID = Depends(get_dummy_user_id),
+    user_id: UUID = Depends(get_current_user_id),
 ) -> list[dict[str, Any]]:
     """
     Dynamically generates adaptive questions for identified weak traits for a specific attempt.
@@ -87,15 +79,15 @@ async def get_adaptive_questions(
 @router.post("/complete", response_model=BehavioralCompleteResponse)
 async def complete_behavioral_assessment(
     request: BehavioralCompleteRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    # user_id: UUID = Depends(get_current_user_id),
-    user_id: UUID = Depends(get_dummy_user_id),
+    user_id: UUID = Depends(get_current_user_id),
 ) -> BehavioralCompleteResponse:
     """
     Triggered on assessment finish to analyze personality and recommend learning modules.
     """
     return await behav_learning_service.process_assessment_completion(
-        db, request.user_id, request.session_id
+        db, request.user_id, request.session_id, background_tasks=background_tasks
     )
 
 
@@ -103,8 +95,7 @@ async def complete_behavioral_assessment(
 async def get_behavioral_profile(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
-    # current_user: UUID = Depends(get_current_user_id),
-    current_user: UUID = Depends(get_dummy_user_id),
+    current_user: UUID = Depends(get_current_user_id),
 ) -> BehavioralProfileResponse:
     """
     Returns user's behavioral profile for dashboard display.
@@ -116,8 +107,7 @@ async def get_behavioral_profile(
 async def get_behavioral_recommendations(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
-    # current_user: UUID = Depends(get_current_user_id),
-    current_user: UUID = Depends(get_dummy_user_id),
+    current_user: UUID = Depends(get_current_user_id),
 ) -> list[ModuleRecommendation]:
     """
     Returns behavioral-based module recommendations.

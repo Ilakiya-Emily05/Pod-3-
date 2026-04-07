@@ -1,5 +1,18 @@
+import sys
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
+
+# Mock problematic modules that are out of scope but break app startup during collection
+mock_router = MagicMock()
+sys.modules["app.controllers.routes.interview"] = MagicMock()
+sys.modules["app.controllers.routes.interview"].router = mock_router
+sys.modules["app.controllers.routes.practice"] = MagicMock()
+sys.modules["app.controllers.routes.practice"].router = mock_router
+sys.modules["app.services.interview_service"] = MagicMock()
+sys.modules["app.routes.audio_route"] = MagicMock()
+sys.modules["app.routes.audio_route"].router = mock_router
+sys.modules["app.controllers.routes.admin"] = MagicMock()
+sys.modules["app.controllers.routes.admin"].router = mock_router
 
 import pytest
 from httpx import ASGITransport, AsyncClient

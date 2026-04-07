@@ -29,7 +29,6 @@ def upgrade() -> None:
         sa.Column("trait_type", sa.String(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_behav_questions_id"), "behav_questions", ["id"], unique=False)
 
     op.create_table(
         "behav_options",
@@ -43,7 +42,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_behav_options_id"), "behav_options", ["id"], unique=False)
 
     op.create_table(
         "behav_option_scores",
@@ -65,12 +63,12 @@ def upgrade() -> None:
         sa.Column("status", sa.String(), nullable=False),
         sa.Column("overall_report", sa.JSON(), nullable=True),
         sa.Column("scores", sa.JSON(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.Column("submitted_at", sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_behav_attempts_user_id"), "behav_attempts", ["user_id"], unique=False)
-
+ 
     op.create_table(
         "behav_user_answers",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -78,7 +76,7 @@ def upgrade() -> None:
         sa.Column("question_id", sa.Integer(), nullable=False),
         sa.Column("option_id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Uuid(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(
             ["attempt_id"],
             ["behav_attempts.id"],
@@ -97,18 +95,7 @@ def upgrade() -> None:
         op.f("ix_behav_user_answers_user_id"), "behav_user_answers", ["user_id"], unique=False
     )
 
-    # Cleanup orphaned generic tables if they exist
-    for table in [
-        "option_scores",
-        "user_answers",
-        "options",
-        "questions",
-        "behav_unique_questions",
-        "behav_unique_options",
-        "behav_unique_option_scores",
-        "behav_unique_user_answers",
-    ]:
-        op.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
+    # Generic table cleanup removed for safety as per code review.
 
 
 def downgrade() -> None:
@@ -118,7 +105,5 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_behav_attempts_user_id"), table_name="behav_attempts")
     op.drop_table("behav_attempts")
     op.drop_table("behav_option_scores")
-    op.drop_index(op.f("ix_behav_options_id"), table_name="behav_options")
     op.drop_table("behav_options")
-    op.drop_index(op.f("ix_behav_questions_id"), table_name="behav_questions")
     op.drop_table("behav_questions")

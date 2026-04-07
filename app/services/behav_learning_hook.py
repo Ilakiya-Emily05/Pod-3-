@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from fastapi import BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -127,11 +128,15 @@ class BehavioralLearningService:
     }
 
     async def get_session_scores(
-        self, db: AsyncSession, session_id: UUID, trigger_hooks: bool = True
+        self,
+        db: AsyncSession,
+        session_id: UUID,
+        trigger_hooks: bool = True,
+        background_tasks: BackgroundTasks | None = None,
     ) -> dict[str, Any]:
         # 1. Fetch scores from session
         result = await behav_assessment_service.calculate_result(
-            db, session_id, trigger_hooks=trigger_hooks
+            db, session_id, trigger_hooks=trigger_hooks, background_tasks=background_tasks
         )
         return result
 
@@ -289,12 +294,17 @@ class BehavioralLearningService:
             return
 
     async def process_assessment_completion(
-        self, db: AsyncSession, user_id: UUID, session_id: UUID, internal_call: bool = False
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        session_id: UUID,
+        internal_call: bool = False,
+        background_tasks: BackgroundTasks | None = None,
     ) -> BehavioralCompleteResponse:
 
         # 1. Fetch scores from session, but avoid re-triggering the same hook if we're already in it.
         scores_result = await self.get_session_scores(
-            db, session_id, trigger_hooks=not internal_call
+            db, session_id, trigger_hooks=not internal_call, background_tasks=background_tasks
         )
 
         # 2. Calculate HEXACO profile
