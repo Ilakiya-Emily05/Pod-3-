@@ -10,7 +10,7 @@ from app.services.leveling import update_level_progress
 logger = logging.getLogger(__name__)
 
 
-def update_phoneme_stats(db: Session, user_id: int, phoneme_results: list[dict]) -> None:
+def update_phoneme_stats(db: Session, user_id: uuid.UUID, phoneme_results: list[dict]) -> None:
     """
     UPSERT phoneme performance rows for user_id.
 
