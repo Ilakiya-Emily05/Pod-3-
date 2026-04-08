@@ -1,4 +1,6 @@
-from datetime import datetime,timezone, timedelta
+from datetime import datetime, timezone
+
+UTC = timezone.utc
 from decimal import Decimal
 from uuid import UUID
 

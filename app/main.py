@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
@@ -10,21 +11,10 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from contextlib import asynccontextmanager
 
-from fastapi.responses import JSONResponse
-import json
-
-class SafeJSONResponse(JSONResponse):
-    def render(self, content) -> bytes:
-        return json.dumps(
-            content,
-            default=lambda o: str(o) if not isinstance(o, (int, float, bool, type(None))) else o,
-            ensure_ascii=False,
-            allow_nan=False,
-        ).encode("utf-8")
-
-from app.config.database import engine
+from app.config.database import init_db
+from app.config.settings import get_settings
+from app.controllers.router import api_router
 from app.utils.exceptions import (
     ResumeParseError, resume_parse_error_handler,
     UnsupportedFileTypeError, unsupported_file_handler,
@@ -34,34 +24,34 @@ from app.utils.exceptions import (
     unhandled_error_handler,
 )
 
+
 # ── Rate Limiter ─────────────────────────────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address, default_limits=["30/minute"])
 
 
-# ── Lifespan (Import models here to avoid circular imports) ──────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Register all models with SQLAlchemy MetaData
-    # This ensures tables are registered exactly once at app startup
-    # The register_models() function is idempotent and safe to call multiple times
-    from app.models._register import register_models
-    register_models()
+    # Startup: Initialize database (run migrations/create tables)
+    await init_db()
     yield
     # Shutdown logic if needed
 
 
 def create_app() -> FastAPI:
+    settings = get_settings()
+
     app = FastAPI(
-        default_response_class=SafeJSONResponse,
         title="Power Up Unified API",
         description=(
-            "Unified FastAPI backend integrating Resume Parser and Interview Coach modules.\n\n"
+            "Unified FastAPI backend integrating Interview Coach and Resume Parser modules.\n\n"
             "**Docs:** `/docs` (Swagger UI) · `/redoc` (ReDoc) · `/openapi.json` (schema)"
         ),
         version="1.0.0",
-        docs_url=None,
+        docs_url=None,  # served manually below so we can customise
         redoc_url=None,
         openapi_url="/openapi.json",
+        contact={"name": "Power Up Engineering"},
+        license_info={"name": "Proprietary"},
         lifespan=lifespan,
     )
 
@@ -70,7 +60,7 @@ def create_app() -> FastAPI:
     app.add_middleware(SlowAPIMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.cors_origins_list,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -85,7 +75,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RequestValidationError, validation_error_handler)
     app.add_exception_handler(Exception, unhandled_error_handler)
 
-    # ── Swagger UI ──────────────────────────────────────────────────────────
+    # ── Swagger UI ───────────────────────────────────────────────────────────
     @app.get("/docs", include_in_schema=False)
     async def swagger_ui() -> HTMLResponse:
         return get_swagger_ui_html(
@@ -94,7 +84,7 @@ def create_app() -> FastAPI:
             swagger_favicon_url="https://fastapi.tiangolo.com/img/favicon.png",
         )
 
-    # ── ReDoc ───────────────────────────────────────────────────────────────
+    # ── ReDoc ────────────────────────────────────────────────────────────────
     @app.get("/redoc", include_in_schema=False)
     async def redoc_ui() -> HTMLResponse:
         return get_redoc_html(
@@ -103,7 +93,7 @@ def create_app() -> FastAPI:
             redoc_favicon_url="https://fastapi.tiangolo.com/img/favicon.png",
         )
 
-    # ── OpenAPI schema override ─────────────────────────────────────────────
+    # ── OpenAPI schema override (adds servers block) ─────────────────────────
     def custom_openapi() -> dict:
         if app.openapi_schema:
             return app.openapi_schema
@@ -119,16 +109,15 @@ def create_app() -> FastAPI:
         app.openapi_schema = schema
         return schema
 
-    app.openapi = custom_openapi
+    app.openapi = custom_openapi  # type: ignore[method-assign]
 
-    # ── Health check ────────────────────────────────────────────────────────
+    # ── Health check ─────────────────────────────────────────────────────────
     @app.get("/health", tags=["health"], summary="Liveness probe")
     async def health() -> JSONResponse:
         return JSONResponse({"status": "ok", "version": app.version})
 
-    # ── Routers ─────────────────────────────────────────────────────────────
-    from app.controllers.router import api_router
-    app.include_router(api_router, prefix="/api")
+    # ── Routers ───────────────────────────────────────────────────────────────
+    app.include_router(api_router, prefix=settings.api_v1_prefix)
 
     return app
 

@@ -1,25 +1,70 @@
 from functools import lru_cache
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # App Settings
-    PROJECT_NAME: str = "Power Up API"
-    DEBUG: bool = False
-    SECRET_KEY: str = "your-secret-key"
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    # Database Settings
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:2025@localhost:5432/powerup_db"
+    app_name: str = "powerup-api"
+    debug: bool = True
 
-    # OpenAI Settings
-    OPENAI_API_KEY: str | None = None
+    api_v1_prefix: str = "/api/v1"
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    secret_key: str = "change-me-to-a-long-random-secret-key-in-production"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
 
-settings = Settings()
+    database_url: str = "postgresql+asyncpg://user:password@localhost:5432/powerup_db"
+
+    cors_origins: str = "*"
+    google_tokeninfo_url: str = "https://oauth2.googleapis.com/tokeninfo"
+    google_token_url: str = "https://oauth2.googleapis.com/token"
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    admin_email: str | None = None
+    admin_password_hash: str | None = None
+
+    # AI Settings
+    openai_api_key: str | None = None
+    azure_openai_endpoint: str | None = None
+    azure_openai_api_key: str | None = None
+    azure_openai_deployment: str = "gpt-4o"
+    azure_openai_api_version: str = "2024-02-01"
+
+    # Pod-3 Compatibility
+    @property
+    def OPENAI_API_KEY(self) -> str | None:
+        return self.openai_api_key
+
+    @property
+    def DEBUG(self) -> bool:
+        return self.debug
+
+    @property
+    def PROJECT_NAME(self) -> str:
+        return self.app_name
+
+    @model_validator(mode="after")
+    def validate_secret_key_for_production(self) -> "Settings":
+        if (
+            not self.debug
+            and self.secret_key == "change-me-to-a-long-random-secret-key-in-production"
+        ):
+            msg = "SECRET_KEY must be overridden in non-debug environments"
+            raise ValueError(msg)
+        return self
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
 
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
 
-@lru_cache()
-def get_settings():
-    return settings
+
+settings = get_settings()

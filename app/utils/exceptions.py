@@ -1,6 +1,11 @@
-from fastapi import Request
+import logging
+
+from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+
+
+logger = logging.getLogger(__name__)
 
 
 class ResumeParseError(Exception):
@@ -57,18 +62,21 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
     return JSONResponse(status_code=422, content={
         "error": "validation_error",
         "message": "Request validation failed",
-        "detail": [
-            {
-                "loc": list(e.get("loc", [])),
-                "msg": str(e.get("msg", "")),
-                "type": str(e.get("type", "")),
-            }
-            for e in exc.errors()
-        ],
+        "detail": exc.errors(),
     })
 
 
 async def unhandled_error_handler(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "error": "http_error",
+                "message": exc.detail,
+            },
+        )
+
+    logger.exception("Unhandled exception occurred during request processing")
     return JSONResponse(status_code=500, content={
         "error": "internal_server_error",
         "message": "An unexpected error occurred. Please try again.",
