@@ -8,7 +8,22 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+_client: OpenAI | None = None
+
+
+def _get_client() -> OpenAI | None:
+    """Lazily create OpenAI client; return None when API key is unavailable."""
+    global _client
+    if _client is not None:
+        return _client
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None
+
+    _client = OpenAI(api_key=api_key)
+    return _client
 
 
 
@@ -17,6 +32,10 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # GPT helpers: IPA extraction
 # -------------------------------
 def gpt_extract_ipa(text: str) -> str:
+    client = _get_client()
+    if client is None:
+        return ""
+
     prompt = f"""
 Convert the following English text to IPA only.
 Rules:
@@ -50,6 +69,10 @@ def gpt_extract_mistakes(reference: str, transcript: str):
     Extract pronunciation / word-level mistakes.
     Output strictly JSON list of objects.
     """
+    client = _get_client()
+    if client is None:
+        return []
+
     prompt = f"""
 Compare the reference sentence and the spoken transcript.
 
@@ -94,6 +117,10 @@ def gpt_generate_tips(reference_text, transcript, mistakes):
     Generate 2–3 short pronunciation tips based on actual mistakes.
     Very cheap GPT call (<30 tokens).
     """
+    client = _get_client()
+    if client is None:
+        return ["Focus on improving the mispronounced words."]
+
     prompt = f"""
 The user read a sentence aloud and made the following pronunciation mistakes:
 

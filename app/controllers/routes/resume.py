@@ -27,6 +27,7 @@ MAX_BYTES = 10 * 1024 * 1024  # 10MB default
     "/upload",
     status_code=201,
     summary="Upload PDF resume",
+    response_model=None,
 )
 async def upload_resume(
     file: UploadFile = File(..., description="Resume PDF file"),
@@ -112,7 +113,7 @@ async def upload_resume(
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-@router.get("/parse/{resume_id}", summary="Get parsed resume data")
+@router.get("/parse/{resume_id}", summary="Get parsed resume data", response_model=None)
 async def get_parsed_resume(
     resume_id: str,
     user_id: UUID = Depends(get_current_user_id),

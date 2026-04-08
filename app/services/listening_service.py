@@ -262,3 +262,14 @@ class ListeningService(BaseAssessmentService):
             msg = "Listening attempt submission failed"
             raise RuntimeError(msg)
         return updated_attempt
+
+
+def generate_listening_module(difficulty: str = "medium", num_questions: int = 3):
+    """Compatibility wrapper used by legacy listening route.
+
+    Keeps older `app.routes.listening_route` working while the newer
+    assessment-oriented service remains the primary implementation.
+    """
+    from app.services.listening_service1 import generate_listening_module as legacy_generate
+
+    return legacy_generate(difficulty=difficulty, num_questions=num_questions)

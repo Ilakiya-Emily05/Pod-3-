@@ -22,7 +22,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from fastapi.responses import StreamingResponse
-from fastapi import APIRouter, HTTPException
+from fastapi import HTTPException
 
 from app.models.interview_system import (
     DifficultyLevel,
@@ -31,7 +31,6 @@ from app.models.interview_system import (
     Question,
     UserResponse,
 )
-from app.models.final_reports import FinalReport
 from app.services.question_service import (
     evaluate_answer,
     generate_gap_analysis,
@@ -40,9 +39,7 @@ from app.services.question_service import (
 )
 from app.services.transcribe import transcribe_audio
 from app.services.confidence_analyzer import extract_audio_features, compute_confidence
-from app.services.ai_service import generate_narrative_ai  # GPT-4o-mini wrapper
 
-router = APIRouter()
 MIN_QUESTION_THRESHOLD = 3
 
 
@@ -252,8 +249,12 @@ async def identify_strengths_improvements(responses: list[UserResponse]) -> tupl
     return strengths, improvements
 
 
-@router.post("/api/v1/interview/generate-report")
 async def generate_report(session_id: UUID, db: AsyncSession):
+    try:
+        from app.models.final_reports import FinalReport
+    except ModuleNotFoundError as exc:
+        raise HTTPException(status_code=501, detail="Final report model is not available in this deployment") from exc
+
     async with db.begin():  # Transaction to ensure atomicity
         session_result = await db.execute(select(InterviewSession).where(InterviewSession.id == session_id))
         session = session_result.scalar_one_or_none()
@@ -273,13 +274,18 @@ async def generate_report(session_id: UUID, db: AsyncSession):
         # Safety check for interview_type
         interview_type = getattr(session, "interview_type", "General")
 
-        ai_narrative = await generate_narrative_ai(
-            interview_type=interview_type,
-            overall_score=overall_score,
-            strengths=strengths,
-            improvements=improvements,
-            question_count=len(responses)
-        )
+        try:
+            from app.services.ai_service import generate_narrative_ai  # type: ignore[import-not-found]
+
+            ai_narrative = await generate_narrative_ai(
+                interview_type=interview_type,
+                overall_score=overall_score,
+                strengths=strengths,
+                improvements=improvements,
+                question_count=len(responses),
+            )
+        except ModuleNotFoundError:
+            ai_narrative = "AI narrative generation is not available in this deployment."
 
         next_steps = [f"Practice {imp['area']} questions more." for imp in improvements[:3]]
 
@@ -317,8 +323,12 @@ async def generate_report(session_id: UUID, db: AsyncSession):
     }
 
 
-@router.get("/api/v1/interview/report/{report_id}/pdf")
 async def download_report_pdf(report_id: UUID, db: AsyncSession):
+    try:
+        from app.models.final_reports import FinalReport
+    except ModuleNotFoundError as exc:
+        raise HTTPException(status_code=501, detail="Final report model is not available in this deployment") from exc
+
     report_result = await db.execute(select(FinalReport).where(FinalReport.report_id == report_id))
     report = report_result.scalar_one_or_none()
     if not report:

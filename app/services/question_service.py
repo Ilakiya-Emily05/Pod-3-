@@ -225,3 +225,25 @@ async def segment_transcript(questions: list[str], transcript: str) -> dict[int,
         # Last resort fallback
         return {0: transcript}
 
+
+def generate_pronunciation_question(score: float, num_questions: int = 1) -> list[dict[str, str]]:
+    """Backward-compatible helper for legacy pronunciation routes.
+
+    Selects question difficulty based on score band and returns a simple
+    question payload expected by older endpoints.
+    """
+    if score < 40:
+        difficulty = "easy"
+        prompt = "Read this clearly: The weather is pleasant today."
+    elif score < 70:
+        difficulty = "medium"
+        prompt = "Read this with proper stress: Innovation drives sustainable growth."
+    else:
+        difficulty = "hard"
+        prompt = (
+            "Read this fluently: Clear communication and consistent practice "
+            "improve professional confidence."
+        )
+
+    return [{"difficulty": difficulty, "question": prompt} for _ in range(max(1, num_questions))]
+
