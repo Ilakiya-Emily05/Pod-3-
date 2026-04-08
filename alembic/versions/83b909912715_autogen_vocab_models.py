@@ -26,13 +26,19 @@ def upgrade() -> None:
     op.create_unique_constraint('uq_user_word', 'user_vocabulary', ['user_id', 'word_id'])
 
     op.add_column('vocabulary_lists', sa.Column('cefr_level', sa.String(length=5), nullable=True))
+    op.execute(sa.text("UPDATE vocabulary_lists SET cefr_level = difficulty WHERE cefr_level IS NULL AND difficulty IS NOT NULL"))
     # remove the old difficulty column if present
     try:
         op.drop_column('vocabulary_lists', 'difficulty')
     except Exception:
         pass
 
-    op.add_column('vocabulary_words', sa.Column('cefr_level', sa.String(length=5), nullable=False))
+    op.add_column('vocabulary_words', sa.Column('cefr_level', sa.String(length=5), nullable=True))
+    op.execute(sa.text("UPDATE vocabulary_words SET cefr_level = difficulty WHERE cefr_level IS NULL AND difficulty IS NOT NULL"))
+    bind = op.get_bind()
+    null_count = bind.scalar(sa.text("SELECT COUNT(*) FROM vocabulary_words WHERE cefr_level IS NULL"))
+    if null_count == 0:
+        op.alter_column('vocabulary_words', 'cefr_level', existing_type=sa.String(length=5), nullable=False)
     try:
         op.drop_index(op.f('ix_vocabulary_words_list_id'), table_name='vocabulary_words')
     except Exception:

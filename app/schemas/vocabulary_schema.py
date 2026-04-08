@@ -26,6 +26,7 @@ class WordsResponse(BaseModel):
 
 
 class ResponseRecord(BaseModel):
+    session_id: UUID
     user_id: UUID
     word_id: UUID
 

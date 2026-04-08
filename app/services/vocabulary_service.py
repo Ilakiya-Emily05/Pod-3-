@@ -4,11 +4,11 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Tuple
 from uuid import UUID
 
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.Vocab.vocabulary_word import VocabularyWord
 from app.models.Vocab.user_vocabulary import UserVocabulary
+from app.repositories.vocabulary_repo import VocabularyRepository
 
 
 # =========================
@@ -79,6 +79,12 @@ def map_response_to_quality(response: str) -> int:
 class VocabularyService:
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.repo = VocabularyRepository(db)
+
+    async def create_session(self, user_id: UUID):
+        session = await self.repo.create_session(user_id)
+        await self.repo.commit()
+        return session
 
     # =========================
     # AI GENERATION (THRESHOLD)
@@ -86,11 +92,7 @@ class VocabularyService:
     async def _generate_words_if_needed(self, cefr_level: str = "A1"):
         MIN_WORDS = 50
 
-        result = await self.db.execute(
-            select(func.count(VocabularyWord.word_id))
-            .where(VocabularyWord.cefr_level == cefr_level)
-        )
-        count = result.scalar()
+        count = await self.repo.count_words_by_level(cefr_level)
 
         if count >= MIN_WORDS:
             return
@@ -105,20 +107,8 @@ class VocabularyService:
             count=20
         )
 
-        for w in generated_words:
-            if not w.get("word") or not w.get("definition"):
-                continue
-
-            vw = VocabularyWord(
-                word=w["word"],
-                definition=w["definition"],
-                cefr_level=cefr_level,
-                industry="IT",
-                example_sentence=w.get("example_sentence"),
-            )
-            self.db.add(vw)
-
-        await self.db.commit()
+        await self.repo.insert_words(generated_words, cefr_level)
+        await self.repo.commit()
 
     # =========================
     # GET WORDS
@@ -127,18 +117,12 @@ class VocabularyService:
         now = datetime.now(timezone.utc)
 
         # 1. DUE WORDS
-        result = await self.db.execute(
-            select(UserVocabulary)
-            .where(UserVocabulary.user_id == user_id)
-            .where(UserVocabulary.next_review_date <= now)
-            .limit(limit)
-        )
-        due_words = result.scalars().all()
+        due_words = await self.repo.get_due_words(user_id, now, limit)
 
         words: List[Tuple[UserVocabulary, VocabularyWord]] = []
 
         for uv in due_words:
-            vw = await self.db.get(VocabularyWord, uv.word_id)
+            vw = await self.repo.get_word_by_id(uv.word_id)
             if vw:
                 words.append((uv, vw))
 
@@ -146,28 +130,13 @@ class VocabularyService:
         if len(words) < limit:
             needed = limit - len(words)
 
-            subquery = select(UserVocabulary.word_id).where(
-                UserVocabulary.user_id == user_id
-            )
-
-            res = await self.db.execute(
-                select(VocabularyWord)
-                .where(VocabularyWord.word_id.not_in(subquery))
-                .limit(needed)
-            )
-
-            new_words = res.scalars().all()
+            new_words = await self.repo.get_new_words(user_id, needed)
 
             for vw in new_words:
-                uv = UserVocabulary(
-                    user_id=user_id,
-                    word_id=vw.word_id,
-                    next_review_date=now
-                )
-                self.db.add(uv)
+                uv = await self.repo.create_user_vocab(user_id, vw.word_id, now)
                 words.append((uv, vw))
 
-            await self.db.commit()
+            await self.repo.commit()
 
         # =========================
         # 3. AI FALLBACK 🔥
@@ -177,28 +146,13 @@ class VocabularyService:
 
             needed = limit - len(words)
 
-            subquery = select(UserVocabulary.word_id).where(
-                UserVocabulary.user_id == user_id
-            )
-
-            res = await self.db.execute(
-                select(VocabularyWord)
-                .where(VocabularyWord.word_id.not_in(subquery))
-                .limit(needed)
-            )
-
-            ai_words = res.scalars().all()
+            ai_words = await self.repo.get_new_words(user_id, needed)
 
             for vw in ai_words:
-                uv = UserVocabulary(
-                    user_id=user_id,
-                    word_id=vw.word_id,
-                    next_review_date=now
-                )
-                self.db.add(uv)
+                uv = await self.repo.create_user_vocab(user_id, vw.word_id, now)
                 words.append((uv, vw))
 
-            await self.db.commit()
+            await self.repo.commit()
 
         return words
 
@@ -207,21 +161,22 @@ class VocabularyService:
     # =========================
     async def record_response(
         self,
+        session_id: UUID,
         user_id: UUID,
         word_id: UUID,
         response: str,
     ):
         now = datetime.now(timezone.utc)
 
+        session = await self.repo.get_session(session_id)
+        if not session:
+            raise ValueError("VocabularySession not found")
+        if session.user_id != user_id:
+            raise ValueError("VocabularySession does not belong to user")
+
         quality = map_response_to_quality(response)
 
-        result = await self.db.execute(
-            select(UserVocabulary).where(
-                UserVocabulary.user_id == user_id,
-                UserVocabulary.word_id == word_id
-            )
-        )
-        uv = result.scalar_one_or_none()
+        uv = await self.repo.get_user_vocab(user_id, word_id)
 
         if not uv:
             raise ValueError("UserVocabulary not found")
@@ -254,7 +209,7 @@ class VocabularyService:
         else:
             uv.status = "learning"
 
-        await self.db.commit()
+        await self.repo.commit()
 
         return {
             "word_id": word_id,
@@ -268,10 +223,7 @@ class VocabularyService:
     # STATS
     # =========================
     async def get_stats(self, user_id: UUID):
-        result = await self.db.execute(
-            select(UserVocabulary).where(UserVocabulary.user_id == user_id)
-        )
-        rows = result.scalars().all()
+        rows = await self.repo.get_user_vocab_all(user_id)
 
         return {
             "total_words_learned": len(rows),

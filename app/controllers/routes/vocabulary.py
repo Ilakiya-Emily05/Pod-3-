@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from app.config.database import get_session
 from app.services.vocabulary_service import VocabularyService
@@ -25,6 +25,8 @@ async def get_words(
 ):
     service = VocabularyService(db)
 
+    session = await service.create_session(user_id)
+
     items = await service.get_words(user_id, limit)
 
     words = []
@@ -44,7 +46,7 @@ async def get_words(
         )
 
     return WordsResponse(
-        session_id=uuid4(),
+        session_id=session.session_id,
         words=words,
         total_words_in_session=len(words),
     )
@@ -57,6 +59,7 @@ async def record_response(
     service = VocabularyService(db)
 
     result = await service.record_response(
+        session_id=payload.session_id,
         user_id=payload.user_id,
         word_id=payload.word_id,
         response=payload.response,
