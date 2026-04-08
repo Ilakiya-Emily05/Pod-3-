@@ -1,9 +1,8 @@
-
-
 # pronunciation_engine.py
-import os
 import json
+import os
 import re
+
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -24,8 +23,6 @@ def _get_client() -> OpenAI | None:
 
     _client = OpenAI(api_key=api_key)
     return _client
-
-
 
 
 # -------------------------------
@@ -51,13 +48,12 @@ TEXT:
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=200,
-            temperature=0.0
+            temperature=0.0,
         )
         ipa = res.choices[0].message.content.strip()
         ipa = ipa.replace("/", "").replace("[", "").replace("]", "")
         return ipa
-    except Exception as e:
-       
+    except Exception:
         return ""
 
 
@@ -95,7 +91,7 @@ Each element must be:
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
-            max_tokens=300
+            max_tokens=300,
         )
 
         content = res.choices[0].message.content.strip()
@@ -104,17 +100,18 @@ Each element must be:
             return []
 
         return json.loads(match.group(0))
-    except Exception as e:
-       
+    except Exception:
         return []
 
 
 # -------------------------------
 # NEW: GPT targeted pronunciation tips
 # -------------------------------
-def gpt_generate_tips(reference_text, transcript, mistakes):
+def gpt_generate_tips(
+    reference_text: str, transcript: str, mistakes: list[dict[str, object]]
+) -> list[str]:
     """
-    Generate 2–3 short pronunciation tips based on actual mistakes.
+    Generate 2-3 short pronunciation tips based on actual mistakes.
     Very cheap GPT call (<30 tokens).
     """
     client = _get_client()
@@ -130,7 +127,7 @@ TRANSCRIPT: {transcript}
 MISTAKES:
 {json.dumps(mistakes, indent=2)}
 
-Give 2–3 short, actionable pronunciation tips directly targeting ONLY these mistakes.
+Give 2-3 short, actionable pronunciation tips directly targeting ONLY these mistakes.
 No grammar tips. No generic praise.
 Return ONLY a JSON list of strings.
 """
@@ -139,7 +136,7 @@ Return ONLY a JSON list of strings.
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
-            max_tokens=120
+            max_tokens=120,
         )
 
         content = res.choices[0].message.content.strip()
@@ -149,7 +146,7 @@ Return ONLY a JSON list of strings.
 
         return json.loads(match.group(0))
 
-    except:
+    except Exception:
         return ["Focus on improving the mispronounced words."]
 
 
@@ -160,7 +157,7 @@ def normalize_ipa(ipa: str) -> str:
     if not ipa:
         return ""
     ipa = ipa.lower()
-    ipa = re.sub(r"[^a-zɑ-ɒɔəɜɪʊʌæθðŋʃʒɹɾʔːˑˈˌ]+", "", ipa)
+    ipa = re.sub(r"[^a-zÉ‘-É’É”É™ÉœÉªÊŠÊŒÃ¦Î¸Ã°Å‹ÊƒÊ’É¹É¾Ê”ËË‘ËˆËŒ]+", "", ipa)  # noqa: RUF001
     return ipa
 
 
@@ -177,7 +174,7 @@ def levenshtein(a: str, b: str) -> int:
         curr = [i]
         for j, cb in enumerate(b, 1):
             cost = 0 if ca == cb else 1
-            curr.append(min(prev[j] + 1, curr[j-1] + 1, prev[j-1] + cost))
+            curr.append(min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost))
         prev = curr
     return prev[-1]
 
@@ -203,7 +200,7 @@ def compute_fluency(transcript: str) -> float:
 # -------------------------------
 # Main scoring function
 # -------------------------------
-def compute_pronunciation_scores(reference_text: str, transcript: str):
+def compute_pronunciation_scores(reference_text: str, transcript: str) -> dict[str, object]:
 
     # IPA extraction
     ref_ipa = normalize_ipa(gpt_extract_ipa(reference_text))
@@ -238,5 +235,5 @@ def compute_pronunciation_scores(reference_text: str, transcript: str):
         "phoneme_score": phoneme_score,
         "fluency_score": fluency_score,
         "mistakes": mistakes,
-        "tips": tips
+        "tips": tips,
     }

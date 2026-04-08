@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text, JSON, func
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,8 +33,10 @@ class Question(Base):
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     skill_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("key_skills.id"))
     text: Mapped[str] = mapped_column(Text)
-    options: Mapped[list[str]] = mapped_column(JSON, default=list, server_default='[]')
-    answer_key: Mapped[str] = mapped_column(Text)  # The letter (A, B, C, D) or full text of the correct answer
+    options: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
+    answer_key: Mapped[str] = mapped_column(
+        Text
+    )  # The letter (A, B, C, D) or full text of the correct answer
     difficulty: Mapped[DifficultyLevel] = mapped_column(Enum(DifficultyLevel))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -63,7 +65,9 @@ class UserResponse(Base):
     confidence_score: Mapped[float | None] = mapped_column(nullable=True)
     audio_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     is_correct: Mapped[bool | None] = mapped_column(nullable=True)
-    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)  # AI feedback for this specific answer
+    feedback: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )  # AI feedback for this specific answer
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     session = relationship("InterviewSession", back_populates="responses")

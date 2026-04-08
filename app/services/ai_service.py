@@ -2,6 +2,7 @@
 AI Service for generating narrative feedback and analysis.
 Handles GPT-based text generation for interview reports.
 """
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
@@ -27,14 +28,14 @@ async def generate_narrative_ai(
 ) -> str:
     """
     Generate a natural language narrative summary of interview performance.
-    
+
     Args:
         interview_type: Type of interview (e.g., "Technical", "Behavioral", "General")
         overall_score: Overall performance score (0-100)
         strengths: List of identified strengths dictionaries [{"area": "...", "description": "...", "evidence": "..."}]
         improvements: List of improvement areas with structure {"area": "...", "description": "...", "recommendation": "...", "priority": "..."}
         question_count: Number of questions answered
-    
+
     Returns:
         A narrative string summarizing the interview performance.
     """
@@ -43,7 +44,10 @@ async def generate_narrative_ai(
 
         # Format improvement areas
         improvement_text = "\n".join(
-            [f"- {imp.get('area', 'Unknown')}: {imp.get('description', '')}" for imp in improvements[:3]]
+            [
+                f"- {imp.get('area', 'Unknown')}: {imp.get('description', '')}"
+                for imp in improvements[:3]
+            ]
         )
 
         # Create a prompt for the narrative
@@ -75,20 +79,29 @@ Provide an encouraging yet honest assessment that highlights key performance ind
             performance_level = "Needs Improvement"
 
         # Format strengths
-        strengths_text = "\n".join([f"- {s.get('area', 'General')}: {s.get('description', '')}" for s in strengths[:3]]) if strengths else "- Communication clarity"
+        strengths_text = (
+            "\n".join(
+                [f"- {s.get('area', 'General')}: {s.get('description', '')}" for s in strengths[:3]]
+            )
+            if strengths
+            else "- Communication clarity"
+        )
 
         # Create the prompt chain
         chain = prompt_template | llm
 
         # Generate the narrative
-        result = await chain.ainvoke({
-            "interview_type": interview_type,
-            "overall_score": overall_score,
-            "performance_level": performance_level,
-            "question_count": question_count,
-            "strengths": strengths_text,
-            "improvement_text": improvement_text or "- Continue practicing interview techniques"
-        })
+        result = await chain.ainvoke(
+            {
+                "interview_type": interview_type,
+                "overall_score": overall_score,
+                "performance_level": performance_level,
+                "question_count": question_count,
+                "strengths": strengths_text,
+                "improvement_text": improvement_text
+                or "- Continue practicing interview techniques",
+            }
+        )
 
         return str(result.content).strip()
 

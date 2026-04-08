@@ -68,7 +68,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_behav_attempts_user_id"), "behav_attempts", ["user_id"], unique=False)
- 
+
     op.create_table(
         "behav_user_answers",
         sa.Column("id", sa.Integer(), nullable=False),

@@ -1,9 +1,11 @@
 # app/models/listening_models.py
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text
-from sqlalchemy.sql import func
-from app.models.base import Base
-from sqlalchemy.dialects.postgresql import JSON
 from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSON
+
+from app.config.database import Base
+
 
 class ListeningAttempt(Base):
     __tablename__ = "listening_attempts"

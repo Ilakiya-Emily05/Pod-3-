@@ -19,13 +19,11 @@ router = APIRouter(prefix="/sentence-framing", tags=["sentence-framing"])
 logger = logging.getLogger(__name__)
 
 
-
 @router.get("/exercises", response_model=dict[str, list[CategoryRead]])
-
 async def list_sentence_categories(
     db: AsyncSession = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id),
-):
+) -> dict[str, list[CategoryRead]]:
     """
     Returns a unified list of categories and subcategories.
     Each subcategory includes an 'exercise_id' trigger for dynamic generation.
@@ -44,7 +42,7 @@ async def get_sentence_exercise(
     exercise_type: str = Query("fill_in_blank", description="Type of exercise"),
     db: AsyncSession = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id),
-):
+) -> SentenceFramingRead:
     """
     Generates a dynamic AI exercise based on a subcategory trigger (exercise_id).
     Accepts query parameters for on-the-fly customization.
@@ -64,12 +62,12 @@ async def get_sentence_exercise(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Exercise category not found"
             )
         return SentenceFramingRead.model_validate(exercise)
-    except Exception as e:
-        logger.error(f"Sentence exercise generation failed: {e!s}", exc_info=True)
+    except Exception as err:
+        logger.error("Sentence exercise generation failed: %s", err, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal error occurred during exercise generation.",
-        )
+        ) from err
 
 
 @router.post("/submit", response_model=SentenceSubmissionRead, status_code=status.HTTP_201_CREATED)
@@ -77,7 +75,7 @@ async def submit_sentence_response(
     payload: SentenceSubmissionCreate,
     db: AsyncSession = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id),
-):
+) -> SentenceSubmissionRead:
     """
     Submits a user response for evaluation against the dynamically generated exercise.
     Evaluation is AI-driven and CEFR-mapped.
@@ -86,14 +84,14 @@ async def submit_sentence_response(
     try:
         submission = await service.submit_response(user_id, payload)
         return SentenceSubmissionRead.model_validate(submission)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        logger.error(f"Sentence submission failed: {e!s}", exc_info=True)
+    except ValueError as err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err)) from err
+    except Exception as err:
+        logger.error("Sentence submission failed: %s", err, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal error occurred during submission processing.",
-        )
+        ) from err
 
 
 @router.get("/progress/{user_id}")
@@ -101,7 +99,7 @@ async def get_sentence_progress(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: UUID = Depends(get_current_user_id),
-):
+) -> dict[str, object]:
     """
     Returns user progress for the Sentence Framing module.
     """

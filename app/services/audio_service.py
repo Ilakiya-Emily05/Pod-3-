@@ -1,6 +1,7 @@
 # services/audio_service.py
-from pydub import AudioSegment
 from pathlib import Path
+
+from pydub import AudioSegment
 
 # Set the path to your FFmpeg binary
 
@@ -11,7 +12,7 @@ def convert_to_wav(file_path, audio_format: str = None) -> Path:
 
     Args:
         file_path (str or Path): Path to input audio file.
-        audio_format (str, optional): Format of input file (e.g., "m4a", "mp3"). 
+        audio_format (str, optional): Format of input file (e.g., "m4a", "mp3").
                                       If None, inferred from file extension.
 
     Returns:

@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import List
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -20,11 +19,11 @@ class GrammarQuestion(BaseModel):
 
 
 class GrammarQuestionsOutput(BaseModel):
-    questions: List[GrammarQuestion]
+    questions: list[GrammarQuestion]
 
 
 class AIGeneratorService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.settings = get_settings()
         self.model = os.getenv("OPENAI_MODEL", self.settings.OPENAI_MODEL)
 
@@ -35,18 +34,24 @@ class AIGeneratorService:
             temperature=0.7,
         )
 
-    def generate_questions(self, topic: str, difficulty: str, count: int, subtopic: str | None = None) -> List[dict]:
+    def generate_questions(
+        self, topic: str, difficulty: str, count: int, subtopic: str | None = None
+    ) -> list[dict[str, object]]:
         try:
             prompt = ChatPromptTemplate.from_messages(
                 [
                     ("system", SYSTEM_PROMPT),
                     (
                         "human",
-                        "Generate {count} UNIQUE grammar MCQs. Topic: {topic}. Subtopic: {subtopic}. Difficulty: {difficulty}. Return JSON only.",
+                        "Generate {count} UNIQUE grammar MCQs. "
+                        "Topic: {topic}. Subtopic: {subtopic}. "
+                        "Difficulty: {difficulty}. Return JSON only.",
                     ),
                 ]
             )
-            chain = prompt | self._llm().with_structured_output(GrammarQuestionsOutput, method="function_calling")
+            chain = prompt | self._llm().with_structured_output(
+                GrammarQuestionsOutput, method="function_calling"
+            )
             result = chain.invoke(
                 {
                     "topic": topic,
@@ -55,8 +60,13 @@ class AIGeneratorService:
                     "count": count,
                 }
             )
-            logger.info(f"Generated {len(result.questions)} questions for {topic}/{subtopic}")
+            logger.info("Generated %s questions for %s/%s", len(result.questions), topic, subtopic)
             return [question.model_dump() for question in result.questions]
-        except Exception as e:
-            logger.error(f"AI generation failed for topic={topic}, subtopic={subtopic}, error={type(e).__name__}: {str(e)}")
+        except Exception as err:
+            logger.exception(
+                "AI generation failed for topic=%s, subtopic=%s: %s",
+                topic,
+                subtopic,
+                err,
+            )
             raise

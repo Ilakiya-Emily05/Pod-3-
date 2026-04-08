@@ -1,7 +1,6 @@
 from app.config.database import get_db
 from app.services.passage_service import PassageService
 
-
 TARGET_POOL = 50
 
 

@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     @field_validator("debug", mode="before")
     @classmethod
-    def coerce_debug(cls, value):  # noqa: ANN001
+    def coerce_debug(cls, value: object) -> object:
         if isinstance(value, str):
             normalized = value.strip().lower()
             if normalized in {"release", "prod", "production"}:

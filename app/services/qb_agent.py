@@ -2,14 +2,17 @@
 # Handles dynamic passage generation, streaming TTS, and question generation
 # for both listening comprehension and pronunciation practice.
 
-from fastapi.responses import StreamingResponse
 from io import BytesIO
+
+from fastapi.responses import StreamingResponse
 from gtts import gTTS
+
 from app.services.agent_service import (
     generate_passage,
+    generate_pronunciation_questions,
     generate_questions,
-    generate_pronunciation_questions
 )
+
 
 # Map user score to difficulty
 def score_to_difficulty(score: float) -> str:
@@ -60,12 +63,10 @@ def generate_agent_module(score: float) -> dict:
             "difficulty": difficulty,
             "listening_questions": listening_questions,
             "pronunciation_questions": pronunciation_questions,
-            "audio_stream": audio_stream
+            "audio_stream": audio_stream,
         }
 
-    except Exception as e:
-      
-
+    except Exception:
         # Fallback safe response
         fallback_text = "Please repeat the sentence: The sun is bright today."
         tts = gTTS(text=fallback_text, lang="en")
@@ -78,5 +79,5 @@ def generate_agent_module(score: float) -> dict:
             "difficulty": "basic",
             "listening_questions": [{"difficulty": "basic", "question": fallback_text}],
             "pronunciation_questions": [{"difficulty": "basic", "question": fallback_text}],
-            "audio_stream": audio_stream
+            "audio_stream": audio_stream,
         }

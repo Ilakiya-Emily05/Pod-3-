@@ -1,5 +1,3 @@
-from typing import Dict, List
-
 from pydantic import BaseModel, ConfigDict
 
 
@@ -16,12 +14,12 @@ class PassageResponse(BaseModel):
 class PassageQuestion(BaseModel):
     id: int
     question_text: str
-    options: Dict[str, str]
+    options: dict[str, str]
 
 
 class PassageQuestionsResponse(BaseModel):
     session_id: int
-    questions: List[PassageQuestion]
+    questions: list[PassageQuestion]
 
 
 class PassageAnswerRequest(BaseModel):
@@ -43,5 +41,5 @@ class PassageSummaryResponse(BaseModel):
     total_correct: int
     accuracy: float
     status: str
-    weak_areas: List[str]
-    strong_areas: List[str]
+    weak_areas: list[str]
+    strong_areas: list[str]

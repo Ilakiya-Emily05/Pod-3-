@@ -1,7 +1,7 @@
-from typing import List, Literal
+import json
+from typing import Literal
 
 from langchain_openai import ChatOpenAI
-import json
 from pydantic import BaseModel
 
 from app.agents.prompts import PASSAGE_TOOL_PROMPT_TEMPLATE
@@ -18,7 +18,7 @@ class ComprehensionQuestion(BaseModel):
 
 class ComprehensionPassage(BaseModel):
     passage: str
-    questions: List[ComprehensionQuestion]
+    questions: list[ComprehensionQuestion]
 
 
 def generate_passage_with_questions(topic_hint: str | None = None) -> dict:

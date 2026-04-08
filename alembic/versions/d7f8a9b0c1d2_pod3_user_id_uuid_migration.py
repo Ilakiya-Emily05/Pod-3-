@@ -6,12 +6,12 @@ Create Date: 2026-04-02 19:05:00.000000
 
 """
 
-from typing import Sequence
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import context, op
 
 # revision identifiers, used by Alembic.
 revision: str = "d7f8a9b0c1d2"
@@ -21,20 +21,21 @@ depends_on: str | Sequence[str] | None = None
 
 
 UUID_REGEX = (
-    "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-"
-    "[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
 )
 
 
 def _table_exists(table_name: str) -> bool:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
+    if context.is_offline_mode():
+        return False
+    inspector = sa.inspect(op.get_bind())
     return table_name in inspector.get_table_names()
 
 
 def _column_names(table_name: str) -> set[str]:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
+    if context.is_offline_mode():
+        return set()
+    inspector = sa.inspect(op.get_bind())
     return {col["name"] for col in inspector.get_columns(table_name)}
 
 

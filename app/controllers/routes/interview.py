@@ -3,6 +3,7 @@ import tempfile
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import get_db
@@ -12,12 +13,12 @@ from app.schemas.interview import (
     MockSessionResultOut,
 )
 from app.services.interview_service import (
+    download_report_pdf,
+    generate_report,
     get_session_result,
     get_user_sessions,
     start_batch_interview,
     submit_batch_answer,
-    download_report_pdf,
-    generate_report,
 )
 from app.utils.auth import get_current_user_id
 
@@ -98,7 +99,7 @@ async def fetch_mock_result(
 async def create_final_report(
     session_id: UUID,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, object]:
     """
     Section 3: Final Report.
     Generates a comprehensive final report after a session is completed.
@@ -107,7 +108,7 @@ async def create_final_report(
 
 
 @router.get("/report/{report_id}/pdf")
-async def get_report_pdf(report_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_report_pdf(report_id: UUID, db: AsyncSession = Depends(get_db)) -> StreamingResponse:
     """
     Section 3: Final Report.
     Download the PDF of a completed interview report.

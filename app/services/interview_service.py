@@ -8,22 +8,23 @@ Orchestrates both:
 All user input is audio — Whisper handles transcription before this service is called.
 No text fallback; audio_path is always expected.
 """
+
+import json
 import random
 from datetime import datetime
-from uuid import UUID, uuid4
 from io import BytesIO
-import json
+from uuid import UUID, uuid4
 
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-from fastapi.responses import StreamingResponse
-from fastapi import HTTPException
-
+from app.models.final_reports import FinalReport
 from app.models.interview_system import (
     DifficultyLevel,
     InterviewSession,
@@ -31,6 +32,8 @@ from app.models.interview_system import (
     Question,
     UserResponse,
 )
+from app.services.ai_service import generate_narrative_ai  # GPT-4o-mini wrapper
+from app.services.confidence_analyzer import compute_confidence, extract_audio_features
 from app.services.question_service import (
     evaluate_answer,
     generate_gap_analysis,
@@ -38,12 +41,12 @@ from app.services.question_service import (
     segment_transcript,
 )
 from app.services.transcribe import transcribe_audio
-from app.services.confidence_analyzer import extract_audio_features, compute_confidence
 
 MIN_QUESTION_THRESHOLD = 3
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _next_difficulty(current: DifficultyLevel, is_correct: bool) -> DifficultyLevel:
     ladder = [DifficultyLevel.EASY, DifficultyLevel.MEDIUM, DifficultyLevel.HARD]
@@ -53,7 +56,9 @@ def _next_difficulty(current: DifficultyLevel, is_correct: bool) -> DifficultyLe
     return current
 
 
-async def _fetch_question(db: AsyncSession, skill_id: UUID, difficulty: DifficultyLevel, exclude_ids: list[UUID]) -> Question | None:
+async def _fetch_question(
+    db: AsyncSession, skill_id: UUID, difficulty: DifficultyLevel, exclude_ids: list[UUID]
+) -> Question | None:
     stmt = (
         select(Question)
         .where(
@@ -93,7 +98,9 @@ async def _get_prior_mock_answered_ids(db: AsyncSession, user_id: UUID) -> list[
     return list(result.scalars().all())
 
 
-async def _count_available_questions(db: AsyncSession, user_id: UUID, exclude_ids: list[UUID]) -> int:
+async def _count_available_questions(
+    db: AsyncSession, user_id: UUID, exclude_ids: list[UUID]
+) -> int:
     skills = await _get_skills_for_user(db, user_id)
     if not skills:
         return 0
@@ -108,7 +115,10 @@ async def _count_available_questions(db: AsyncSession, user_id: UUID, exclude_id
 
 # ── Keyword Ingestion / Question Generation ──────────────────────────────────
 
-async def ingest_keywords_and_generate(db: AsyncSession, user_id: UUID, keywords: list[str]) -> list[KeySkill]:
+
+async def ingest_keywords_and_generate(
+    db: AsyncSession, user_id: UUID, keywords: list[str]
+) -> list[KeySkill]:
     skills: list[KeySkill] = []
     for keyword in keywords:
         skill = KeySkill(user_id=user_id, keyword=keyword)
@@ -119,7 +129,15 @@ async def ingest_keywords_and_generate(db: AsyncSession, user_id: UUID, keywords
             for _ in range(3):
                 q_text, options, a_text = await generate_qa_for_keyword(keyword, difficulty)
                 if q_text:
-                    db.add(Question(skill_id=skill.id, text=q_text, options=options, answer_key=a_text, difficulty=difficulty))
+                    db.add(
+                        Question(
+                            skill_id=skill.id,
+                            text=q_text,
+                            options=options,
+                            answer_key=a_text,
+                            difficulty=difficulty,
+                        )
+                    )
         skills.append(skill)
     await db.commit()
     return skills
@@ -132,13 +150,27 @@ async def _regenerate_questions_for_user(db: AsyncSession, user_id: UUID) -> Non
             for _ in range(3):
                 q_text, options, a_text = await generate_qa_for_keyword(skill.keyword, difficulty)
                 if q_text:
-                    db.add(Question(skill_id=skill.id, text=q_text, options=options, answer_key=a_text, difficulty=difficulty))
+                    db.add(
+                        Question(
+                            skill_id=skill.id,
+                            text=q_text,
+                            options=options,
+                            answer_key=a_text,
+                            difficulty=difficulty,
+                        )
+                    )
     await db.commit()
 
 
 # ── Section 1: AI Practice ────────────────────────────────────────────────────
 
-async def get_practice_question(db: AsyncSession, user_id: UUID, difficulty: DifficultyLevel | None = None, extra_exclude_ids: list[UUID] | None = None) -> Question | None:
+
+async def get_practice_question(
+    db: AsyncSession,
+    user_id: UUID,
+    difficulty: DifficultyLevel | None = None,
+    extra_exclude_ids: list[UUID] | None = None,
+) -> Question | None:
     exclude_ids = await _get_practice_answered_ids(db, user_id)
     if extra_exclude_ids:
         exclude_ids = list(set(exclude_ids) | set(extra_exclude_ids))
@@ -154,7 +186,11 @@ async def get_practice_question(db: AsyncSession, user_id: UUID, difficulty: Dif
         )
         result = await db.execute(stmt)
         last_row = result.first()
-        difficulty = _next_difficulty(last_row.Question.difficulty, last_row.UserResponse.is_correct) if last_row else DifficultyLevel.EASY
+        difficulty = (
+            _next_difficulty(last_row.Question.difficulty, last_row.UserResponse.is_correct)
+            if last_row
+            else DifficultyLevel.EASY
+        )
 
     skills = await _get_skills_for_user(db, user_id)
     if not skills:
@@ -168,7 +204,9 @@ async def get_practice_question(db: AsyncSession, user_id: UUID, difficulty: Dif
     return None
 
 
-async def submit_practice_answer(db: AsyncSession, user_id: UUID, question_id: UUID, audio_path: str) -> dict:
+async def submit_practice_answer(
+    db: AsyncSession, user_id: UUID, question_id: UUID, audio_path: str
+) -> dict:
     result = await db.execute(select(Question).where(Question.id == question_id))
     question = result.scalar_one_or_none()
     if not question:
@@ -192,7 +230,9 @@ async def submit_practice_answer(db: AsyncSession, user_id: UUID, question_id: U
     await db.commit()
 
     next_difficulty = _next_difficulty(question.difficulty, is_correct)
-    next_question = await get_practice_question(db, user_id, next_difficulty, extra_exclude_ids=[question_id])
+    next_question = await get_practice_question(
+        db, user_id, next_difficulty, extra_exclude_ids=[question_id]
+    )
 
     return {
         "is_correct": is_correct,
@@ -207,6 +247,7 @@ async def submit_practice_answer(db: AsyncSession, user_id: UUID, question_id: U
 # ── Section 2: Mock Interview ────────────────────────────────────────────────
 
 # ── Frontend List / Result Endpoints ─────────────────────────────────────────
+
 
 async def get_user_sessions(db: AsyncSession, user_id: UUID) -> list[dict]:
     """
@@ -273,6 +314,7 @@ async def get_session_result(db: AsyncSession, session_id: UUID) -> dict:
 
 # ── Batch Audio Mock Interview (5-Minute Session) ────────────────────────────
 
+
 async def start_batch_interview(db: AsyncSession, user_id: UUID) -> dict:
     """
     Starts a compulsory 5-minute mock session by providing 15 questions upfront.
@@ -295,15 +337,27 @@ async def start_batch_interview(db: AsyncSession, user_id: UUID) -> dict:
     # Pick 15 questions: 5 Easy, 5 Medium, 5 Hard
     batch_questions: list[Question] = []
     difficulties = [
-        DifficultyLevel.EASY, DifficultyLevel.EASY, DifficultyLevel.EASY, DifficultyLevel.EASY, DifficultyLevel.EASY,
-        DifficultyLevel.MEDIUM, DifficultyLevel.MEDIUM, DifficultyLevel.MEDIUM, DifficultyLevel.MEDIUM, DifficultyLevel.MEDIUM,
-        DifficultyLevel.HARD, DifficultyLevel.HARD, DifficultyLevel.HARD, DifficultyLevel.HARD, DifficultyLevel.HARD
+        DifficultyLevel.EASY,
+        DifficultyLevel.EASY,
+        DifficultyLevel.EASY,
+        DifficultyLevel.EASY,
+        DifficultyLevel.EASY,
+        DifficultyLevel.MEDIUM,
+        DifficultyLevel.MEDIUM,
+        DifficultyLevel.MEDIUM,
+        DifficultyLevel.MEDIUM,
+        DifficultyLevel.MEDIUM,
+        DifficultyLevel.HARD,
+        DifficultyLevel.HARD,
+        DifficultyLevel.HARD,
+        DifficultyLevel.HARD,
+        DifficultyLevel.HARD,
     ]
-    
+
     # Shuffle skills to spread questions across topics
     random.shuffle(skills)
     skill_cycle = 0
-    
+
     current_excluded = list(globally_excluded)
     for target_diff in difficulties:
         picked = None
@@ -317,9 +371,11 @@ async def start_batch_interview(db: AsyncSession, user_id: UUID) -> dict:
                 break
         if not picked:
             for skill in skills:
-                picked = await _fetch_question(db, skill.id, DifficultyLevel.EASY, current_excluded) or \
-                         await _fetch_question(db, skill.id, DifficultyLevel.MEDIUM, current_excluded) or \
-                         await _fetch_question(db, skill.id, DifficultyLevel.HARD, current_excluded)
+                picked = (
+                    await _fetch_question(db, skill.id, DifficultyLevel.EASY, current_excluded)
+                    or await _fetch_question(db, skill.id, DifficultyLevel.MEDIUM, current_excluded)
+                    or await _fetch_question(db, skill.id, DifficultyLevel.HARD, current_excluded)
+                )
                 if picked:
                     batch_questions.append(picked)
                     current_excluded.append(picked.id)
@@ -329,12 +385,11 @@ async def start_batch_interview(db: AsyncSession, user_id: UUID) -> dict:
         return {"error": "No questions available. Please ingest more keywords."}
 
     # Create session
-    import json
     session = InterviewSession(user_id=user_id, status="active")
     session.feedback = json.dumps({"batch_ids": [str(q.id) for q in batch_questions]})
     db.add(session)
     await db.commit()
-    
+
     return {"session_id": session.id, "questions": batch_questions}
 
 
@@ -347,24 +402,23 @@ async def submit_batch_answer(
     Processes the compulsory 5-minute audio file.
     Enforces a minimum duration of 5 minutes (300 seconds).
     """
-    import json
     import librosa
-    
+
     # Check duration (strictly 5 minutes for a full assessment)
     try:
         duration_sec = librosa.get_duration(path=audio_path)
         if duration_sec < 290:  # Minimum 4:50
             return {
                 "error": "The recording is too short for a comprehensive evaluation. "
-                         "Please provide more detailed responses to the questions provided."
+                "Please provide more detailed responses to the questions provided."
             }
         if duration_sec > 315:  # Maximum 5:15
             return {
                 "error": "The recording exceeds the allotted 5-minute time limit. "
-                         "Please ensure your session stays within the precise timing."
+                "Please ensure your session stays within the precise timing."
             }
     except Exception as e:
-         return {"error": f"Failed to check audio duration: {str(e)}"}
+        return {"error": f"Failed to check audio duration: {e!s}"}
 
     # Load session
     result = await db.execute(select(InterviewSession).where(InterviewSession.id == session_id))
@@ -401,10 +455,10 @@ async def submit_batch_answer(
     for idx, answer_text in segments.items():
         if idx >= len(ordered_questions):
             continue
-        
+
         q = ordered_questions[idx]
         is_correct, feedback = await evaluate_answer(q.text, q.answer_key, answer_text)
-        
+
         response_record = UserResponse(
             session_id=session_id,
             question_id=q.id,
@@ -415,12 +469,14 @@ async def submit_batch_answer(
             feedback=feedback,
         )
         db.add(response_record)
-        responses_list.append({
-            "question": q.text,
-            "user_answer": answer_text,
-            "is_correct": is_correct,
-            "confidence": confidence_score
-        })
+        responses_list.append(
+            {
+                "question": q.text,
+                "user_answer": answer_text,
+                "is_correct": is_correct,
+                "confidence": confidence_score,
+            }
+        )
 
     # Generate Gap Analysis
     if not responses_list:
@@ -436,20 +492,21 @@ async def submit_batch_answer(
         "session_id": session_id,
         "gap_analysis": gap_analysis,
         "responses_count": len(responses_list),
-        "duration_sec": round(duration_sec, 2)
+        "duration_sec": round(duration_sec, 2),
     }
 
 
 # ── Section 3: Final Report ──────────────────────────────────────────────────
+
 
 async def aggregate_scores(responses: list[UserResponse]) -> dict:
     score_breakdown = {
         "technical_skills": 0,
         "communication": 0,
         "problem_solving": 0,
-        "behavioral_competency": 0
+        "behavioral_competency": 0,
     }
-    counts = {k: 0 for k in score_breakdown.keys()}
+    counts = dict.fromkeys(score_breakdown.keys(), 0)
 
     for r in responses:
         category = getattr(r.question, "category", "technical_skills")
@@ -470,18 +527,22 @@ async def identify_strengths_improvements(responses: list[UserResponse]) -> tupl
         skill_name = getattr(r.question, "skill_name", "General")
         user_ans = r.user_answer or ""
         if r.is_correct:
-            strengths.append({
-                "area": skill_name,
-                "description": "Answered correctly",
-                "evidence": user_ans[:50] + "..." if len(user_ans) > 50 else user_ans
-            })
+            strengths.append(
+                {
+                    "area": skill_name,
+                    "description": "Answered correctly",
+                    "evidence": user_ans[:50] + "..." if len(user_ans) > 50 else user_ans,
+                }
+            )
         else:
-            improvements.append({
-                "area": skill_name,
-                "description": "Incorrect answer",
-                "recommendation": f"Review topic '{skill_name}' and retry similar questions",
-                "priority": "high"
-            })
+            improvements.append(
+                {
+                    "area": skill_name,
+                    "description": "Incorrect answer",
+                    "recommendation": f"Review topic '{skill_name}' and retry similar questions",
+                    "priority": "high",
+                }
+            )
     return strengths, improvements
 
 
@@ -492,13 +553,17 @@ async def generate_report(session_id: UUID, db: AsyncSession):
         raise HTTPException(status_code=501, detail="Final report model is not available in this deployment") from exc
 
     async with db.begin():  # Transaction to ensure atomicity
-        session_result = await db.execute(select(InterviewSession).where(InterviewSession.id == session_id))
+        session_result = await db.execute(
+            select(InterviewSession).where(InterviewSession.id == session_id)
+        )
         session = session_result.scalar_one_or_none()
         if not session or session.status != "completed":
             raise HTTPException(status_code=400, detail="Session not completed or not found")
 
         responses_result = await db.execute(
-            select(UserResponse).where(UserResponse.session_id == session_id).order_by(UserResponse.created_at)
+            select(UserResponse)
+            .where(UserResponse.session_id == session_id)
+            .order_by(UserResponse.created_at)
         )
         responses = responses_result.scalars().all()
         if not responses:
@@ -511,8 +576,6 @@ async def generate_report(session_id: UUID, db: AsyncSession):
         interview_type = getattr(session, "interview_type", "General")
 
         try:
-            from app.services.ai_service import generate_narrative_ai  # type: ignore[import-not-found]
-
             ai_narrative = await generate_narrative_ai(
                 interview_type=interview_type,
                 overall_score=overall_score,
@@ -520,7 +583,7 @@ async def generate_report(session_id: UUID, db: AsyncSession):
                 improvements=improvements,
                 question_count=len(responses),
             )
-        except ModuleNotFoundError:
+        except Exception:
             ai_narrative = "AI narrative generation is not available in this deployment."
 
         next_steps = [f"Practice {imp['area']} questions more." for imp in improvements[:3]]
@@ -538,7 +601,7 @@ async def generate_report(session_id: UUID, db: AsyncSession):
             ai_narrative=ai_narrative or "",
             next_steps=next_steps or [],
             peer_comparison={"percentile": 72, "message": "Better than 72% of peers"},
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
         )
         db.add(report)
 
@@ -555,7 +618,7 @@ async def generate_report(session_id: UUID, db: AsyncSession):
         "improvement_areas": improvements,
         "ai_narrative": ai_narrative,
         "next_steps": next_steps,
-        "comparison_to_peers": report.peer_comparison
+        "comparison_to_peers": report.peer_comparison,
     }
 
 
@@ -586,12 +649,22 @@ async def download_report_pdf(report_id: UUID, db: AsyncSession):
 
     elements.append(Paragraph("Strengths:", styles["Heading2"]))
     for s in report.strengths or []:
-        elements.append(Paragraph(f"{s['area']}: {s['description']} (Evidence: {s.get('evidence', '')})", styles["Normal"]))
+        elements.append(
+            Paragraph(
+                f"{s['area']}: {s['description']} (Evidence: {s.get('evidence', '')})",
+                styles["Normal"],
+            )
+        )
     elements.append(Spacer(1, 12))
 
     elements.append(Paragraph("Improvement Areas:", styles["Heading2"]))
     for imp in report.improvement_areas or []:
-        elements.append(Paragraph(f"{imp['area']}: {imp['description']} (Recommendation: {imp.get('recommendation', '')})", styles["Normal"]))
+        elements.append(
+            Paragraph(
+                f"{imp['area']}: {imp['description']} (Recommendation: {imp.get('recommendation', '')})",
+                styles["Normal"],
+            )
+        )
     elements.append(Spacer(1, 12))
 
     elements.append(Paragraph("AI Narrative:", styles["Heading2"]))
@@ -599,6 +672,8 @@ async def download_report_pdf(report_id: UUID, db: AsyncSession):
 
     doc.build(elements)
     buffer.seek(0)
-    return StreamingResponse(buffer, media_type="application/pdf", headers={
-        "Content-Disposition": f"attachment; filename=interview_report_{report_id}.pdf"
-    })
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=interview_report_{report_id}.pdf"},
+    )

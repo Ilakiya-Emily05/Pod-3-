@@ -6,9 +6,13 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 # Patch before importing anything that might trigger engine creation
-with patch("sqlalchemy.ext.asyncio.create_async_engine"), patch("langchain_openai.AzureChatOpenAI"), patch("openai.OpenAI"):
-    from app.controllers.routes.analytics import router as analytics_router
+with (
+    patch("sqlalchemy.ext.asyncio.create_async_engine"),
+    patch("langchain_openai.AzureChatOpenAI"),
+    patch("openai.OpenAI"),
+):
     from app.config.database import get_db
+    from app.controllers.routes.analytics import router as analytics_router
     from app.services.analytics_service import AnalyticsService
     from app.utils.auth import get_current_user_id
 
@@ -57,7 +61,9 @@ async def test_get_user_analytics_progress_success(client: AsyncClient, app) -> 
         "last_activity": "2026-03-28T10:30:00Z",
     }
 
-    with patch.object(AnalyticsService, "get_progress", new_callable=AsyncMock) as mock_get_progress:
+    with patch.object(
+        AnalyticsService, "get_progress", new_callable=AsyncMock
+    ) as mock_get_progress:
         mock_get_progress.return_value = mocked_payload
         response = await client.get(f"/api/v1/analytics/progress/{user_id}")
 

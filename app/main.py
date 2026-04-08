@@ -1,29 +1,31 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.exceptions import RequestValidationError
-
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from app.config.database import init_db
 from app.config.settings import get_settings
 from app.controllers.router import api_router
 from app.utils.exceptions import (
-    ResumeParseError, resume_parse_error_handler,
-    UnsupportedFileTypeError, unsupported_file_handler,
-    FileTooLargeError, file_too_large_handler,
-    ResumeNotFoundError, not_found_handler,
-    validation_error_handler,
+    FileTooLargeError,
+    ResumeNotFoundError,
+    ResumeParseError,
+    UnsupportedFileTypeError,
+    file_too_large_handler,
+    not_found_handler,
+    resume_parse_error_handler,
     unhandled_error_handler,
+    unsupported_file_handler,
+    validation_error_handler,
 )
-
 
 # ── Rate Limiter ─────────────────────────────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address, default_limits=["30/minute"])

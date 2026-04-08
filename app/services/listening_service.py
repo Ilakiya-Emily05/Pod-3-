@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-UTC = timezone.utc
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -264,7 +262,9 @@ class ListeningService(BaseAssessmentService):
         return updated_attempt
 
 
-def generate_listening_module(difficulty: str = "medium", num_questions: int = 3) -> dict[str, object]:
+def generate_listening_module(
+    difficulty: str = "medium", num_questions: int = 3
+) -> dict[str, object]:
     """
     Compatibility wrapper for older routes.
 
