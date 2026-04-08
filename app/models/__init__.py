@@ -24,7 +24,9 @@ from app.models.reading import (
 from app.models.user import User, UserProfile
 from app.models.analytics.user_progress import UserModuleProgress
 from app.models.analytics.user_streaks import UserStreaks
-from app.models.vocabulary import VocabularyWord, VocabularyList, UserVocabulary
+from app.models.Vocab.vocabulary_word import VocabularyWord
+from app.models.Vocab.vocabulary_list import VocabularyList
+from app.models.Vocab.user_vocabulary import UserVocabulary
 
 __all__ = [
     "AttemptStatus",
@@ -47,6 +49,12 @@ __all__ = [
     "TimestampMixin",
     "User", "UserProfile",
     "UserModuleProgress", "UserStreaks"
+]
+
+__all__ += [
+    "VocabularyWord",
+    "VocabularyList",
+    "UserVocabulary",
 ]
 
 

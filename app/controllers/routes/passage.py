@@ -1,10 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config.database import get_db
-from app.utils.auth import get_current_user 
+from app.config.database import get_session
+from app.utils.auth import get_current_user
 from app.schemas.passage_schema import (
     PassageAnswerRequest,
     PassageAnswerResponse,
@@ -21,71 +21,71 @@ from app.models.user import User
 router = APIRouter(prefix="/reading", tags=["Reading"])
 
 
+# =========================
+# START SESSION
+# =========================
 @router.post("/start", response_model=PassageStartResponse)
 async def start_reading(
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     UserActivityService(db).record_activity(current_user.id)
     service = PassageService(db)
     return await service.start_reading(current_user.id, background_tasks)
 
 
+# =========================
+# GET PASSAGE
+# =========================
 @router.get("/{session_id}/passage", response_model=PassageResponse)
-<<<<<<< Updated upstream
-def get_passage(
-    session_id: int,
-=======
 async def get_passage(
     session_id: UUID,
->>>>>>> Stashed changes
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     UserActivityService(db).record_activity(current_user.id)
     service = PassageService(db)
-    return service.get_passage(session_id)
+    return await service.get_passage(session_id)
 
 
+# =========================
+# GET QUESTIONS
+# =========================
 @router.get("/{session_id}/questions", response_model=list[PassageQuestion])
-<<<<<<< Updated upstream
-def get_questions(
-    session_id: int,
-=======
 async def get_questions(
     session_id: UUID,
->>>>>>> Stashed changes
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     UserActivityService(db).record_activity(current_user.id)
     service = PassageService(db)
-    return service.get_questions(session_id, background_tasks)
+    return await service.get_questions(session_id, background_tasks)
 
 
+# =========================
+# SUBMIT ANSWER
+# =========================
 @router.post("/answer", response_model=PassageAnswerResponse)
-def submit_answer(
+async def submit_answer(
     answer: PassageAnswerRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     UserActivityService(db).record_activity(current_user.id)
     service = PassageService(db)
-    return service.submit_answer(answer, current_user.id)
+    return await service.submit_answer(answer, current_user.id)
 
 
+# =========================
+# GET SUMMARY
+# =========================
 @router.get("/{session_id}/summary", response_model=PassageSummaryResponse)
-<<<<<<< Updated upstream
-def get_summary(
-    session_id: int,
-=======
 async def get_summary(
     session_id: UUID,
->>>>>>> Stashed changes
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     service = PassageService(db)
-    return service.get_summary(session_id)
+    return await service.get_summary(session_id)

@@ -20,6 +20,15 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    """Compatibility wrapper — some modules import `get_session`.
+
+    Keeps older import name working while the codebase uses `get_db`.
+    """
+    async with AsyncSessionLocal() as session:
+        yield session
+
+
 async def init_db() -> None:
     from app.models import user  # noqa: F401
     async with engine.begin() as connection:
