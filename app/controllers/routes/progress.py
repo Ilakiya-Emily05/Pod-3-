@@ -25,7 +25,7 @@ router = APIRouter(prefix="/progress", tags=["Progress Tracking"])
 async def start_module(
     data: ProgressStart,
     db: AsyncSession = Depends(get_db),
-):
+) -> ProgressResponse:
     """
     Start tracking progress for a module.
 
@@ -50,7 +50,7 @@ async def complete_module(
     module_id: UUID,
     data: ProgressComplete,
     db: AsyncSession = Depends(get_db),
-):
+) -> ProgressResponse:
     """
     Complete a module and record the score.
 
@@ -81,7 +81,7 @@ async def complete_module(
 async def get_user_progress(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
-):
+) -> list[ProgressResponse]:
     """
     Get all progress records for a user.
 
@@ -101,7 +101,7 @@ async def get_user_progress(
 async def get_user_progress_summary(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
-):
+) -> UserProgressSummary:
     """
     Get a summary of user's progress across all modules.
 

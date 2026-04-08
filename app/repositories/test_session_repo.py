@@ -1,5 +1,6 @@
-from sqlalchemy.orm import Session
 from uuid import UUID
+
+from sqlalchemy.orm import Session
 
 from app.models.test_session import TestSession
 
@@ -27,7 +28,11 @@ class TestSessionRepository:
         return self.db.query(TestSession).filter(TestSession.id == session_id).first()
 
     def get_active_session(self, user_id: UUID) -> TestSession | None:
-        return self.db.query(TestSession).filter(TestSession.user_id == user_id, TestSession.status == "IN_PROGRESS").first()
+        return (
+            self.db.query(TestSession)
+            .filter(TestSession.user_id == user_id, TestSession.status == "IN_PROGRESS")
+            .first()
+        )
 
     def update(self, session: TestSession) -> TestSession:
         self.db.commit()

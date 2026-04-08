@@ -1,12 +1,14 @@
 # services/listening_service.py
-import os
-import uuid
-import re
 import json
+import os
+import re
+import uuid
+
+from dotenv import load_dotenv
 from gtts import gTTS
 from openai import OpenAI
-from dotenv import load_dotenv
-from app.prompts.question_prompt import PROMPT_LISTENING_ONLY  
+
+from app.prompts.question_prompt import PROMPT_LISTENING_ONLY
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -24,9 +26,10 @@ def generate_passage(difficulty: str) -> str:
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7,
-        max_tokens=200
+        max_tokens=200,
     )
     return response.choices[0].message.content.strip()
+
 
 def generate_questions_from_passage(passage: str, num_questions: int = 3):
     """
@@ -34,10 +37,11 @@ def generate_questions_from_passage(passage: str, num_questions: int = 3):
     Ensures each question focuses on a different detail or idea in the passage.
     Retries once if JSON parsing fails before falling back.
     """
-   
 
     # Inject the passage into the prompt
-    prompt_text = PROMPT_LISTENING_ONLY.replace("{passage}", passage).replace("{num_listening}", str(num_questions))
+    prompt_text = PROMPT_LISTENING_ONLY.replace("{passage}", passage).replace(
+        "{num_listening}", str(num_questions)
+    )
 
     for attempt in range(2):  # try twice before fallback
         try:
@@ -45,7 +49,7 @@ def generate_questions_from_passage(passage: str, num_questions: int = 3):
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt_text}],
                 temperature=0.7,
-                max_tokens=400
+                max_tokens=400,
             )
             raw_text = response.choices[0].message.content.strip()
 
@@ -59,16 +63,11 @@ def generate_questions_from_passage(passage: str, num_questions: int = 3):
                         q["id"] = idx + 1
                 return questions
 
-        except Exception as e:
-            
+        except Exception:
             continue
 
     # fallback if all attempts fail
     return [{"id": i + 1, "text": f"Question {i + 1}"} for i in range(num_questions)]
-
-
-
-         
 
 
 def generate_listening_module(difficulty: str = "medium", num_questions: int = 3):
@@ -95,11 +94,10 @@ def generate_listening_module(difficulty: str = "medium", num_questions: int = 3
         return {
             "passage": passage,
             "audio_url": audio_url,
-            "listening_questions": listening_questions
+            "listening_questions": listening_questions,
         }
 
-    except Exception as e:
-       
+    except Exception:
         # Fallback if OpenAI fails
         fallback_text = "Please repeat the sentence: The sun is bright today."
         fallback_filename = "fallback_passage.mp3"
@@ -108,5 +106,5 @@ def generate_listening_module(difficulty: str = "medium", num_questions: int = 3
         return {
             "passage": fallback_text,
             "audio_url": f"/static/audio/{fallback_filename}",
-            "listening_questions": [{"id": 1, "text": fallback_text}]
+            "listening_questions": [{"id": 1, "text": fallback_text}],
         }

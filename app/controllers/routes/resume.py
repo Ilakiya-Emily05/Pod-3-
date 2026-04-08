@@ -60,7 +60,7 @@ async def upload_resume(
         parsed = parse_resume(raw_text)
 
         resume = Resume(
-            user_id=str(user_id),
+            user_id=user_id,
             filename=file.filename,
             raw_text=raw_text,
             file_size_kb=round(len(file_bytes) / 1024, 1),
@@ -103,7 +103,7 @@ async def upload_resume(
 
         return {
             "message": "Resume uploaded and parsed successfully",
-            "user_id": str(user_id),
+            "user_id": user_id,
             "resume": resume_to_detail(resume),
         }
 
@@ -115,14 +115,14 @@ async def upload_resume(
 
 @router.get("/parse/{resume_id}", summary="Get parsed resume data", response_model=None)
 async def get_parsed_resume(
-    resume_id: str,
+    resume_id: UUID,
     user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> ResumeDetail | JSONResponse:
     """Get resume data. User can only access their own resumes."""
     stmt = select(Resume).filter(
         Resume.id == resume_id,
-        Resume.user_id == str(user_id),
+        Resume.user_id == user_id,
     )
     result = await db.execute(stmt)
     resume = result.scalar_one_or_none()

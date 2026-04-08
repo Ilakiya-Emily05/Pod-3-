@@ -1,15 +1,24 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
 
 from app.agents.ai_generator import AIGeneratorService
 from app.agents.question_agent import QuestionAgent
 from app.repositories.question_repo import QuestionRepository
 from app.repositories.test_session_repo import TestSessionRepository
 from app.repositories.user_answer_repo import UserAnswerRepository
-from uuid import UUID
 from app.schemas.question_schema import QuestionResponse
 from app.schemas.test_session_schema import AnswerResponse, TestSessionResponse
 
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.orm import Session
+
+    from app.models.question import Question
+    from app.models.test_session import TestSession
 
 GRAMMAR_FLOW = {
     "nouns": ["common_nouns", "proper_nouns", "collective_nouns", "abstract_nouns"],
@@ -26,22 +35,26 @@ TOTAL_SUBTOPICS = sum(len(v) for v in GRAMMAR_FLOW.values())
 class TestService:
     LIMIT = 10
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session) -> None:
         self.db = db
         self.question_repo = QuestionRepository(db)
         self.session_repo = TestSessionRepository(db)
         self.answer_repo = UserAnswerRepository(db)
-        self.question_agent = QuestionAgent(self.question_repo, self.answer_repo, AIGeneratorService())
+        self.question_agent = QuestionAgent(
+            self.question_repo, self.answer_repo, AIGeneratorService()
+        )
 
-    def get_questions_by_topic(self, topic: str, subtopic: str):
+    def get_questions_by_topic(self, topic: str, subtopic: str) -> list[Question]:
         self.question_agent.ensure_questions(topic, subtopic, session_id=None)
         return self.question_repo.get_by_topic(topic, subtopic, self.LIMIT)
 
     def start_test(self, user_id: UUID) -> TestSessionResponse:
-        first_topic = list(GRAMMAR_FLOW.keys())[0]
+        first_topic = next(iter(GRAMMAR_FLOW))
         first_subtopic = GRAMMAR_FLOW[first_topic][0]
 
-        session = self.session_repo.create_session(user_id=user_id, topic=first_topic, subtopic=first_subtopic)
+        session = self.session_repo.create_session(
+            user_id=user_id, topic=first_topic, subtopic=first_subtopic
+        )
         return TestSessionResponse(
             session_id=session.id,
             current_topic=session.current_topic,
@@ -59,10 +72,14 @@ class TestService:
         if session.status == "COMPLETED":
             raise HTTPException(status_code=400, detail="Practice completed")
 
-        self.question_agent.ensure_questions(session.current_topic, session.current_subtopic, session_id)
+        self.question_agent.ensure_questions(
+            session.current_topic, session.current_subtopic, session_id
+        )
 
         attempted_ids = self.answer_repo.get_attempted_question_ids(session_id)
-        question = self.question_repo.get_random_question(session.current_topic, session.current_subtopic, attempted_ids)
+        question = self.question_repo.get_random_question(
+            session.current_topic, session.current_subtopic, attempted_ids
+        )
         if not question:
             raise HTTPException(status_code=404, detail="No question available")
 
@@ -74,7 +91,9 @@ class TestService:
             options=question.options,
         )
 
-    def submit_answer(self, session_id: int, question_id: int, selected_answer: str) -> AnswerResponse:
+    def submit_answer(
+        self, session_id: int, question_id: int, selected_answer: str
+    ) -> AnswerResponse:
         session = self.session_repo.get_by_id(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -84,7 +103,12 @@ class TestService:
             raise HTTPException(status_code=404, detail="Question not found")
 
         is_correct = selected_answer.upper() == question.correct_answer.upper()
-        self.answer_repo.create_user_answer(session_id=session_id, question_id=question_id, selected_answer=selected_answer, is_correct=is_correct)
+        self.answer_repo.create_user_answer(
+            session_id=session_id,
+            question_id=question_id,
+            selected_answer=selected_answer,
+            is_correct=is_correct,
+        )
 
         if is_correct:
             session.correct_count += 1
@@ -120,7 +144,7 @@ class TestService:
             total_correct_answers=session.total_correct,
         )
 
-    def move_to_next_subtopic(self, session):
+    def move_to_next_subtopic(self, session: TestSession) -> None:
         topic = session.current_topic
         subtopics = GRAMMAR_FLOW[topic]
         index = subtopics.index(session.current_subtopic)
@@ -139,15 +163,21 @@ class TestService:
         else:
             session.status = "COMPLETED"
 
-    def get_summary(self, session_id: int, user_id: UUID):
+    def get_summary(self, session_id: int, user_id: UUID) -> dict[str, object]:
         session = self.session_repo.get_by_id(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
         if session.user_id != user_id:
-            raise HTTPException(status_code=403, detail="Unauthorized: This session does not belong to you")
+            raise HTTPException(
+                status_code=403, detail="Unauthorized: This session does not belong to you"
+            )
 
-        accuracy = 0.0 if session.total_questions == 0 else round((session.total_correct / session.total_questions) * 100, 2)
+        accuracy = (
+            0.0
+            if session.total_questions == 0
+            else round((session.total_correct / session.total_questions) * 100, 2)
+        )
         answers = self.answer_repo.get_answers_by_session(session_id)
         subtopic_map = {}
 
@@ -162,7 +192,7 @@ class TestService:
 
         weak_topics = []
         strong_topics = []
-        for (topic, subtopic), data in subtopic_map.items():
+        for (_topic, subtopic), data in subtopic_map.items():
             if data["correct"] >= PASS_SCORE:
                 strong_topics.append(subtopic)
             else:

@@ -6,12 +6,12 @@ Create Date: 2026-04-04 10:15:00.000000
 
 """
 
-from typing import Sequence
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import context, op
 
 # revision identifiers, used by Alembic.
 revision: str = "h8i9j0k1l2m3"
@@ -37,7 +37,9 @@ def _column_exists(table_name: str, column_name: str) -> bool:
 
 def upgrade() -> None:
     """Convert pronunciation_results.id from INT to UUID."""
-    
+    if context.is_offline_mode():
+        return
+
     if not _table_exists("pronunciation_results"):
         return
 
@@ -75,7 +77,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Revert pronunciation_results.id back to INTEGER."""
-    
+
     raise NotImplementedError(
         "Downgrading from UUID to INTEGER primary keys is not supported for pronunciation_results. "
         "Please restore from database backup if rollback is required."

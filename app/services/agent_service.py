@@ -1,12 +1,11 @@
 # app/services/agent_service.py
 
 import json
-import re
 import os
-from openai import OpenAI
-from dotenv import load_dotenv
+import re
 
-from app.prompts.question_prompt import PROMPT_LISTENING_ONLY
+from dotenv import load_dotenv
+from openai import OpenAI
 
 # Load env
 load_dotenv()
@@ -20,10 +19,7 @@ def extract_json_safe(text: str):
     Extracts FIRST valid JSON object or array from the LLM response.
     Useful because LLM may return extra text before/after JSON.
     """
-    patterns = [
-        r"(\{.*\})",
-        r"(\[.*\])"
-    ]
+    patterns = [r"(\{.*\})", r"(\[.*\])"]
     for p in patterns:
         match = re.search(p, text, flags=re.DOTALL)
         if match:
@@ -44,9 +40,9 @@ def generate_passage(difficulty: str) -> str:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "Return ONLY plain text. No JSON."},
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": prompt},
         ],
-        max_tokens=250
+        max_tokens=250,
     )
 
     return response.choices[0].message.content.strip()
@@ -64,9 +60,9 @@ def generate_questions(passage: str, num_questions: int = 3) -> list:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "Return ONLY JSON."},
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": prompt},
         ],
-        max_tokens=300
+        max_tokens=300,
     )
 
     raw = response.choices[0].message.content.strip()
@@ -79,7 +75,7 @@ def generate_questions(passage: str, num_questions: int = 3) -> list:
     return [
         {"difficulty": "easy", "question": "What is the main idea of the passage?"},
         {"difficulty": "medium", "question": "Explain the second sentence."},
-        {"difficulty": "hard", "question": "Interpret the author's intent."}
+        {"difficulty": "hard", "question": "Interpret the author's intent."},
     ]
 
 
@@ -95,9 +91,9 @@ def generate_pronunciation_questions(passage: str, num_questions: int = 2) -> li
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "Return ONLY valid JSON."},
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": prompt},
         ],
-        max_tokens=200
+        max_tokens=200,
     )
 
     raw = response.choices[0].message.content.strip()

@@ -6,12 +6,12 @@ Create Date: 2026-04-04 09:45:00.000000
 
 """
 
-from typing import Sequence
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import context, op
 
 # revision identifiers, used by Alembic.
 revision: str = "g7h8i9j0k1l2"
@@ -37,7 +37,9 @@ def _column_exists(table_name: str, column_name: str) -> bool:
 
 def upgrade() -> None:
     """Convert behav_questions, behav_options, behav_option_scores, behav_user_answers to UUID."""
-    
+    if context.is_offline_mode():
+        return
+
     op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
 
     # behav_questions: id INT -> UUID
@@ -45,7 +47,12 @@ def upgrade() -> None:
         if not _column_exists("behav_questions", "new_id"):
             op.add_column(
                 "behav_questions",
-                sa.Column("new_id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
+                sa.Column(
+                    "new_id",
+                    postgresql.UUID(as_uuid=True),
+                    server_default=sa.text("gen_random_uuid()"),
+                    nullable=False,
+                ),
             )
         # Backfill mapping: keep old id to new_id relationship for FK updates
         op.execute(
@@ -60,7 +67,12 @@ def upgrade() -> None:
         if not _column_exists("behav_options", "new_id"):
             op.add_column(
                 "behav_options",
-                sa.Column("new_id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
+                sa.Column(
+                    "new_id",
+                    postgresql.UUID(as_uuid=True),
+                    server_default=sa.text("gen_random_uuid()"),
+                    nullable=False,
+                ),
             )
         if not _column_exists("behav_options", "new_question_id"):
             op.add_column(
@@ -82,7 +94,12 @@ def upgrade() -> None:
         if not _column_exists("behav_option_scores", "new_id"):
             op.add_column(
                 "behav_option_scores",
-                sa.Column("new_id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
+                sa.Column(
+                    "new_id",
+                    postgresql.UUID(as_uuid=True),
+                    server_default=sa.text("gen_random_uuid()"),
+                    nullable=False,
+                ),
             )
         if not _column_exists("behav_option_scores", "new_option_id"):
             op.add_column(
@@ -111,7 +128,12 @@ def upgrade() -> None:
         if not _column_exists("behav_user_answers", "new_id"):
             op.add_column(
                 "behav_user_answers",
-                sa.Column("new_id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
+                sa.Column(
+                    "new_id",
+                    postgresql.UUID(as_uuid=True),
+                    server_default=sa.text("gen_random_uuid()"),
+                    nullable=False,
+                ),
             )
         if not _column_exists("behav_user_answers", "new_question_id"):
             op.add_column(
@@ -143,14 +165,22 @@ def upgrade() -> None:
 
     # Drop old FKs before column changes
     if _table_exists("behav_options"):
-        op.execute("ALTER TABLE behav_options DROP CONSTRAINT IF EXISTS behav_options_question_id_fkey")
+        op.execute(
+            "ALTER TABLE behav_options DROP CONSTRAINT IF EXISTS behav_options_question_id_fkey"
+        )
 
     if _table_exists("behav_option_scores"):
-        op.execute("ALTER TABLE behav_option_scores DROP CONSTRAINT IF EXISTS behav_option_scores_option_id_fkey")
+        op.execute(
+            "ALTER TABLE behav_option_scores DROP CONSTRAINT IF EXISTS behav_option_scores_option_id_fkey"
+        )
 
     if _table_exists("behav_user_answers"):
-        op.execute("ALTER TABLE behav_user_answers DROP CONSTRAINT IF EXISTS behav_user_answers_question_id_fkey")
-        op.execute("ALTER TABLE behav_user_answers DROP CONSTRAINT IF EXISTS behav_user_answers_option_id_fkey")
+        op.execute(
+            "ALTER TABLE behav_user_answers DROP CONSTRAINT IF EXISTS behav_user_answers_question_id_fkey"
+        )
+        op.execute(
+            "ALTER TABLE behav_user_answers DROP CONSTRAINT IF EXISTS behav_user_answers_option_id_fkey"
+        )
 
     # Drop old columns and create new structure
     if _table_exists("behav_questions"):
@@ -231,9 +261,8 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Revert behavioral assessment tables back to integer primary keys."""
-    
+
     raise NotImplementedError(
         "Downgrading from UUID to INTEGER primary keys is not supported for behavioral tables. "
         "Please restore from database backup if rollback is required."
     )
-

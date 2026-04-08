@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import BaseModel
 
 
@@ -11,6 +9,6 @@ class TestSummaryResponse(BaseModel):
     passed_subtopics: int
     failed_subtopics: int
     completed_subtopics: int
-    weak_topics: List[str]
-    strong_topics: List[str]
+    weak_topics: list[str]
+    strong_topics: list[str]
     status: str

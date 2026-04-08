@@ -8,7 +8,6 @@ from app.agents.tools.passage_tool import generate_passage_with_questions
 from app.config.database import get_db
 from app.repositories.passage_repo import PassageRepository
 
-
 MIN_POOL = 10
 LOW_BUFFER = 5
 MAX_POOL = 50
@@ -141,7 +140,9 @@ async def fill_pool(target_size: int) -> None:
             if repo.count_passages() >= MAX_POOL:
                 break
 
-            batch_size = min(CONCURRENCY, missing - len(generated_ids), MAX_POOL - repo.count_passages())
+            batch_size = min(
+                CONCURRENCY, missing - len(generated_ids), MAX_POOL - repo.count_passages()
+            )
             if batch_size <= 0:
                 break
 

@@ -1,8 +1,9 @@
 # app/services/transcription_service.py
 
-from openai import OpenAI
 import os
+
 from dotenv import load_dotenv
+from openai import OpenAI
 
 # Load environment variables
 load_dotenv()
@@ -18,10 +19,7 @@ def transcribe_audio(file_path: str) -> str:
     """
     try:
         with open(file_path, "rb") as f:
-            response = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=f
-            )
+            response = client.audio.transcriptions.create(model="whisper-1", file=f)
         return response.text or ""
-    except Exception as e:
+    except Exception:
         return ""

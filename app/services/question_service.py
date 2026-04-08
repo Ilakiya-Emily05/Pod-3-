@@ -1,14 +1,16 @@
 """
 Question Generation Service
 Generates Easy / Medium / Hard open-ended Q&A pairs for a given keyword using OpenAI.
-All questions are open-ended (no MCQ options) — designed for audio/voice answers.
+All questions are open-ended (no MCQ options) â€” designed for audio/voice answers.
 """
-from langchain_openai import ChatOpenAI
+
+import random
+
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
 
 from app.config.settings import settings
 from app.models.interview_system import DifficultyLevel
-
 
 DIFFICULTY_PROMPTS = {
     DifficultyLevel.EASY: (
@@ -64,7 +66,7 @@ def _parse_qa(response_text: str) -> tuple[str, list[str], str]:
             ideal_answer_lines.append(line_s)
 
     ideal_answer = " ".join(ideal_answer_lines).strip()
-    return question, [], ideal_answer  # options=[] — no MCQ
+    return question, [], ideal_answer  # options=[] â€” no MCQ
 
 
 async def generate_qa_for_keyword(
@@ -72,7 +74,7 @@ async def generate_qa_for_keyword(
 ) -> tuple[str, list[str], str]:
     """
     Calls OpenAI and returns (question_text, options, ideal_answer) for a keyword + difficulty.
-    options is always [] — questions are open-ended for audio input.
+    options is always [] â€” questions are open-ended for audio input.
     Returns ("", [], "") if the API key is not configured.
     """
     if not settings.OPENAI_API_KEY:
@@ -101,7 +103,7 @@ async def evaluate_answer(question: str, ideal_answer: str, user_answer: str) ->
     if not settings.OPENAI_API_KEY:
         # Fallback: keyword overlap check
         overlap = len(set(user_answer.lower().split()) & set(ideal_answer.lower().split()))
-        is_correct = overlap >= 3  # noqa: PLR2004
+        is_correct = overlap >= 3
         feedback = "Good answer!" if is_correct else f"Try to cover: {ideal_answer}"
         return is_correct, feedback
 
@@ -199,8 +201,9 @@ async def segment_transcript(questions: list[str], transcript: str) -> dict[int,
         f"Here is the transcript:\n\n{transcript}\n\n"
         "Please segment this transcript into distinct answers for the questions provided. "
         "A candidate may have run out of time and only answered some questions. "
-        "Return a JSON object where the keys are the question indices from the list above and the values are the extracted answer text. "
-        "Format: { \"0\": \"answer...\", \"1\": \"answer...\" }"
+        "Return a JSON object where the keys are the question indices from the list above and "
+        "the values are the extracted answer text. "
+        'Format: { "0": "answer...", "1": "answer..." }'
     )
 
     messages = [
@@ -217,6 +220,7 @@ async def segment_transcript(questions: list[str], transcript: str) -> dict[int,
         text = text.split("```")[-1].split("```")[0].strip()
 
     import json
+
     try:
         data = json.loads(text)
         # Convert keys to int and ensure values are strings
@@ -227,23 +231,43 @@ async def segment_transcript(questions: list[str], transcript: str) -> dict[int,
 
 
 def generate_pronunciation_question(score: float, num_questions: int = 1) -> list[dict[str, str]]:
-    """Backward-compatible helper for legacy pronunciation routes.
+    """
+    Return short read-aloud prompts for pronunciation practice based on a score (0-100).
 
-    Selects question difficulty based on score band and returns a simple
-    question payload expected by older endpoints.
+    This helper is intentionally local/static so the API can run without external credentials.
     """
     if score < 40:
         difficulty = "easy"
-        prompt = "Read this clearly: The weather is pleasant today."
     elif score < 70:
         difficulty = "medium"
-        prompt = "Read this with proper stress: Innovation drives sustainable growth."
     else:
         difficulty = "hard"
-        prompt = (
-            "Read this fluently: Clear communication and consistent practice "
-            "improve professional confidence."
-        )
 
-    return [{"difficulty": difficulty, "question": prompt} for _ in range(max(1, num_questions))]
+    bank: dict[str, list[str]] = {
+        "easy": [
+            "The sky is blue.",
+            "I like to read books.",
+            "Please speak slowly.",
+            "Today is a good day.",
+            "She drinks a cup of tea.",
+        ],
+        "medium": [
+            "The quick brown fox jumps over the lazy dog.",
+            "Please record your answer in a quiet room.",
+            "He bought fresh vegetables from the market.",
+            "Practice makes progress when you stay consistent.",
+            "The meeting starts at half past three.",
+        ],
+        "hard": [
+            "She sells seashells by the seashore, but the shells she sells are surely seashells.",
+            "I confidently articulated the architecture trade-offs under strict latency "
+            "constraints.",
+            "Distinctive diction and deliberate pacing dramatically improve intelligibility.",
+            "An algorithm's efficiency depends on both time complexity and memory locality.",
+            "The enthusiastic entrepreneur emphasized ethical, user-centric product design.",
+        ],
+    }
 
+    sentences = bank[difficulty]
+    selected = random.sample(sentences, k=min(max(num_questions, 1), len(sentences)))
+    return [{"difficulty": difficulty, "question": f"Read aloud: {s}"} for s in selected]

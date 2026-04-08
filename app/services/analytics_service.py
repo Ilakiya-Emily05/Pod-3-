@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import Float, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.assessment_status import AttemptStatus
-from app.models.behav_assessment_model import BehavAttempt, AttemptStatus as BehavAttemptStatus
+from app.models.behav_assessment_model import AttemptStatus as BehavAttemptStatus
+from app.models.behav_assessment_model import BehavAttempt
 from app.models.grammar import GrammarAssessment, GrammarAttempt
 from app.models.interview_system import InterviewSession
 from app.models.listening import ListeningAssessment, ListeningAttempt
@@ -26,14 +27,15 @@ from app.schemas.analytics import (
     TrendPoint,
 )
 
-
 COMPLETED_ATTEMPT_STATUSES = (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED)
 
 
-def _attempt_score_expr(model: type[GrammarAttempt] | type[ListeningAttempt] | type[ReadingAttempt]):
+def _attempt_score_expr(
+    model: type[GrammarAttempt] | type[ListeningAttempt] | type[ReadingAttempt],
+):
     return (
-        (model.correct_answers.cast(Float) / func.nullif(model.total_questions.cast(Float), 0.0)) * 100.0
-    )
+        model.correct_answers.cast(Float) / func.nullif(model.total_questions.cast(Float), 0.0)
+    ) * 100.0
 
 
 class AnalyticsService:
@@ -121,7 +123,9 @@ class AnalyticsService:
             weak_topics=weak_topics,
         )
 
-    async def _get_pronunciation_module_progress(self, user_id: UUID) -> PronunciationModuleProgress:
+    async def _get_pronunciation_module_progress(
+        self, user_id: UUID
+    ) -> PronunciationModuleProgress:
         query = select(
             func.count(PronunciationResult.id),
             func.avg(PronunciationResult.pronunciation_score),
@@ -135,9 +139,7 @@ class AnalyticsService:
         # Completion is normalized to a 10-attempt milestone for dashboard progress.
         completion_pct = round(min(attempts / 10.0, 1.0) * 100.0, 2)
 
-        if attempts == 0:
-            current_level = "Beginner"
-        elif avg_score < 40:
+        if attempts == 0 or avg_score < 40:
             current_level = "Beginner"
         elif avg_score < 70:
             current_level = "Intermediate"
@@ -219,15 +221,21 @@ class AnalyticsService:
             elif created_at is not None:
                 activity.append(created_at)
 
-        interview_query = select(InterviewSession.created_at).where(InterviewSession.user_id == user_id)
+        interview_query = select(InterviewSession.created_at).where(
+            InterviewSession.user_id == user_id
+        )
         interview_result = await self.db.execute(interview_query)
-        activity.extend([created_at for created_at in interview_result.scalars().all() if created_at])
+        activity.extend(
+            [created_at for created_at in interview_result.scalars().all() if created_at]
+        )
 
         pronunciation_query = select(PronunciationResult.created_at).where(
             PronunciationResult.user_id == user_id
         )
         pronunciation_result = await self.db.execute(pronunciation_query)
-        activity.extend([created_at for created_at in pronunciation_result.scalars().all() if created_at])
+        activity.extend(
+            [created_at for created_at in pronunciation_result.scalars().all() if created_at]
+        )
 
         return activity
 
@@ -252,7 +260,9 @@ class AnalyticsService:
                 continue
             score = round(float(avg_score), 2)
             topics.append(
-                HeatmapTopicItem(name=str(topic_name), score=score, status=self._get_score_status(score))
+                HeatmapTopicItem(
+                    name=str(topic_name), score=score, status=self._get_score_status(score)
+                )
             )
 
         reading_query = (
@@ -312,7 +322,7 @@ class AnalyticsService:
         if period not in period_map:
             raise ValueError("Unsupported period")
 
-        cutoff = datetime.now(timezone.utc) - timedelta(days=period_map[period])
+        cutoff = datetime.now(UTC) - timedelta(days=period_map[period])
         daily_scores: dict[datetime, list[float]] = defaultdict(list)
 
         for model in (GrammarAttempt, ReadingAttempt, ListeningAttempt):

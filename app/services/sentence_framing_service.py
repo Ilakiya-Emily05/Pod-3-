@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 from sqlalchemy import select
 
@@ -15,6 +14,8 @@ from app.services.sentence_framing_ai_service import (
 )
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.schemas.sentence_framing import (
@@ -133,7 +134,7 @@ class SentenceFramingService(BaseAssessmentService):
         # 1. Identify subcategory from static registry
         mapping = self._get_subcategory_by_exercise_id(exercise_id)
         if not mapping:
-            # Fallback: check if it's an existing exercise in DB (for backward compat or submissions)
+            # Fallback: check if it's an existing exercise in DB (backward compat or submissions)
             result = await self.db.execute(
                 select(SentenceExercise).where(SentenceExercise.id == exercise_id)
             )
