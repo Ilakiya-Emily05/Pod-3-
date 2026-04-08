@@ -498,7 +498,7 @@ async def submit_batch_answer(
 # ── Section 3: Final Report ──────────────────────────────────────────────────
 
 
-async def aggregate_scores(responses: list[UserResponse]) -> dict:
+async def aggregate_scores(responses: list[UserResponse]) -> tuple[int, dict[str, int]]:
     score_breakdown = {
         "technical_skills": 0,
         "communication": 0,
@@ -520,7 +520,9 @@ async def aggregate_scores(responses: list[UserResponse]) -> dict:
     return overall_score, score_breakdown
 
 
-async def identify_strengths_improvements(responses: list[UserResponse]) -> tuple[list, list]:
+async def identify_strengths_improvements(
+    responses: list[UserResponse],
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     strengths, improvements = [], []
     for r in responses:
         skill_name = getattr(r.question, "skill_name", "General")
@@ -545,7 +547,7 @@ async def identify_strengths_improvements(responses: list[UserResponse]) -> tupl
     return strengths, improvements
 
 
-async def generate_report(session_id: UUID, db: AsyncSession):
+async def generate_report(session_id: UUID, db: AsyncSession) -> dict[str, object]:
     try:
         from app.models.final_reports import FinalReport
     except ModuleNotFoundError as exc:
@@ -623,7 +625,7 @@ async def generate_report(session_id: UUID, db: AsyncSession):
     }
 
 
-async def download_report_pdf(report_id: UUID, db: AsyncSession):
+async def download_report_pdf(report_id: UUID, db: AsyncSession) -> StreamingResponse:
     try:
         from app.models.final_reports import FinalReport
     except ModuleNotFoundError as exc:
