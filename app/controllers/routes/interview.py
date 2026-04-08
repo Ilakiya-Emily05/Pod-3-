@@ -16,6 +16,8 @@ from app.services.interview_service import (
     get_user_sessions,
     start_batch_interview,
     submit_batch_answer,
+    download_report_pdf,
+    generate_report,
 )
 from app.utils.auth import get_current_user_id
 
@@ -90,3 +92,24 @@ async def fetch_mock_result(
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
+
+
+@router.post("/sessions/{session_id}/generate-report")
+async def create_final_report(
+    session_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Section 3: Final Report.
+    Generates a comprehensive final report after a session is completed.
+    """
+    return await generate_report(session_id, db)
+
+
+@router.get("/report/{report_id}/pdf")
+async def get_report_pdf(report_id: UUID, db: AsyncSession = Depends(get_db)):
+    """
+    Section 3: Final Report.
+    Download the PDF of a completed interview report.
+    """
+    return await download_report_pdf(report_id, db)

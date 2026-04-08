@@ -3,6 +3,8 @@ Question Generation Service
 Generates Easy / Medium / Hard open-ended Q&A pairs for a given keyword using OpenAI.
 All questions are open-ended (no MCQ options) — designed for audio/voice answers.
 """
+import random
+
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -227,23 +229,43 @@ async def segment_transcript(questions: list[str], transcript: str) -> dict[int,
 
 
 def generate_pronunciation_question(score: float, num_questions: int = 1) -> list[dict[str, str]]:
-    """Backward-compatible helper for legacy pronunciation routes.
-
-    Selects question difficulty based on score band and returns a simple
-    question payload expected by older endpoints.
     """
-    if score < 40:
+    Return short read-aloud prompts for pronunciation practice based on a score (0-100).
+
+    This helper is intentionally local/static so the API can run without external credentials.
+    """
+    if score < 40:  # noqa: PLR2004
         difficulty = "easy"
-        prompt = "Read this clearly: The weather is pleasant today."
-    elif score < 70:
+    elif score < 70:  # noqa: PLR2004
         difficulty = "medium"
-        prompt = "Read this with proper stress: Innovation drives sustainable growth."
     else:
         difficulty = "hard"
-        prompt = (
-            "Read this fluently: Clear communication and consistent practice "
-            "improve professional confidence."
-        )
 
-    return [{"difficulty": difficulty, "question": prompt} for _ in range(max(1, num_questions))]
+    bank: dict[str, list[str]] = {
+        "easy": [
+            "The sky is blue.",
+            "I like to read books.",
+            "Please speak slowly.",
+            "Today is a good day.",
+            "She drinks a cup of tea.",
+        ],
+        "medium": [
+            "The quick brown fox jumps over the lazy dog.",
+            "Please record your answer in a quiet room.",
+            "He bought fresh vegetables from the market.",
+            "Practice makes progress when you stay consistent.",
+            "The meeting starts at half past three.",
+        ],
+        "hard": [
+            "She sells seashells by the seashore, but the shells she sells are surely seashells.",
+            "I confidently articulated the architecture trade-offs under strict latency constraints.",
+            "Distinctive diction and deliberate pacing dramatically improve intelligibility.",
+            "An algorithm's efficiency depends on both time complexity and memory locality.",
+            "The enthusiastic entrepreneur emphasized ethical, user-centric product design.",
+        ],
+    }
+
+    sentences = bank[difficulty]
+    selected = random.sample(sentences, k=min(max(num_questions, 1), len(sentences)))
+    return [{"difficulty": difficulty, "question": f"Read aloud: {s}"} for s in selected]
 

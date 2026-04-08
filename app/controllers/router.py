@@ -22,7 +22,6 @@ from app.controllers.routes.practice import router as practice_router
 from app.controllers.routes.resume import router as resume_router
 from app.routes.audio_route import router as audio_router
 from app.routes.listening_route import router as listening_module_router
-from app.routes.listening_test_route import router as listening_test_router
 from app.routes.question_route import router as question_router
 
 api_router = APIRouter()
@@ -41,6 +40,13 @@ api_router.include_router(resume_router, prefix="/resume", tags=["Resume Parser"
 
 api_router.include_router(audio_router)
 api_router.include_router(listening_module_router)
-api_router.include_router(listening_test_router)
 api_router.include_router(question_router)
 api_router.include_router(sentence_framing_router)
+
+# Legacy/experimental routes: keep optional so missing deps don't prevent startup.
+try:
+    from app.routes.listening_test_route import router as listening_test_router
+
+    api_router.include_router(listening_test_router)
+except Exception:
+    pass

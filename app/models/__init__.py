@@ -38,6 +38,7 @@ from app.models.reading import (
     ReadingQuestionOption,
 )
 
+from app.models.final_reports import FinalReport
 from app.models.resume import Resume
 from app.models.sentence_framing import SentenceExercise, SentenceSubmission
 from app.models.user import AdminUser, User, UserProfile
@@ -80,4 +81,5 @@ __all__ = [
     "Question",
     "UserResponse",
     "Resume",
+    "FinalReport",
 ]
