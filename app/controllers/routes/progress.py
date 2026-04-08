@@ -22,7 +22,7 @@ router = APIRouter(prefix="/progress", tags=["Progress Tracking"])
     summary="Start a learning module",
     description="Start or resume tracking progress for a learning module",
 )
-async def start_module(
+async def start_module(  # noqa: ANN201
     data: ProgressStart,
     db: AsyncSession = Depends(get_db),
 ):
@@ -44,7 +44,7 @@ async def start_module(
     summary="Complete a learning module",
     description="Mark a module as completed with final score",
 )
-async def complete_module(
+async def complete_module(  # noqa: ANN201
     user_id: UUID,
     module_type: str,
     module_id: UUID,
@@ -78,7 +78,7 @@ async def complete_module(
     summary="Get user progress history",
     description="Retrieve all progress records for a specific user",
 )
-async def get_user_progress(
+async def get_user_progress(  # noqa: ANN201
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
@@ -98,7 +98,7 @@ async def get_user_progress(
     summary="Get user progress summary",
     description="Get summarized statistics of user's progress",
 )
-async def get_user_progress_summary(
+async def get_user_progress_summary(  # noqa: ANN201
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):

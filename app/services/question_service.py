@@ -3,12 +3,12 @@ Question Generation Service
 Generates Easy / Medium / Hard open-ended Q&A pairs for a given keyword using OpenAI.
 All questions are open-ended (no MCQ options) — designed for audio/voice answers.
 """
-from langchain_openai import ChatOpenAI
+
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
 
 from app.config.settings import settings
 from app.models.interview_system import DifficultyLevel
-
 
 DIFFICULTY_PROMPTS = {
     DifficultyLevel.EASY: (
@@ -101,7 +101,7 @@ async def evaluate_answer(question: str, ideal_answer: str, user_answer: str) ->
     if not settings.OPENAI_API_KEY:
         # Fallback: keyword overlap check
         overlap = len(set(user_answer.lower().split()) & set(ideal_answer.lower().split()))
-        is_correct = overlap >= 3  # noqa: PLR2004
+        is_correct = overlap >= 3
         feedback = "Good answer!" if is_correct else f"Try to cover: {ideal_answer}"
         return is_correct, feedback
 
@@ -199,8 +199,8 @@ async def segment_transcript(questions: list[str], transcript: str) -> dict[int,
         f"Here is the transcript:\n\n{transcript}\n\n"
         "Please segment this transcript into distinct answers for the questions provided. "
         "A candidate may have run out of time and only answered some questions. "
-        "Return a JSON object where the keys are the question indices from the list above and the values are the extracted answer text. "
-        "Format: { \"0\": \"answer...\", \"1\": \"answer...\" }"
+        "Return a JSON object where the keys are the question indices from the list above and the values are the extracted answer text. "  # noqa: E501
+        'Format: { "0": "answer...", "1": "answer..." }'
     )
 
     messages = [
@@ -217,6 +217,7 @@ async def segment_transcript(questions: list[str], transcript: str) -> dict[int,
         text = text.split("```")[-1].split("```")[0].strip()
 
     import json
+
     try:
         data = json.loads(text)
         # Convert keys to int and ensure values are strings
@@ -224,4 +225,3 @@ async def segment_transcript(questions: list[str], transcript: str) -> dict[int,
     except (json.JSONDecodeError, ValueError):
         # Last resort fallback
         return {0: transcript}
-

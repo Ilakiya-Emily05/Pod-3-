@@ -96,10 +96,7 @@ async def get_current_user_id(
     try:
         return UUID(user_id_str)
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token: user ID is not a valid UUID",
-        )
+        raise HTTPException(...) from None
 
 
 async def get_current_user(
@@ -130,10 +127,7 @@ async def get_current_user(
     try:
         user_id = UUID(user_id_str)
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token: user ID is not a valid UUID",
-        )
+        raise HTTPException(...) from None
 
     return CurrentUser(user_id=user_id, email=email)
 

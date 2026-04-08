@@ -50,4 +50,4 @@ class UserProgress(Base):
     user = relationship("User", back_populates="progress_records")
 
     def __repr__(self) -> str:
-        return f"<UserProgress(user_id={self.user_id}, module={self.module_type}, status={self.status})>"
+        return f"<UserProgress(user_id={self.user_id}, module={self.module_type}, status={self.status})>"  # noqa: E501

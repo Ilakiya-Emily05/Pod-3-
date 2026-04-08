@@ -4,6 +4,7 @@ Session Analytics Service — Sprint 2 Task 1
 Updates aggregated stats, checks milestones, and records skill scores
 after each completed interview session.
 """
+
 import logging
 from datetime import datetime
 from uuid import UUID

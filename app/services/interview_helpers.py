@@ -2,6 +2,7 @@
 Interview Helpers — shared utilities for interview services.
 Pure functions and async DB helpers with no side effects.
 """
+
 import logging
 from uuid import UUID
 
@@ -22,6 +23,7 @@ FILLER_WORDS: list[str] = ["um", "uh", "like", "so", "you know", "actually", "er
 
 
 # ── Score helpers ─────────────────────────────────────────────────────────────
+
 
 def performance_level(score: int | None) -> str:
     """Map numeric score to a human-readable performance label."""
@@ -49,6 +51,7 @@ def next_difficulty(current: DifficultyLevel, is_correct: bool) -> DifficultyLev
 
 # ── Serialization helpers ─────────────────────────────────────────────────────
 
+
 def safe_dict(value: object) -> dict | None:
     """Return dict or None — never a string 'null'."""
     return value if isinstance(value, dict) else None
@@ -71,12 +74,8 @@ def safe_pronunciation(result: object) -> dict:
         "fluency_score": result.get("fluency_score")
         if isinstance(result.get("fluency_score"), (int, float, type(None)))
         else None,
-        "mistakes": result.get("mistakes")
-        if isinstance(result.get("mistakes"), list)
-        else [],
-        "tips": result.get("tips")
-        if isinstance(result.get("tips"), list)
-        else [],
+        "mistakes": result.get("mistakes") if isinstance(result.get("mistakes"), list) else [],
+        "tips": result.get("tips") if isinstance(result.get("tips"), list) else [],
     }
 
 
@@ -142,6 +141,7 @@ def parse_gap_analysis(gap: str) -> tuple[list[str], list[str]]:
 
 # ── DB query helpers ──────────────────────────────────────────────────────────
 
+
 async def fetch_question(
     db: AsyncSession,
     skill_id: UUID,
@@ -195,7 +195,8 @@ async def get_answered_ids(db: AsyncSession, session_id: UUID) -> list[UUID]:
 
 async def get_response_count(db: AsyncSession, session_id: UUID) -> int:
     """Return count of responses saved for a session."""
-    from sqlalchemy import func  # noqa: PLC0415
+    from sqlalchemy import func
+
     result = await db.execute(
         select(func.count(UserResponse.id)).where(UserResponse.session_id == session_id)
     )

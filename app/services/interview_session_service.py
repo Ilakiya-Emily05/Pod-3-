@@ -1,11 +1,4 @@
-"""
-Interview Session Service — Sprint 2
 
-Handles:
-- Keyword ingestion and question generation
-- AI Practice flow (Section 1)
-- Mock Interview session flow (Section 2)
-"""
 import logging
 import random
 from datetime import datetime
@@ -49,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 # ── Keyword Ingestion ─────────────────────────────────────────────────────────
 
+
 async def ingest_keywords_and_generate(
     db: AsyncSession, user_id: str, keywords: list[str]
 ) -> list[KeySkill]:
@@ -82,9 +76,7 @@ async def _regenerate_questions(db: AsyncSession, user_id: str) -> None:
     for skill in skills:
         for difficulty in DifficultyLevel:
             for _ in range(3):
-                q_text, options, a_text = await generate_qa_for_keyword(
-                    skill.keyword, difficulty
-                )
+                q_text, options, a_text = await generate_qa_for_keyword(skill.keyword, difficulty)
                 if q_text:
                     db.add(
                         Question(
@@ -99,6 +91,7 @@ async def _regenerate_questions(db: AsyncSession, user_id: str) -> None:
 
 
 # ── Section 1: AI Practice ────────────────────────────────────────────────────
+
 
 async def get_practice_question(
     db: AsyncSession,
@@ -165,9 +158,7 @@ async def submit_practice_answer(
     if not user_answer:
         raise HTTPException(status_code=422, detail="No answer provided.")
 
-    is_correct, feedback = await evaluate_answer(
-        question.text, question.answer_key, user_answer
-    )
+    is_correct, feedback = await evaluate_answer(question.text, question.answer_key, user_answer)
     safe_p = safe_pronunciation(pronunciation_result)
 
     db.add(
@@ -187,7 +178,9 @@ async def submit_practice_answer(
     await db.commit()
 
     next_q = await get_practice_question(
-        db, user_id, next_difficulty(question.difficulty, is_correct),
+        db,
+        user_id,
+        next_difficulty(question.difficulty, is_correct),
         extra_exclude_ids=[question_id],
     )
 
@@ -204,6 +197,7 @@ async def submit_practice_answer(
 
 # ── Section 2: Mock Interview ─────────────────────────────────────────────────
 
+
 async def start_interview_session(db: AsyncSession, user_id: str) -> dict:
     """Create a new mock interview session and return the first question."""
     skills = await get_skills_for_user(db, user_id)
@@ -213,9 +207,7 @@ async def start_interview_session(db: AsyncSession, user_id: str) -> dict:
             detail="No skills found. Please ingest keywords first.",
         )
 
-    session = InterviewSession(
-        user_id=user_id, status="active", started_at=datetime.utcnow()
-    )
+    session = InterviewSession(user_id=user_id, status="active", started_at=datetime.utcnow())
     db.add(session)
     await db.flush()
 
@@ -251,9 +243,7 @@ async def submit_batch_answer(
     and session completion with gap analysis + analytics update.
     """
     result = await db.execute(
-        select(InterviewSession)
-        .where(InterviewSession.id == session_id)
-        .options(noload("*"))
+        select(InterviewSession).where(InterviewSession.id == session_id).options(noload("*"))
     )
     session = result.scalar_one_or_none()
     if not session:
@@ -265,7 +255,7 @@ async def submit_batch_answer(
     answered_ids = await get_answered_ids(db, session_id)
 
     current_q_id_str = session.feedback
-    if not current_q_id_str or len(current_q_id_str) != 36:  # noqa: PLR2004
+    if not current_q_id_str or len(current_q_id_str) != 36:
         raise HTTPException(status_code=400, detail="No active question for this session.")
 
     current_q_id = UUID(current_q_id_str)
@@ -316,15 +306,11 @@ async def submit_batch_answer(
     )
     await db.commit()
 
-    answered_ids = answered_ids + [current_q_id]
-    elapsed = (
-        (datetime.utcnow() - session.started_at).total_seconds()
-        if session.started_at
-        else 0
-    )
+    answered_ids = [*answered_ids, current_q_id]
+    elapsed = (datetime.utcnow() - session.started_at).total_seconds() if session.started_at else 0
 
     next_q: Question | None = None
-    if elapsed < 300:  # noqa: PLR2004
+    if elapsed < 300:
         all_skills = await get_skills_for_user(db, session.user_id)
         random.shuffle(all_skills)
         diff = next_difficulty(current_question.difficulty, is_correct)
@@ -386,9 +372,7 @@ async def _finalise_session(
 
     ended_at = datetime.utcnow()
     duration_mins = (
-        round((ended_at - session.started_at).total_seconds() / 60)
-        if session.started_at
-        else None
+        round((ended_at - session.started_at).total_seconds() / 60) if session.started_at else None
     )
 
     session.feedback = gap_analysis
@@ -415,9 +399,7 @@ async def _finalise_session(
 
 async def get_session_feedback(db: AsyncSession, session_id: UUID) -> dict:
     """Return the Gap Analysis for a completed session."""
-    result = await db.execute(
-        select(InterviewSession).where(InterviewSession.id == session_id)
-    )
+    result = await db.execute(select(InterviewSession).where(InterviewSession.id == session_id))
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found.")

@@ -1,6 +1,6 @@
 import io
-import re
 import logging
+import re
 
 log = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ def extract_text(file_bytes: bytes, filename: str = "") -> str:
 def _try_pdfplumber(file_bytes: bytes, filename: str) -> str:
     try:
         import pdfplumber
+
         with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
             pages = []
             for page in pdf.pages:
@@ -34,6 +35,7 @@ def _try_pdfplumber(file_bytes: bytes, filename: str) -> str:
 def _try_pymupdf(file_bytes: bytes, filename: str) -> str:
     try:
         import fitz
+
         doc = fitz.open(stream=file_bytes, filetype="pdf")
         pages = [page.get_text("text") for page in doc]
         doc.close()

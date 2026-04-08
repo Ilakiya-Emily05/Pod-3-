@@ -1,16 +1,14 @@
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession, create_async_engine as async_create_engine
-from sqlalchemy.orm import DeclarativeBase, declarative_base
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
 
 from app.config.settings import settings
 
 
-# ✅ Define Base class - SINGLE instance
 class Base(DeclarativeBase):
     pass
 
 
-# ✅ Engine with NullPool to avoid connection issues
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,  # Disable echo to reduce noise
@@ -18,7 +16,7 @@ engine = create_async_engine(
     poolclass=NullPool,  # Use NullPool to avoid connection pooling issues
 )
 
-# ✅ Session Factory
+
 async_session_factory = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
@@ -28,7 +26,7 @@ async_session_factory = async_sessionmaker(
 )
 
 
-async def get_db():
+async def get_db():  # noqa: ANN201
     """Dependency for providing a database session."""
     async with async_session_factory() as session:
         try:
