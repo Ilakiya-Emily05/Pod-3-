@@ -17,7 +17,6 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-
 def upgrade() -> None:
     """Upgrade schema."""
     # Make this migration idempotent: it was generated on a branch that overlaps
@@ -102,7 +101,6 @@ def upgrade() -> None:
         END $$;
         """
     )
-
 
 
 def downgrade() -> None:

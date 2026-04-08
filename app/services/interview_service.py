@@ -15,7 +15,7 @@ from datetime import datetime
 from io import BytesIO
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
@@ -24,7 +24,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.final_reports import FinalReport
 from app.models.interview_system import (
     DifficultyLevel,
     InterviewSession,
@@ -550,7 +549,9 @@ async def generate_report(session_id: UUID, db: AsyncSession):
     try:
         from app.models.final_reports import FinalReport
     except ModuleNotFoundError as exc:
-        raise HTTPException(status_code=501, detail="Final report model is not available in this deployment") from exc
+        raise HTTPException(
+            status_code=501, detail="Final report model is not available in this deployment"
+        ) from exc
 
     async with db.begin():  # Transaction to ensure atomicity
         session_result = await db.execute(
@@ -626,7 +627,9 @@ async def download_report_pdf(report_id: UUID, db: AsyncSession):
     try:
         from app.models.final_reports import FinalReport
     except ModuleNotFoundError as exc:
-        raise HTTPException(status_code=501, detail="Final report model is not available in this deployment") from exc
+        raise HTTPException(
+            status_code=501, detail="Final report model is not available in this deployment"
+        ) from exc
 
     report_result = await db.execute(select(FinalReport).where(FinalReport.report_id == report_id))
     report = report_result.scalar_one_or_none()
