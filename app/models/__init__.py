@@ -37,7 +37,9 @@ from app.models.reading import (
     ReadingQuestion,
     ReadingQuestionOption,
 )
+
 from app.models.resume import Resume
+from app.models.sentence_framing import SentenceExercise, SentenceSubmission
 from app.models.user import AdminUser, User, UserProfile
 
 __all__ = [
@@ -65,6 +67,8 @@ __all__ = [
     "ReadingAttemptAnswer",
     "ReadingQuestion",
     "ReadingQuestionOption",
+    "SentenceExercise",
+    "SentenceSubmission",
     "TimestampMixin",
     "User",
     "UserProfile",
