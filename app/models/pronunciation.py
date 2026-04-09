@@ -21,7 +21,7 @@ class UserPronunciationProfile(Base):
 
     # Auto-generate both primary key and user_id UUIDs
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), unique=True, nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), unique=True, nullable=False)
 
     current_level = Column(String(20), default="basic", nullable=False)
     overall_score_avg = Column(Numeric(5, 2), default=0)

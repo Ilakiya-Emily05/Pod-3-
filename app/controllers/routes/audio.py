@@ -42,7 +42,7 @@ async def analyze_audio(
     """
     request_id = str(uuid.uuid4())
     start_time = time.time()
-    temp_dir = Path(settings.TEMP_DIR)
+    temp_dir = Path(settings.temp_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     original_suffix = Path(file.filename or "audio.bin").suffix or ".bin"
@@ -149,7 +149,7 @@ async def analyze_audio(
         logger.exception("[%s] analyze_audio failed: %s", request_id, exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Analysis failed: {exc}",
+            detail=f"Analysis failed due to an internal error.",
         ) from exc
     finally:
         for path in (temp_path, wav_path):

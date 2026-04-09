@@ -42,7 +42,7 @@ async def evaluate_listening_answers(
             detail=f"Session has {len(questions or [])} questions, expected 3.",
         )
 
-    temp_dir = Path(settings.TEMP_DIR)
+    temp_dir = Path(settings.temp_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
     temp_files = []
 
@@ -108,7 +108,7 @@ async def evaluate_listening_answers(
         logger.exception("evaluate_listening_answers failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Evaluation failed: {exc}",
+            detail=f"Evaluation failed due to an internal error.",
         )
     finally:
         for path in temp_files:

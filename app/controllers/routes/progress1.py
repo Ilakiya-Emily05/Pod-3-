@@ -41,9 +41,10 @@ def get_dashboard(user_id: uuid.UUID, db: Session = Depends(get_db)):
 
     # Compute completion percentage safely
     completion_pct = 0.0
+    total_exercises = 50
     if hasattr(profile, "exercises_completed") and profile.exercises_completed:
         completion_pct = round(
-            profile.exercises_completed / 50 * 100, 2
+            profile.exercises_completed / total_exercises * 100, 2
         )  # assuming 50 exercises = 100%
 
     # Extract weak phonemes (top 5)

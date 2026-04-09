@@ -6,8 +6,8 @@ from app.config.settings import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# ✅ Chat LLM (text only)
-_chat_llm = AzureChatOpenAI(
+
+get_chat_llm = AzureChatOpenAI(
     azure_endpoint=settings.azure_openai_endpoint,
     api_key=settings.azure_openai_api_key,
     api_version=settings.azure_openai_api_version,
