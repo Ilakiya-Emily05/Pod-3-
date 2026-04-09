@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.ai_generator import AIGeneratorService
 from app.agents.question_agent import QuestionAgent
@@ -13,10 +15,6 @@ from app.schemas.question_schema import QuestionResponse
 from app.schemas.test_session_schema import AnswerResponse, TestSessionResponse
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
-    from sqlalchemy.orm import Session
-
     from app.models.question import Question
     from app.models.test_session import TestSession
 
@@ -35,7 +33,7 @@ TOTAL_SUBTOPICS = sum(len(v) for v in GRAMMAR_FLOW.values())
 class TestService:
     LIMIT = 10
 
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.question_repo = QuestionRepository(db)
         self.session_repo = TestSessionRepository(db)
@@ -44,15 +42,15 @@ class TestService:
             self.question_repo, self.answer_repo, AIGeneratorService()
         )
 
-    def get_questions_by_topic(self, topic: str, subtopic: str) -> list[Question]:
-        self.question_agent.ensure_questions(topic, subtopic, session_id=None)
-        return self.question_repo.get_by_topic(topic, subtopic, self.LIMIT)
+    async def get_questions_by_topic(self, topic: str, subtopic: str) -> list[Question]:
+        await self.question_agent.ensure_questions(topic, subtopic, session_id=None)
+        return await self.question_repo.get_by_topic(topic, subtopic, self.LIMIT)
 
-    def start_test(self, user_id: UUID) -> TestSessionResponse:
-        first_topic = next(iter(GRAMMAR_FLOW))
+    async def start_test(self, user_id: UUID) -> TestSessionResponse:
+        first_topic = list(GRAMMAR_FLOW.keys())[0]
         first_subtopic = GRAMMAR_FLOW[first_topic][0]
 
-        session = self.session_repo.create_session(
+        session = await self.session_repo.create_session(
             user_id=user_id, topic=first_topic, subtopic=first_subtopic
         )
         return TestSessionResponse(
@@ -64,20 +62,25 @@ class TestService:
             total_correct_answers=session.total_correct,
         )
 
-    def get_next_question(self, session_id: int) -> QuestionResponse:
-        session = self.session_repo.get_by_id(session_id)
+    async def get_next_question(self, session_id: UUID, user_id: UUID) -> QuestionResponse:
+        session = await self.session_repo.get_by_id(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
+
+        if session.user_id != user_id:
+            raise HTTPException(
+                status_code=403, detail="Unauthorized: This session does not belong to you"
+            )
 
         if session.status == "COMPLETED":
             raise HTTPException(status_code=400, detail="Practice completed")
 
-        self.question_agent.ensure_questions(
+        await self.question_agent.ensure_questions(
             session.current_topic, session.current_subtopic, session_id
         )
 
-        attempted_ids = self.answer_repo.get_attempted_question_ids(session_id)
-        question = self.question_repo.get_random_question(
+        attempted_ids = await self.answer_repo.get_attempted_question_ids(session_id)
+        question = await self.question_repo.get_random_question(
             session.current_topic, session.current_subtopic, attempted_ids
         )
         if not question:
@@ -91,19 +94,24 @@ class TestService:
             options=question.options,
         )
 
-    def submit_answer(
-        self, session_id: int, question_id: int, selected_answer: str
+    async def submit_answer(
+        self, session_id: UUID, question_id: UUID, selected_answer: str, user_id: UUID
     ) -> AnswerResponse:
-        session = self.session_repo.get_by_id(session_id)
+        session = await self.session_repo.get_by_id(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
-        question = self.question_repo.get_question_by_id(question_id)
+        if session.user_id != user_id:
+            raise HTTPException(
+                status_code=403, detail="Unauthorized: This session does not belong to you"
+            )
+
+        question = await self.question_repo.get_question_by_id(question_id)
         if not question:
             raise HTTPException(status_code=404, detail="Question not found")
 
         is_correct = selected_answer.upper() == question.correct_answer.upper()
-        self.answer_repo.create_user_answer(
+        await self.answer_repo.create_user_answer(
             session_id=session_id,
             question_id=question_id,
             selected_answer=selected_answer,
@@ -133,7 +141,7 @@ class TestService:
         if session.completed_subtopics >= TOTAL_SUBTOPICS:
             session.status = "COMPLETED"
 
-        self.session_repo.update(session)
+        await self.session_repo.update(session)
 
         return AnswerResponse(
             is_correct=is_correct,
@@ -163,8 +171,8 @@ class TestService:
         else:
             session.status = "COMPLETED"
 
-    def get_summary(self, session_id: int, user_id: UUID) -> dict[str, object]:
-        session = self.session_repo.get_by_id(session_id)
+    async def get_summary(self, session_id: UUID, user_id: UUID) -> dict[str, object]:
+        session = await self.session_repo.get_by_id(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
@@ -178,7 +186,7 @@ class TestService:
             if session.total_questions == 0
             else round((session.total_correct / session.total_questions) * 100, 2)
         )
-        answers = self.answer_repo.get_answers_by_session(session_id)
+        answers = await self.answer_repo.get_answers_by_session(session_id)
         subtopic_map = {}
 
         for ans in answers:

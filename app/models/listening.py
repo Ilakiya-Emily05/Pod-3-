@@ -94,7 +94,7 @@ class ListeningAttempt(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    user_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True, index=True)
+    user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     user_email: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
     status: Mapped[AttemptStatus] = mapped_column(
         Enum(AttemptStatus, name="assessment_attempt_status_enum", create_type=False),

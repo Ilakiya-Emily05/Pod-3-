@@ -20,7 +20,11 @@ class BehavQuestion(Base):
     __tablename__ = "behav_questions"
     __table_args__ = {"extend_existing": True}
 
+<<<<<<< HEAD
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)
+=======
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+>>>>>>> origin/development
     question_text: Mapped[str] = mapped_column(Text)
     trait_type: Mapped[str] = mapped_column(String)  # HEXACO trait name
 
@@ -31,10 +35,15 @@ class BehavOption(Base):
     __tablename__ = "behav_options"
     __table_args__ = {"extend_existing": True}
 
+<<<<<<< HEAD
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)
+    question_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("behav_questions.id"))
+=======
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     question_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("behav_questions.id")
     )
+>>>>>>> origin/development
     option_key: Mapped[str] = mapped_column(String)
     option_text: Mapped[str] = mapped_column(Text)
 
@@ -62,7 +71,7 @@ class BehavAttempt(Base):
     __table_args__ = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), index=True)
+    user_id: Mapped[str] = mapped_column(String, index=True)
     status: Mapped[AttemptStatus] = mapped_column(String, default=AttemptStatus.IN_PROGRESS)
 
     # Store finalized results
@@ -85,6 +94,12 @@ class BehavUserAnswer(Base):
     attempt_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("behav_attempts.id")
     )
+<<<<<<< HEAD
+    question_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("behav_questions.id"))
+    option_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("behav_options.id"))
+    user_id: Mapped[str | None] = mapped_column(String, index=True)  # Kept for backward compatibility
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+=======
 
     question_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("behav_questions.id")
@@ -95,6 +110,7 @@ class BehavUserAnswer(Base):
     )  # Kept for backward compatibility
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+>>>>>>> origin/development
 
     attempt: Mapped["BehavAttempt"] = relationship("BehavAttempt", back_populates="answers")
 

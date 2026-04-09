@@ -136,7 +136,7 @@ def generate_listening_module(
     difficulty: str = "medium",
     num_questions: int = 3,
 ) -> dict:
-    session_id = str(uuid.uuid4())
+    session_id = uuid.uuid4()
     try:
         passage = generate_passage(difficulty)
         questions = generate_questions_from_passage(passage, num_questions, difficulty)

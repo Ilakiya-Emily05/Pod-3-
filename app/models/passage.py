@@ -1,13 +1,16 @@
-from datetime import datetime
+from __future__ import annotations
 
-from sqlalchemy import Column, DateTime, Integer, String
+from uuid import UUID, uuid4
 
-from app.config.database import Base
+from sqlalchemy import String
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.models.base import Base, TimestampMixin
 
 
-class Passage(Base):
+class Passage(Base, TimestampMixin):
     __tablename__ = "passages"
 
-    id = Column(Integer, primary_key=True, index=True)
-    text = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    text: Mapped[str] = mapped_column(String, nullable=False)

@@ -1,3 +1,6 @@
+from typing import Dict
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -14,7 +17,7 @@ class QuestionCreate(QuestionBase):
 
 
 class QuestionResponse(BaseModel):
-    id: int
+    id: UUID
     topic: str
     subtopic: str
     question_text: str

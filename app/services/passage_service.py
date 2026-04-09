@@ -2,7 +2,7 @@ import asyncio
 from uuid import UUID
 
 from fastapi import BackgroundTasks, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.passage_repo import PassageRepository
 from app.schemas.passage_schema import (
@@ -25,7 +25,7 @@ from app.services.passage_pool import (
 class PassageService:
     QUESTIONS_PER_PASSAGE = 5
 
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
         self.repo = PassageRepository(db)
 
@@ -42,12 +42,16 @@ class PassageService:
                 status_code=503, detail="Passage pool is warming up. Try again shortly."
             )
 
-        session = self.repo.create_passage_session(user_id=user_id, passage_id=passage_id)
-        self.ensure_question_buffer(session.id, passage_id, background_tasks)
+        session = await self.repo.create_passage_session(user_id=user_id, passage_id=passage_id)
+        await self.ensure_question_buffer(session.id, passage_id, background_tasks)
         return PassageStartResponse(session_id=session.id, status="IN_PROGRESS")
 
     def ensure_passages(self, background_tasks: BackgroundTasks) -> None:
-        total_passages = self.repo.count_passages()
+        # schedule an async check in the background
+        background_tasks.add_task(self._ensure_passages_async, background_tasks)
+
+    async def _ensure_passages_async(self, background_tasks: BackgroundTasks) -> None:
+        total_passages = await self.repo.count_passages()
         if total_passages < MIN_POOL:
             background_tasks.add_task(fill_pool, MIN_POOL)
 
@@ -55,53 +59,57 @@ class PassageService:
         """Synchronously preload passages into the pool up to the target size."""
         asyncio.run(fill_pool(target_size))
 
-    def ensure_question_buffer(
-        self, session_id: int, passage_id: int, background_tasks: BackgroundTasks
+    async def ensure_question_buffer(
+        self, session_id: UUID, passage_id: UUID, background_tasks: BackgroundTasks
     ) -> None:
-        total_questions = self.repo.count_questions_by_passage(passage_id)
-        attempted_questions = self.repo.count_attempted_questions(session_id, passage_id)
+        total_questions = await self.repo.count_questions_by_passage(passage_id)
+        attempted_questions = await self.repo.count_attempted_questions(session_id, passage_id)
         available_questions = total_questions - attempted_questions
         if total_questions < self.QUESTIONS_PER_PASSAGE or available_questions < LOW_BUFFER:
             background_tasks.add_task(fill_pool, MAX_POOL)
 
-    def get_passage(self, session_id: int):
-        session = self.repo.get_passage_session(session_id)
+    async def get_passage(self, session_id: UUID) -> PassageResponse:
+        session = await self.repo.get_passage_session(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
-        passage = self.repo.get_passage_by_id(session.passage_id)
+        passage = await self.repo.get_passage_by_id(session.passage_id)
         if not passage:
             raise HTTPException(status_code=404, detail="Passage not found")
 
         return PassageResponse(session_id=session.id, passage=passage.text)
 
-    def get_questions(
-        self, session_id: int, background_tasks: BackgroundTasks
+    async def get_questions(
+        self, session_id: UUID, background_tasks: BackgroundTasks
     ) -> list[PassageQuestion]:
-        session = self.repo.get_passage_session(session_id)
+        session = await self.repo.get_passage_session(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
-        questions = self.repo.get_questions_by_passage(
+        questions = await self.repo.get_questions_by_passage(
             session.passage_id, limit=self.QUESTIONS_PER_PASSAGE
         )
         if not questions:
-            fresh_passage = self.repo.get_random_passage_with_questions(self.QUESTIONS_PER_PASSAGE)
+            fresh_passage = await self.repo.get_random_passage_with_questions(
+                self.QUESTIONS_PER_PASSAGE
+            )
             if fresh_passage:
                 session.passage_id = fresh_passage.id
-                self.repo.db.commit()
-                questions = self.repo.get_questions_by_passage(
+                await self.repo.db.commit()
+                questions = await self.repo.get_questions_by_passage(
                     fresh_passage.id, limit=self.QUESTIONS_PER_PASSAGE
                 )
 
-        self.ensure_question_buffer(session.id, session.passage_id, background_tasks)
+        await self.ensure_question_buffer(session.id, session.passage_id, background_tasks)
 
         return [
             PassageQuestion(id=q.id, question_text=q.question, options=q.options) for q in questions
         ]
 
-    def submit_answer(self, answer: PassageAnswerRequest, user_id: UUID) -> PassageAnswerResponse:
-        session = self.repo.get_passage_session(answer.session_id)
+    async def submit_answer(
+        self, answer: PassageAnswerRequest, user_id: UUID
+    ) -> PassageAnswerResponse:
+        session = await self.repo.get_passage_session(answer.session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
@@ -110,12 +118,12 @@ class PassageService:
                 status_code=403, detail="Unauthorized: This session does not belong to you"
             )
 
-        question = self.repo.get_question_by_id(answer.question_id)
+        question = await self.repo.get_question_by_id(answer.question_id)
         if not question:
             raise HTTPException(status_code=404, detail="Question not found")
 
         is_correct = answer.selected_answer.upper() == question.correct_answer.upper()
-        self.repo.create_passage_answer(
+        await self.repo.create_passage_answer(
             session_id=answer.session_id,
             question_id=answer.question_id,
             selected_answer=answer.selected_answer,
@@ -124,8 +132,8 @@ class PassageService:
 
         return PassageAnswerResponse(is_correct=is_correct, correct_answer=question.correct_answer)
 
-    def get_summary(self, session_id: int) -> PassageSummaryResponse:
-        answers = self.repo.get_answers_by_session(session_id)
+    async def get_summary(self, session_id: UUID) -> PassageSummaryResponse:
+        answers = await self.repo.get_answers_by_session(session_id)
         total = len(answers)
         correct = sum(1 for a in answers if a.is_correct)
         accuracy = (correct / total * 100) if total > 0 else 0
@@ -133,7 +141,7 @@ class PassageService:
         weak_areas = []
         strong_areas = []
         for answer in answers:
-            question = self.repo.get_question_by_id(answer.question_id)
+            question = await self.repo.get_question_by_id(answer.question_id)
             if question:
                 difficulty = getattr(question, "difficulty", "medium")
                 if not answer.is_correct and difficulty not in weak_areas:

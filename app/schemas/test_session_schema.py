@@ -1,8 +1,10 @@
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict
 
 
 class TestSessionResponse(BaseModel):
-    session_id: int
+    session_id: UUID
     current_topic: str
     current_subtopic: str
     status: str
@@ -13,8 +15,8 @@ class TestSessionResponse(BaseModel):
 
 
 class AnswerRequest(BaseModel):
-    session_id: int
-    question_id: int
+    session_id: UUID
+    question_id: UUID
     selected_answer: str
 
 

@@ -45,7 +45,7 @@ class ReadingService(BaseAssessmentService):
         result = await self.db.execute(
             select(ReadingAttempt)
             .options(selectinload(ReadingAttempt.answers))
-            .where(ReadingAttempt.id == attempt_id, ReadingAttempt.user_id == user_id)
+            .where(ReadingAttempt.id == attempt_id, ReadingAttempt.user_id == str(user_id))
         )
         return result.scalar_one_or_none()
 
@@ -131,7 +131,7 @@ class ReadingService(BaseAssessmentService):
 
         attempt = ReadingAttempt(
             assessment_id=payload.assessment_id,
-            user_id=payload.user_id,
+            user_id=str(payload.user_id),
             user_email=payload.user_email,
             started_at=payload.started_at,
             status=AttemptStatus.IN_PROGRESS,
@@ -166,7 +166,7 @@ class ReadingService(BaseAssessmentService):
                 .selectinload(ReadingAssessment.questions)
                 .selectinload(ReadingQuestion.options),
             )
-            .where(ReadingAttempt.id == attempt_id, ReadingAttempt.user_id == user_id)
+            .where(ReadingAttempt.id == attempt_id, ReadingAttempt.user_id == str(user_id))
         )
         attempt = result.scalar_one_or_none()
         if attempt is None:

@@ -25,28 +25,30 @@ class QuestionAgent:
         self.answer_repo = answer_repo
         self.ai = ai_generator
 
-    def ensure_questions(self, topic: str, subtopic: str, session_id: int | None = None) -> None:
-        total = self.question_repo.count_by_topic_subtopic(topic, subtopic)
+    async def ensure_questions(
+        self, topic: str, subtopic: str, session_id: int | None = None
+    ) -> None:
+        total = await self.question_repo.count_by_topic_subtopic(topic, subtopic)
 
         if session_id is None:
             if total < self.MIN_POOL:
-                self._generate(topic, subtopic, self.MIN_POOL - total)
+                await self._generate(topic, subtopic, self.MIN_POOL - total)
             return None
 
-        attempted = self.answer_repo.count_attempted(session_id, topic, subtopic)
+        attempted = await self.answer_repo.count_attempted(session_id, topic, subtopic)
         available = total - attempted
 
         if total < self.MIN_POOL:
-            self._generate(topic, subtopic, self.MIN_POOL - total)
+            await self._generate(topic, subtopic, self.MIN_POOL - total)
             return None
 
         if available < self.LOW_BUFFER:
-            self._generate(topic, subtopic, 10)
+            await self._generate(topic, subtopic, 10)
             return None
 
         return None
 
-    def _generate(self, topic: str, subtopic: str, count: int) -> None:
+    async def _generate(self, topic: str, subtopic: str, count: int) -> None:
         logger.info(
             "Starting generation for %s/%s: requesting %s questions", topic, subtopic, count
         )
@@ -70,7 +72,7 @@ class QuestionAgent:
                 break
 
             batch_unique = []
-            existing = set(self.question_repo.get_all_question_texts()) | {
+                existing = set(await self.question_repo.get_all_question_texts()) | {
                 str(q.get("question")) for q in all_new if q.get("question") is not None
             }
             for q in batch:
@@ -81,7 +83,7 @@ class QuestionAgent:
                 existing.add(text)
 
             if batch_unique:
-                self.question_repo.bulk_insert(topic, subtopic, batch_unique)
+                await self.question_repo.bulk_insert(topic, subtopic, batch_unique)
                 logger.info(
                     "Inserted %s unique questions for %s/%s",
                     len(batch_unique),

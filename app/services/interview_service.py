@@ -28,7 +28,7 @@ from app.models.interview_system import (
     DifficultyLevel,
     InterviewSession,
     KeySkill,
-    Question,
+    InterviewQuestion as Question,
     UserResponse,
 )
 from app.services.ai_service import generate_narrative_ai  # GPT-4o-mini wrapper

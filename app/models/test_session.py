@@ -1,5 +1,6 @@
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from uuid import uuid4
 
 from app.config.database import Base
 
@@ -7,7 +8,7 @@ from app.config.database import Base
 class TestSession(Base):
     __tablename__ = "test_sessions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4, index=True)
     user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     current_topic = Column(String, nullable=False)
     current_subtopic = Column(String, nullable=False)

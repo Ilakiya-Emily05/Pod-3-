@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
-from sqlalchemy.orm import Session
-from sqlalchemy.sql import func
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.question import Question
 
@@ -12,68 +13,70 @@ if TYPE_CHECKING:
 
 
 class QuestionRepository:
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    def create_question(self, question_data: dict[str, object]) -> Question:
+    async def create_question(self, question_data: dict[str, object]) -> Question:
         question = Question(**question_data)
         self.db.add(question)
-        self.db.commit()
-        self.db.refresh(question)
+        await self.db.commit()
+        await self.db.refresh(question)
         return question
 
-    def get_question_by_id(self, question_id: int) -> Question | None:
-        return self.db.query(Question).filter(Question.id == question_id).first()
+    async def get_question_by_id(self, question_id: UUID) -> Question | None:
+        result = await self.db.execute(select(Question).where(Question.id == question_id))
+        return result.scalar_one_or_none()
 
-    def get_questions_by_topic(self, topic: str) -> list[Question]:
-        return self.db.query(Question).filter(Question.topic == topic).all()
+    async def get_questions_by_topic(self, topic: str) -> list[Question]:
+        result = await self.db.execute(select(Question).where(Question.topic == topic))
+        return list(result.scalars().all())
 
-    def get_questions_by_subtopic(self, topic: str, subtopic: str) -> list[Question]:
-        return (
-            self.db.query(Question)
-            .filter(Question.topic == topic, Question.subtopic == subtopic)
-            .all()
+    async def get_questions_by_subtopic(self, topic: str, subtopic: str) -> list[Question]:
+        result = await self.db.execute(
+            select(Question).where(Question.topic == topic, Question.subtopic == subtopic)
         )
+        return list(result.scalars().all())
 
-    def get_questions_by_topic_and_subtopic(
+    async def get_questions_by_topic_and_subtopic(
         self, topic: str, subtopic: str, limit: int
     ) -> list[Question]:
-        return (
-            self.db.query(Question)
-            .filter(Question.topic == topic, Question.subtopic == subtopic)
+        result = await self.db.execute(
+            select(Question)
+            .where(Question.topic == topic, Question.subtopic == subtopic)
             .order_by(func.random())
             .limit(limit)
-            .all()
         )
+        return list(result.scalars().all())
 
-    def get_by_topic(self, topic: str, subtopic: str, limit: int) -> list[Question]:
-        q = self.db.query(Question).filter(Question.topic == topic, Question.subtopic == subtopic)
+    async def get_by_topic(self, topic: str, subtopic: str, limit: int) -> list[Question]:
+        stmt = select(Question).where(Question.topic == topic, Question.subtopic == subtopic)
         if hasattr(Question, "is_active"):
-            q = q.filter(Question.is_active.is_(True))
-        return q.order_by(func.random()).limit(limit).all()
+            stmt = stmt.where(Question.is_active.is_(True))
+        result = await self.db.execute(stmt.order_by(func.random()).limit(limit))
+        return list(result.scalars().all())
 
-    def get_random_question(
-        self, topic: str, subtopic: str, exclude_ids: list[int]
+    async def get_random_question(
+        self, topic: str, subtopic: str, exclude_ids: list[UUID]
     ) -> Question | None:
-        query = self.db.query(Question).filter(
-            Question.topic == topic, Question.subtopic == subtopic
-        )
+        stmt = select(Question).where(Question.topic == topic, Question.subtopic == subtopic)
         if exclude_ids:
-            query = query.filter(~Question.id.in_(exclude_ids))
-        return query.order_by(func.random()).first()
+            stmt = stmt.where(~Question.id.in_(exclude_ids))
+        result = await self.db.execute(stmt.order_by(func.random()).limit(1))
+        return result.scalar_one_or_none()
 
-    def count_by_topic_subtopic(self, topic: str, subtopic: str) -> int:
-        return (
-            self.db.query(Question)
-            .filter(Question.topic == topic, Question.subtopic == subtopic)
-            .count()
+    async def count_by_topic_subtopic(self, topic: str, subtopic: str) -> int:
+        result = await self.db.execute(
+            select(func.count())
+            .select_from(Question)
+            .where(Question.topic == topic, Question.subtopic == subtopic)
         )
+        return int(result.scalar_one())
 
-    def get_all_question_texts(self) -> list[str]:
-        results = self.db.query(Question.question_text).all()
-        return [r[0] for r in results]
+    async def get_all_question_texts(self) -> list[str]:
+        result = await self.db.execute(select(Question.question_text))
+        return list(result.scalars().all())
 
-    def bulk_insert(
+    async def bulk_insert(
         self, topic: str, subtopic: str, questions: Sequence[dict[str, object]]
     ) -> None:
         objs = []
@@ -88,4 +91,4 @@ class QuestionRepository:
                 )
             )
         self.db.add_all(objs)
-        self.db.commit()
+        await self.db.commit()

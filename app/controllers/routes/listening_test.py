@@ -1,6 +1,7 @@
 import json
 import logging
 from pathlib import Path
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -19,7 +20,7 @@ settings = get_settings()
 
 @router.post("/evaluate", summary="Evaluate all 3 spoken answers for a listening session")
 async def evaluate_listening_answers(
-    session_id: str = Form(..., description="session_id from /module response"),
+    session_id: UUID = Form(..., description="session_id from /module response"),
     audio_1: UploadFile = File(...),
     audio_2: UploadFile = File(...),
     audio_3: UploadFile = File(...),

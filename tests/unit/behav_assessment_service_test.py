@@ -78,12 +78,12 @@ async def test_submit_answer_integration_logic() -> None:
     db = AsyncMock()
     db.add = MagicMock()
     attempt_id = uuid.uuid4()
-    question_id = 1
+    question_id = uuid.uuid4()
     option_key = "A"
 
     # Mock option
     mock_opt = MagicMock()
-    mock_opt.id = 10
+    mock_opt.id = uuid.uuid4()
 
     # Mock attempt
     mock_attempt = MagicMock()
@@ -108,8 +108,15 @@ async def test_submit_bulk_answers_integration_logic() -> None:
         def __init__(self, q_id, opt_key):
             self.question_id = q_id
             self.option_key = opt_key
+<<<<<<< HEAD
+            
+    q1 = uuid.uuid4()
+    q2 = uuid.uuid4()
+    answers = [MockAns(q1, "A"), MockAns(q2, "B")]
+=======
 
     answers = [MockAns(1, "A"), MockAns(2, "B")]
+>>>>>>> origin/development
 
     # Mock attempt
     mock_attempt = MagicMock()
@@ -121,7 +128,7 @@ async def test_submit_bulk_answers_integration_logic() -> None:
 
     # Mock options
     mock_opt = MagicMock()
-    mock_opt.id = 10
+    mock_opt.id = uuid.uuid4()
     mock_opt_result = MagicMock()
     mock_opt_result.scalar_one_or_none.return_value = mock_opt
 
@@ -141,7 +148,7 @@ async def test_calculate_result_integration_logic() -> None:
     mock_attempt = MagicMock()
     mock_attempt.id = attempt_id
     mock_attempt.status = "in_progress"
-    mock_attempt.answers = [MagicMock(option_id=1)]
+    mock_attempt.answers = [MagicMock(option_id=uuid.uuid4())]
     mock_attempt.overall_report = None
     mock_attempt.scores = {}
 
@@ -177,7 +184,7 @@ async def test_submit_answer_invalid_option() -> None:
     db.execute.return_value = mock_result
 
     with pytest.raises(ValueError, match="Invalid option"):
-        await behav_assessment_service.submit_answer(db, uuid.uuid4(), 1, "Z")
+        await behav_assessment_service.submit_answer(db, uuid.uuid4(), uuid.uuid4(), "Z")
 
 
 @pytest.mark.unit
@@ -195,7 +202,7 @@ async def test_submit_answer_invalid_attempt() -> None:
     db.execute.side_effect = [mock_opt_result, mock_attempt_result]
 
     with pytest.raises(ValueError, match="Invalid or inactive attempt"):
-        await behav_assessment_service.submit_answer(db, uuid.uuid4(), 1, "A")
+        await behav_assessment_service.submit_answer(db, uuid.uuid4(), uuid.uuid4(), "A")
 
 
 @pytest.mark.unit
