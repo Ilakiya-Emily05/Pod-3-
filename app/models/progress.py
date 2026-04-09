@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
@@ -14,8 +15,10 @@ class UserProgress(Base):
 
     __tablename__ = "user_progress"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=UUID)
-    user_id: Mapped[str] = mapped_column(String, nullable=False)
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     module_type: Mapped[str] = mapped_column(
         String(50), nullable=False
     )  # reading, listening, grammar

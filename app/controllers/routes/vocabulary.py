@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.config.database import get_session
 from app.services.vocabulary_service import VocabularyService
+from app.utils.auth import get_current_user_id
 from app.schemas.vocabulary_schema import (
     WordsResponse,
     WordItem,
@@ -22,7 +24,14 @@ async def get_words(
     user_id: UUID,
     limit: int = 10,
     db: AsyncSession = Depends(get_session),
+    current_user_id: UUID = Depends(get_current_user_id),
 ):
+    if user_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: This vocabulary data does not belong to you",
+        )
+
     service = VocabularyService(db)
 
     session = await service.create_session(user_id)
@@ -55,7 +64,14 @@ async def get_words(
 async def record_response(
     payload: ResponseRecord,
     db: AsyncSession = Depends(get_session),
+    current_user_id: UUID = Depends(get_current_user_id),
 ):
+    if payload.user_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: This vocabulary response does not belong to you",
+        )
+
     service = VocabularyService(db)
 
     result = await service.record_response(
@@ -77,7 +93,14 @@ async def record_response(
 async def get_stats(
     user_id: UUID,
     db: AsyncSession = Depends(get_session),
+    current_user_id: UUID = Depends(get_current_user_id),
 ):
+    if user_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: This vocabulary data does not belong to you",
+        )
+
     service = VocabularyService(db)
 
     stats = await service.get_stats(user_id)
