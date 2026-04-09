@@ -66,7 +66,7 @@ def recompute_weak_strong_and_score(db: Session, profile: UserPronunciationProfi
 
 def post_exercise_hook(
     db: Session,
-    user_id: int,
+    user_id: uuid.UUID,
     phoneme_results: list[dict],
     time_spent_secs: int,
     current_score: float,
@@ -98,7 +98,7 @@ def post_exercise_hook(
         recompute_weak_strong_and_score(db, profile)
         update_level_progress(profile)
 
-        db.commit()
+        #db.commit()
         return {"status": "success"}
     except Exception as exc:
         db.rollback()
