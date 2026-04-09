@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "powerup-api"
+    app_env: str = "development"  # development | staging | production
     debug: bool = True
 
     api_v1_prefix: str = "/api/v1"
@@ -18,6 +19,14 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     database_url: str = "postgresql+asyncpg://user:password@localhost:5432/powerup_db"
+
+    azure_openai_endpoint: str | None = None
+    azure_openai_api_key: str | None = None
+    azure_openai_api_version: str | None = None
+    azure_openai_deployment: str | None = None
+
+    static_audio_dir: str = "static/audio"
+    temp_dir: str = "temp"
 
     cors_origins: str = "*"
     google_tokeninfo_url: str = "https://oauth2.googleapis.com/tokeninfo"
@@ -47,13 +56,26 @@ class Settings(BaseSettings):
     def PROJECT_NAME(self) -> str:
         return self.app_name
 
+    @field_validator("debug", mode="before")
+    @classmethod
+    def coerce_debug(cls, value: object) -> object:
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"release", "prod", "production"}:
+                return False
+            if normalized in {"dev", "development"}:
+                return True
+        return value
+
     @model_validator(mode="after")
     def validate_secret_key_for_production(self) -> "Settings":
+        env = (self.app_env or "").strip().lower()
+        is_development = env in {"development", "dev", "local"}
         if (
-            not self.debug
+            not is_development
             and self.secret_key == "change-me-to-a-long-random-secret-key-in-production"
         ):
-            msg = "SECRET_KEY must be overridden in non-debug environments"
+            msg = "SECRET_KEY must be overridden outside development"
             raise ValueError(msg)
         return self
 

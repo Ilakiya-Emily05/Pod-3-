@@ -1,6 +1,3 @@
-from sqlalchemy.orm import Session
-from sqlalchemy.sql import func
-from uuid import UUID
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -71,10 +68,19 @@ class PassageRepository:
         return session
 
     async def get_passage_session(self, session_id: UUID) -> PassageSession | None:
-        result = await self.db.execute(select(PassageSession).where(PassageSession.id == session_id))
+        result = await self.db.execute(
+            select(PassageSession).where(PassageSession.id == session_id)
+        )
         return result.scalar_one_or_none()
 
-    async def create_passage_question(self, passage_id: UUID, question_text: str, options: dict, correct_answer: str, difficulty: str) -> ComprehensionQuestion:
+    async def create_passage_question(
+        self,
+        passage_id: UUID,
+        question_text: str,
+        options: dict,
+        correct_answer: str,
+        difficulty: str,
+    ) -> ComprehensionQuestion:
         question = ComprehensionQuestion(
             passage_id=passage_id,
             question=question_text,
@@ -88,32 +94,46 @@ class PassageRepository:
         await self.db.refresh(question)
         return question
 
-    async def get_questions_by_passage(self, passage_id: UUID, limit: int = 5) -> list[ComprehensionQuestion]:
+    async def get_questions_by_passage(
+        self, passage_id: UUID, limit: int = 5
+    ) -> list[ComprehensionQuestion]:
         result = await self.db.execute(
             select(ComprehensionQuestion)
             .where(ComprehensionQuestion.passage_id == passage_id)
             .order_by(func.random())
             .limit(limit)
         )
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     async def count_questions_by_passage(self, passage_id: UUID) -> int:
-        result = await self.db.execute(select(func.count()).select_from(ComprehensionQuestion).where(ComprehensionQuestion.passage_id == passage_id))
+        result = await self.db.execute(
+            select(func.count())
+            .select_from(ComprehensionQuestion)
+            .where(ComprehensionQuestion.passage_id == passage_id)
+        )
         return int(result.scalar_one())
 
     async def get_all_question_texts(self, passage_id: UUID) -> list[str]:
-        result = await self.db.execute(select(ComprehensionQuestion.question).where(ComprehensionQuestion.passage_id == passage_id))
-        return result.scalars().all()
+        result = await self.db.execute(
+            select(ComprehensionQuestion.question).where(ComprehensionQuestion.passage_id == passage_id)
+        )
+        return list(result.scalars().all())
 
     async def get_question_by_id(self, question_id: UUID) -> ComprehensionQuestion | None:
-        result = await self.db.execute(select(ComprehensionQuestion).where(ComprehensionQuestion.id == question_id))
+        result = await self.db.execute(
+            select(ComprehensionQuestion).where(ComprehensionQuestion.id == question_id)
+        )
         return result.scalar_one_or_none()
 
     async def question_text_exists(self, question_text: str) -> bool:
-        result = await self.db.execute(select(ComprehensionQuestion).where(ComprehensionQuestion.question == question_text))
+        result = await self.db.execute(
+            select(ComprehensionQuestion).where(ComprehensionQuestion.question == question_text)
+        )
         return result.scalar_one_or_none() is not None
 
-    async def create_passage_answer(self, session_id: UUID, question_id: UUID, selected_answer: str, is_correct: bool) -> PassageAnswer:
+    async def create_passage_answer(
+        self, session_id: UUID, question_id: UUID, selected_answer: str, is_correct: bool
+    ) -> PassageAnswer:
         answer = PassageAnswer(
             session_id=session_id,
             question_id=question_id,
@@ -127,29 +147,19 @@ class PassageRepository:
         return answer
 
     async def get_answers_by_session(self, session_id: UUID) -> list[PassageAnswer]:
-        result = await self.db.execute(select(PassageAnswer).where(PassageAnswer.session_id == session_id))
+        result = await self.db.execute(
+            select(PassageAnswer).where(PassageAnswer.session_id == session_id)
+        )
         return result.scalars().all()
 
     async def count_attempted_questions(self, session_id: UUID, passage_id: UUID) -> int:
-        stmt = (
+        result = await self.db.execute(
             select(func.count())
             .select_from(PassageAnswer)
             .join(ComprehensionQuestion, ComprehensionQuestion.id == PassageAnswer.question_id)
-            .where(PassageAnswer.session_id == session_id, ComprehensionQuestion.passage_id == passage_id)
+            .where(
+                PassageAnswer.session_id == session_id,
+                ComprehensionQuestion.passage_id == passage_id,
+            )
         )
-        result = await self.db.execute(stmt)
-        return int(result.scalar_one())
-
-    async def get_answers_by_session(self, session_id: UUID) -> list[PassageAnswer]:
-        result = await self.db.execute(select(PassageAnswer).where(PassageAnswer.session_id == session_id))
-        return result.scalars().all()
-
-    async def count_attempted_questions(self, session_id: UUID, passage_id: UUID) -> int:
-        stmt = (
-            select(func.count())
-            .select_from(PassageAnswer)
-            .join(ComprehensionQuestion, ComprehensionQuestion.id == PassageAnswer.question_id)
-            .where(PassageAnswer.session_id == session_id, ComprehensionQuestion.passage_id == passage_id)
-        )
-        result = await self.db.execute(stmt)
         return int(result.scalar_one())

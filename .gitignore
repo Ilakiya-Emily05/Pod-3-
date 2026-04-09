@@ -8,6 +8,7 @@ copilot-instructions.md
 .claude/*
 rule.md
 deployments/*
+Analytics_API_Task.md
 
 # C extensions
 *.so
@@ -212,3 +213,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+.history/

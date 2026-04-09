@@ -1,13 +1,12 @@
-import os
-
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic import BaseModel, Field
 
 from app.config.settings import get_settings
 
+
 # Configuration from environment variables
-def get_llm():
+def get_llm() -> ChatOpenAI | AzureChatOpenAI | None:
     """Lazily initialize the LLM. Supports both Azure and Standard OpenAI."""
     settings = get_settings()
     api_key = settings.openai_api_key
@@ -31,17 +30,17 @@ def get_llm():
 
 
 class AIAnalysisReport(BaseModel):
-    summary: str = Field(
-        description="A brief overview of the candidate's core personality profile."
-    )
+    summary: str = Field(description="A brief overview of the learner's core personality profile.")
     strength: str = Field(
         description="Highlight the most prominent positive traits (scores >= 40)."
     )
     concern: str = Field(
         description="Address the traits that may require development or monitoring (scores < 30)."
     )
-    employment_recommendation: str = Field(
-        description="A final verdict on hiring suitability based on the profile."
+    focus_areas: str = Field(
+        description=(
+            "Specific behavioral areas where the learner can improve or take an adaptive test."
+        )
     )
 
 
@@ -63,16 +62,10 @@ class HEXACOQuestionList(BaseModel):
     questions: list[AIQuestion] = Field(description="A list of assessment questions.")
 
 
-async def generate_personality_report(hexaco_scores: dict) -> dict:
+async def generate_personality_report(hexaco_scores: dict[str, float]) -> dict[str, str]:
     llm = get_llm()
     if not llm:
-        # Mock Fallback Report
-        return {
-            "summary": "Development Mode: The candidate shows a balanced personality profile across most HEXACO dimensions.",
-            "strength": "High integrity and emotional stability are notable strengths in this simulation.",
-            "concern": "No significant concerns identified in this developer fallback mode.",
-            "employment_recommendation": "Highly recommended for further evaluation using real AI credentials.",
-        }
+        raise ValueError("AI Service Unconfigured: Please provide an OpenAI or Azure API Key.")
 
     scores_str = "\n".join(
         [f"{k.replace('_', '-').title()}: {v}" for k, v in hexaco_scores.items()]
@@ -80,10 +73,17 @@ async def generate_personality_report(hexaco_scores: dict) -> dict:
 
     prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", "You are an HR personality evaluation expert."),
+            (
+                "system",
+                (
+                    "You are an Educational and Behavioral Development Expert specialized in the "
+                    "HEXACO model."
+                ),
+            ),
             (
                 "user",
-                "Evaluate the following HEXACO trait scores (Max 5.0 each).\n"
+                "Analyze the following HEXACO trait scores (Max 5.0 each) to provide a personal "
+                "growth report for a learner.\n"
                 "Scores:\n{scores}\n"
                 "Maximum 1 sentence per field. Maximum 4 lines total.",
             ),
@@ -122,9 +122,11 @@ async def generate_assessment_questions() -> list[AIQuestion]:
                     "Generate exactly 10 questions in total.\n"
                     "Traits: {traits}\n"
                     "Instructions:\n"
-                    "1. For each question, FIRST internally select a completely different, highly specific profession, subculture, or unique obscure situation from anywhere in the world.\n"
-                    "2. Base the scenario STRICTLY on the realistic daily challenges of that specific context.\n"
-                    "3. Ensure absolute novelty. It must not sound like a generic psychological assessment.\n"
+                    "1. For each question, FIRST internally select a completely different, highly "
+                    "specific profession, subculture, or unique obscure situation from anywhere "
+                    "in the world.\n"
+                    "2. Base the scenario strictly on realistic daily challenges of that context.\n"
+                    "3. Ensure novelty: it must not sound like a generic psychological assessment.\n"
                     "- Each question: 4 options with scores (1, 2, 4, 5). Likert or situational.\n"
                     "- Do not mention trait names in question text."
                 ),
@@ -134,33 +136,9 @@ async def generate_assessment_questions() -> list[AIQuestion]:
 
     llm = get_llm()
     if not llm:
-        # Mock Fallback Questions
-        mock_questions = [
-            ("Honesty-Humility", "In a professional setting, how would you respond if you noticed a colleague taking credit for your work?"),
-            ("Emotionality", "Describe a time when you had to manage a high-pressure situation under a tight deadline."),
-            ("Extraversion", "How do you typically approach networking events or large professional gatherings?"),
-            ("Agreeableness", "How do you handle disagreements within a team to ensure a productive outcome?"),
-            ("Conscientiousness", "How do you prioritize your tasks when faced with multiple competing deadlines?"),
-            ("Openness", "Tell us about a time you had to adapt to a major change in your workplace or workflow."),
-            ("Honesty-Humility", "If you realized you made a mistake that no one else noticed, what would be your course of action?"),
-            ("Emotionality", "How do you maintain focus and composure when receiving critical feedback?"),
-            ("Extraversion", "When starting a new project, do you prefer collaborating in a large group or working independently first?"),
-            ("Conscientiousness", "What strategies do you use to ensure your work meets high quality standards consistently?"),
-        ]
-        return [
-            AIQuestion(
-                trait=t,
-                question_text=q,
-                question_type="situational",
-                options=[
-                    AIOption(option_text="Option A (High Score)", score=5),
-                    AIOption(option_text="Option B (Moderate High)", score=4),
-                    AIOption(option_text="Option C (Moderate Low)", score=2),
-                    AIOption(option_text="Option D (Low Score)", score=1),
-                ]
-            )
-            for t, q in mock_questions
-        ]
+        raise ValueError(
+            "AI Service Unconfigured: Please provide an API Key to generate questions."
+        )
 
     chain = prompt | llm.with_structured_output(HEXACOQuestionList)
     result = await chain.ainvoke({"traits": ", ".join(traits)})
@@ -186,9 +164,11 @@ async def generate_adaptive_questions(traits: list[str]) -> list[AIQuestion]:
                     "The candidate has shown lower scores in: {traits}.\n"
                     "Generate exactly {count} additional questions (3 per trait).\n"
                     "Instructions:\n"
-                    "1. For each question, FIRST internally select a completely different, highly specific profession, subculture, or unique obscure situation from anywhere in the world.\n"
-                    "2. Base the scenario STRICTLY on the realistic daily challenges of that specific context.\n"
-                    "3. Ensure absolute novelty. It must not sound like a generic psychological assessment.\n"
+                    "1. For each question, FIRST internally select a completely different, highly "
+                    "specific profession, subculture, or unique obscure situation from anywhere "
+                    "in the world.\n"
+                    "2. Base the scenario strictly on realistic daily challenges of that context.\n"
+                    "3. Ensure novelty: it must not sound like a generic psychological assessment.\n"
                     "- Each question: 4 options with scores (1, 2, 4, 5).\n"
                     "- Do not mention trait names in question text."
                 ),
@@ -198,24 +178,9 @@ async def generate_adaptive_questions(traits: list[str]) -> list[AIQuestion]:
 
     llm = get_llm()
     if not llm:
-        # Mock adaptive questions (3 per trait)
-        adaptive_mocks = []
-        for t in traits:
-            for i in range(3):
-                adaptive_mocks.append(
-                    AIQuestion(
-                        trait=t,
-                        question_text=f"Deep-dive scenario {i+1} for {t}: How would you handle a complex situation involving this trait in a team environment?",
-                        question_type="situational",
-                        options=[
-                            AIOption(option_text="Option A (High Score)", score=5),
-                            AIOption(option_text="Option B (Moderate High)", score=4),
-                            AIOption(option_text="Option C (Moderate Low)", score=2),
-                            AIOption(option_text="Option D (Low Score)", score=1),
-                        ]
-                    )
-                )
-        return adaptive_mocks
+        raise ValueError(
+            "AI Service Unconfigured: Please provide an API Key to generate adaptive questions."
+        )
 
     chain = prompt | llm.with_structured_output(HEXACOQuestionList)
     result = await chain.ainvoke({"traits": ", ".join(traits), "count": len(traits) * 3})

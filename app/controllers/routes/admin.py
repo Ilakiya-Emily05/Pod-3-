@@ -1,5 +1,3 @@
-
-from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +9,7 @@ from app.schemas.admin import (
 from app.services.admin_auth_service import admin_signup
 
 router = APIRouter(prefix="/admin", tags=["Admin APIs"])
+
 
 @router.post(
     "/auth/signup",

@@ -1,13 +1,17 @@
 from app.controllers.routes.auth import router as auth_router
+from app.controllers.routes.behav_assessment_routes import router as behav_assessment_router
 from app.controllers.routes.grammar import router as grammar_router
 from app.controllers.routes.listening import router as listening_router
 from app.controllers.routes.onboarding import router as onboarding_router
 from app.controllers.routes.reading import router as reading_router
+from app.controllers.routes.sentence_framing import router as sentence_framing_router
 
 __all__ = [
     "auth_router",
+    "behav_assessment_router",
     "grammar_router",
     "listening_router",
     "onboarding_router",
     "reading_router",
+    "sentence_framing_router",
 ]

@@ -8,7 +8,7 @@ class QuestionBase(BaseModel):
     topic: str
     subtopic: str
     question_text: str
-    options: Dict[str, str]
+    options: dict[str, str]
     correct_answer: str
 
 
@@ -21,6 +21,6 @@ class QuestionResponse(BaseModel):
     topic: str
     subtopic: str
     question_text: str
-    options: Dict[str, str]
+    options: dict[str, str]
 
     model_config = ConfigDict(from_attributes=True)

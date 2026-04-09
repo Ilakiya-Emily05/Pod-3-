@@ -24,6 +24,9 @@ from app.models.reading import (
 from app.models.user import User, UserProfile
 from app.models.analytics.user_progress import UserModuleProgress
 from app.models.analytics.user_streaks import UserStreaks
+from app.models.test_session import TestSession
+from app.models.passage_session import PassageSession
+from app.models.listening1 import ListeningSession
 from app.models.Vocab.vocabulary_session import VocabularySession
 from app.models.Vocab.vocabulary_word import VocabularyWord
 from app.models.Vocab.vocabulary_list import VocabularyList
@@ -42,17 +45,19 @@ __all__ = [
     "ListeningAttemptAnswer",
     "ListeningQuestion",
     "ListeningQuestionOption",
+    "PassageSession",
     "ReadingAssessment",
     "ReadingAttempt",
     "ReadingAttemptAnswer",
     "ReadingQuestion",
     "ReadingQuestionOption",
+    "TestSession",
     "TimestampMixin",
-    "User", "UserProfile",
-    "UserModuleProgress", "UserStreaks"
-]
-
-__all__ += [
+    "User",
+    "UserProfile",
+    "UserModuleProgress",
+    "UserStreaks",
+    "ListeningSession",
     "VocabularySession",
     "VocabularyWord",
     "VocabularyList",

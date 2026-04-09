@@ -13,7 +13,7 @@ from app.schemas.progress import ProgressComplete, ProgressStart
 class ProgressController:
     """Controller for user progress tracking."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
     async def start_module(self, data: ProgressStart) -> UserProgress:
