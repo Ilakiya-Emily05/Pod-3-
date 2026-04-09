@@ -14,6 +14,12 @@ from app.schemas.grammar import (
     GrammarQuestionRead,
     GrammarQuestionUpdate,
 )
+from app.schemas.interview import (
+    BatchSessionOut,
+    MockSessionOut,
+    MockSessionResultOut,
+    StartInterviewRequest,
+)
 from app.schemas.listening import (
     ListeningAssessmentCreate,
     ListeningAssessmentRead,
@@ -46,8 +52,20 @@ from app.schemas.reading import (
     ReadingQuestionRead,
     ReadingQuestionUpdate,
 )
+from app.schemas.resume import (
+    DeleteResponse,
+    InterviewPack,
+    ResumeDetail,
+    ResumeListResponse,
+    ResumeSummary,
+    UploadResponse,
+    resume_to_detail,
+    resume_to_summary,
+)
 
 __all__ = [
+    "BatchSessionOut",
+    "DeleteResponse",
     "GrammarAssessmentCreate",
     "GrammarAssessmentRead",
     "GrammarAssessmentUpdate",
@@ -62,6 +80,7 @@ __all__ = [
     "GrammarQuestionOptionUpdate",
     "GrammarQuestionRead",
     "GrammarQuestionUpdate",
+    "InterviewPack",
     "ListeningAssessmentCreate",
     "ListeningAssessmentRead",
     "ListeningAssessmentUpdate",
@@ -76,6 +95,8 @@ __all__ = [
     "ListeningQuestionOptionUpdate",
     "ListeningQuestionRead",
     "ListeningQuestionUpdate",
+    "MockSessionOut",
+    "MockSessionResultOut",
     "ReadingAssessmentCreate",
     "ReadingAssessmentRead",
     "ReadingAssessmentUpdate",
@@ -90,4 +111,11 @@ __all__ = [
     "ReadingQuestionOptionUpdate",
     "ReadingQuestionRead",
     "ReadingQuestionUpdate",
+    "ResumeDetail",
+    "ResumeListResponse",
+    "ResumeSummary",
+    "StartInterviewRequest",
+    "UploadResponse",
+    "resume_to_detail",
+    "resume_to_summary",
 ]

@@ -52,6 +52,21 @@ def _decode_jwt_payload(
             detail="Invalid token payload",
         )
 
+    required_claims = {
+        "sub": str,
+        "email": str,
+        "role": str,
+        "iat": int,
+        "exp": int,
+    }
+    for claim, expected_type in required_claims.items():
+        claim_value = payload.get(claim)
+        if not isinstance(claim_value, expected_type):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid token: missing or malformed '{claim}' claim",
+            )
+
     return payload
 
 
@@ -80,11 +95,11 @@ async def get_current_user_id(
 
     try:
         return UUID(user_id_str)
-    except ValueError:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token: user ID is not a valid UUID",
-        )
+        ) from err
 
 
 async def get_current_user(
@@ -114,11 +129,11 @@ async def get_current_user(
 
     try:
         user_id = UUID(user_id_str)
-    except ValueError:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token: user ID is not a valid UUID",
-        )
+        ) from err
 
     return CurrentUser(user_id=user_id, email=email)
 
