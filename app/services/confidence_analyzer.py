@@ -7,7 +7,7 @@ import numpy as np
 FILLER_WORDS = ["um", "uh", "like", "so", "you know", "actually"]
 
 
-def compute_clarity(y: Any) -> float:  # noqa: ANN401
+def compute_clarity(y: Any) -> float:
     y_harmonic, y_percussive = librosa.effects.hpss(y)
     signal_power = np.mean(y_harmonic**2)
     noise_power = np.mean(y_percussive**2) + 1e-6

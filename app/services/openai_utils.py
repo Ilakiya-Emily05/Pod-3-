@@ -6,7 +6,7 @@ client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 def generate_question(skills: list) -> str:
-    prompt = f"Ask a short interview question based on these skills: {', '.join(skills)}. Make it concise."  # noqa: E501
+    prompt = f"Ask a short interview question based on these skills: {', '.join(skills)}. Make it concise."
     response = client.chat.completions.create(
         model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}], temperature=0.7
     )

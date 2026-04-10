@@ -10,7 +10,7 @@ from app.config.database import Base
 
 class SessionAnalytics(Base):
     __tablename__ = "session_analytics"
-    __table_args__ = {"extend_existing": True}  # noqa: RUF012
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[str] = mapped_column(String, unique=True, index=True)
@@ -28,7 +28,7 @@ class SessionAnalytics(Base):
 
 class UserMilestone(Base):
     __tablename__ = "user_milestones"
-    __table_args__ = {"extend_existing": True}  # noqa: RUF012
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[str] = mapped_column(String, index=True)
@@ -42,7 +42,7 @@ class UserMilestone(Base):
 
 class SkillScoreHistory(Base):
     __tablename__ = "skill_scores_history"
-    __table_args__ = {"extend_existing": True}  # noqa: RUF012
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[str] = mapped_column(String, index=True)

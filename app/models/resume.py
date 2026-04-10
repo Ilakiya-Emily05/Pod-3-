@@ -1,8 +1,10 @@
 from datetime import datetime
 from uuid import UUID, uuid4
-from sqlalchemy import String, Text, DateTime, Float, JSON, Index, func
+
+from sqlalchemy import JSON, DateTime, Float, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
+
 from app.config.database import Base
 
 
@@ -13,7 +15,9 @@ class Resume(Base):
     user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_size_kb: Mapped[float | None] = mapped_column(Float, nullable=True)
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
     parse_status: Mapped[str] = mapped_column(String(20), default="success", nullable=False)
     parse_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)

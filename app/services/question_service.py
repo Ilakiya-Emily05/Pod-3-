@@ -4,6 +4,9 @@ Generates Easy / Medium / Hard open-ended Q&A pairs for a given keyword using Op
 All questions are open-ended (no MCQ options) — designed for audio/voice answers.
 """
 
+import json
+import random
+
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
@@ -199,7 +202,7 @@ async def segment_transcript(questions: list[str], transcript: str) -> dict[int,
         f"Here is the transcript:\n\n{transcript}\n\n"
         "Please segment this transcript into distinct answers for the questions provided. "
         "A candidate may have run out of time and only answered some questions. "
-        "Return a JSON object where the keys are the question indices from the list above and the values are the extracted answer text. "  # noqa: E501
+        "Return a JSON object where the keys are the question indices from the list above and the values are the extracted answer text. "
         'Format: { "0": "answer...", "1": "answer..." }'
     )
 
@@ -216,8 +219,6 @@ async def segment_transcript(questions: list[str], transcript: str) -> dict[int,
     elif "```" in text:
         text = text.split("```")[-1].split("```")[0].strip()
 
-    import json
-
     try:
         data = json.loads(text)
         # Convert keys to int and ensure values are strings
@@ -225,3 +226,19 @@ async def segment_transcript(questions: list[str], transcript: str) -> dict[int,
     except (json.JSONDecodeError, ValueError):
         # Last resort fallback
         return {0: transcript}
+
+
+def generate_pronunciation_question(score: float, num_questions: int = 1) -> list[dict[str, str]]:
+    # ← THIS FUNCTION (was missing completely!)
+    questions = []
+    for _ in range(num_questions):
+        question = {
+            "question": f"What is the pronunciation of the word with score {score}?",
+            "options": [
+                {"text": "Option A", "is_correct": random.random() < score},
+                {"text": "Option B", "is_correct": random.random() < score},
+                {"text": "Option C", "is_correct": random.random() < score},
+            ],
+        }
+        questions.append(question)
+    return questions

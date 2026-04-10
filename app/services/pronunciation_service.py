@@ -45,18 +45,18 @@ VALID_IPA: set[str] = {
     "j",
     "w",
     "i",
-    "ɪ",  # noqa: RUF001
+    "ɪ",
     "e",
     "ɛ",
     "æ",
-    "ɑ",  # noqa: RUF001
+    "ɑ",
     "ɔ",
     "oʊ",
     "u",
     "ʊ",
     "ə",
     "ʌ",
-    "aɪ",  # noqa: RUF001
+    "aɪ",
     "aʊ",
     "ɔɪ",
     "tʃ",
@@ -81,7 +81,7 @@ def split_ipa(ipa: str) -> list[str]:
     Tokenise an IPA string into a list of phoneme tokens.
     Multi-character digraphs are kept together (e.g. 'tʃ', 'aɪ').
     Stress markers and spaces are dropped.
-    """  # noqa: RUF002
+    """
     tokens: list[str] = []
     i = 0
     while i < len(ipa):
@@ -94,7 +94,7 @@ def split_ipa(ipa: str) -> list[str]:
                 break
         if not matched:
             ch = ipa[i]
-            if ch not in ("ˈ", "ˌ", " "):  # noqa: RUF001
+            if ch not in ("ˈ", "ˌ", " "):
                 tokens.append(ch)
             i += 1
     return tokens

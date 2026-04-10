@@ -6,12 +6,12 @@ Create Date: 2026-04-02 19:35:00.000000
 
 """
 
-from typing import Sequence
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "e4f5a6b7c8d9"
@@ -39,9 +39,11 @@ def _index_names(table_name: str) -> set[str]:
 
 
 def _assert_no_null_uuid_user_ids(table_name: str) -> None:
-    count = op.get_bind().execute(
-        sa.text(f"SELECT COUNT(*) FROM {table_name} WHERE uuid_user_id IS NULL")
-    ).scalar_one()
+    count = (
+        op.get_bind()
+        .execute(sa.text(f"SELECT COUNT(*) FROM {table_name} WHERE uuid_user_id IS NULL"))
+        .scalar_one()
+    )
     if count > 0:
         raise RuntimeError(
             f"Cannot finalize UUID cutover: {table_name}.uuid_user_id has {count} NULL rows"
@@ -85,7 +87,9 @@ def downgrade() -> None:
             op.add_column(table_name, sa.Column("user_id", sa.String(), nullable=True))
 
         # Restore user_id from UUID text to maintain backward compatibility.
-        op.execute(sa.text(f"UPDATE {table_name} SET user_id = uuid_user_id::text WHERE user_id IS NULL"))
+        op.execute(
+            sa.text(f"UPDATE {table_name} SET user_id = uuid_user_id::text WHERE user_id IS NULL")
+        )
 
         op.alter_column(
             table_name,

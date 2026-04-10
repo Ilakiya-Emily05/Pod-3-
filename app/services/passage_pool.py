@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import random
 import threading
 
@@ -7,7 +8,6 @@ from sqlalchemy.orm import Session
 from app.agents.tools.passage_tool import generate_passage_with_questions
 from app.config.database import get_db
 from app.repositories.passage_repo import PassageRepository
-
 
 MIN_POOL = 10
 LOW_BUFFER = 5
@@ -141,7 +141,9 @@ async def fill_pool(target_size: int) -> None:
             if repo.count_passages() >= MAX_POOL:
                 break
 
-            batch_size = min(CONCURRENCY, missing - len(generated_ids), MAX_POOL - repo.count_passages())
+            batch_size = min(
+                CONCURRENCY, missing - len(generated_ids), MAX_POOL - repo.count_passages()
+            )
             if batch_size <= 0:
                 break
 
@@ -152,10 +154,8 @@ async def fill_pool(target_size: int) -> None:
 
         _push_passage_ids(generated_ids)
     finally:
-        try:
+        with contextlib.suppress(StopIteration):
             next(db_gen)
-        except StopIteration:
-            pass
 
 
 async def preload_initial_pool() -> None:
@@ -165,10 +165,8 @@ async def preload_initial_pool() -> None:
         _seed_from_existing_passages(db, MIN_POOL)
         await fill_pool(MIN_POOL)
     finally:
-        try:
+        with contextlib.suppress(StopIteration):
             next(db_gen)
-        except StopIteration:
-            pass
 
 
 async def refill_pool_loop() -> None:

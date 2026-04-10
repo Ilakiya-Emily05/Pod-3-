@@ -2,6 +2,7 @@
 Interview Practice Service — Section 1: AI Practice flow.
 Handles keyword ingestion, question generation, and practice answer evaluation.
 """
+
 import logging
 import random
 from datetime import datetime
@@ -72,9 +73,7 @@ async def regenerate_questions(db: AsyncSession, user_id: str) -> None:
     for skill in skills:
         for difficulty in DifficultyLevel:
             for _ in range(3):
-                q_text, options, a_text = await generate_qa_for_keyword(
-                    skill.keyword, difficulty
-                )
+                q_text, options, a_text = await generate_qa_for_keyword(skill.keyword, difficulty)
                 if q_text:
                     db.add(
                         Question(
@@ -156,9 +155,7 @@ async def submit_practice_answer(
     if not user_answer:
         raise HTTPException(status_code=422, detail="No answer provided.")
 
-    is_correct, feedback = await evaluate_answer(
-        question.text, question.answer_key, user_answer
-    )
+    is_correct, feedback = await evaluate_answer(question.text, question.answer_key, user_answer)
     safe_p = safe_pronunciation(pronunciation_result)
 
     db.add(

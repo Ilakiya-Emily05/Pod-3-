@@ -1,4 +1,4 @@
-from sqlalchemy import Column, JSON, Integer, String
+from sqlalchemy import JSON, Column, Integer, String
 
 from app.config.database import Base
 

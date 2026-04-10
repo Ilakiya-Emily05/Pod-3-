@@ -7,7 +7,7 @@ class QuestionAgent:
     MIN_POOL = 25
     LOW_BUFFER = 5
 
-    def __init__(self, question_repo, answer_repo, ai_generator):
+    def __init__(self, question_repo, answer_repo, ai_generator) -> None:
         self.question_repo = question_repo
         self.answer_repo = answer_repo
         self.ai = ai_generator
@@ -31,7 +31,7 @@ class QuestionAgent:
 
         return
 
-    def _generate(self, topic, subtopic, count):
+    def _generate(self, topic, subtopic, count) -> None:
         logger.info(f"Starting generation for {topic}/{subtopic}: requesting {count} questions")
         chunk = 5
         remaining = count
@@ -40,10 +40,12 @@ class QuestionAgent:
         while remaining > 0:
             to_request = min(chunk, remaining)
             try:
-                batch = self.ai.generate_questions(topic=topic, subtopic=subtopic, difficulty="medium", count=to_request)
+                batch = self.ai.generate_questions(
+                    topic=topic, subtopic=subtopic, difficulty="medium", count=to_request
+                )
                 logger.debug(f"Batch request returned {len(batch) if batch else 0} questions")
             except Exception as e:
-                logger.error(f"Generation failed in batch loop: {type(e).__name__}: {str(e)}")
+                logger.error(f"Generation failed in batch loop: {type(e).__name__}: {e!s}")
                 break
 
             if not batch:
@@ -51,7 +53,9 @@ class QuestionAgent:
                 break
 
             batch_unique = []
-            existing = set(self.question_repo.get_all_question_texts()) | {q["question"] for q in all_new}
+            existing = set(self.question_repo.get_all_question_texts()) | {
+                q["question"] for q in all_new
+            }
             for q in batch:
                 text = q.get("question")
                 if not text or text in existing:
@@ -66,4 +70,6 @@ class QuestionAgent:
 
             remaining -= to_request
 
-        logger.info(f"Generation complete: inserted {len(all_new)} total questions for {topic}/{subtopic}")
+        logger.info(
+            f"Generation complete: inserted {len(all_new)} total questions for {topic}/{subtopic}"
+        )

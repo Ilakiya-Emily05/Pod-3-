@@ -1,7 +1,7 @@
 # services/tts_service.py
-import os
-from gtts import gTTS
 from pathlib import Path
+
+from gtts import gTTS
 
 # Directory to save generated audio
 AUDIO_DIR = Path("app/static/audio")
@@ -18,6 +18,5 @@ def text_to_speech(text: str, filename: str = "generated_passage.mp3") -> str:
         tts = gTTS(text=text, lang="en")
         tts.save(str(filepath))
         return f"/static/audio/{filename}"
-    except Exception as e:
-        
+    except Exception:
         return ""

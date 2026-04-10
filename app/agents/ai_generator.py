@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import List
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -20,11 +19,11 @@ class GrammarQuestion(BaseModel):
 
 
 class GrammarQuestionsOutput(BaseModel):
-    questions: List[GrammarQuestion]
+    questions: list[GrammarQuestion]
 
 
 class AIGeneratorService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.settings = get_settings()
         self.model = os.getenv("OPENAI_MODEL", self.settings.OPENAI_MODEL)
 
@@ -35,7 +34,9 @@ class AIGeneratorService:
             temperature=0.7,
         )
 
-    def generate_questions(self, topic: str, difficulty: str, count: int, subtopic: str | None = None) -> List[dict]:
+    def generate_questions(
+        self, topic: str, difficulty: str, count: int, subtopic: str | None = None
+    ) -> list[dict]:
         try:
             prompt = ChatPromptTemplate.from_messages(
                 [
@@ -46,7 +47,9 @@ class AIGeneratorService:
                     ),
                 ]
             )
-            chain = prompt | self._llm().with_structured_output(GrammarQuestionsOutput, method="function_calling")
+            chain = prompt | self._llm().with_structured_output(
+                GrammarQuestionsOutput, method="function_calling"
+            )
             result = chain.invoke(
                 {
                     "topic": topic,
@@ -58,5 +61,7 @@ class AIGeneratorService:
             logger.info(f"Generated {len(result.questions)} questions for {topic}/{subtopic}")
             return [question.model_dump() for question in result.questions]
         except Exception as e:
-            logger.error(f"AI generation failed for topic={topic}, subtopic={subtopic}, error={type(e).__name__}: {str(e)}")
+            logger.error(
+                f"AI generation failed for topic={topic}, subtopic={subtopic}, error={type(e).__name__}: {e!s}"
+            )
             raise

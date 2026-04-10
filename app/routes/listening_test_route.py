@@ -1,11 +1,13 @@
 # app/routes/listening_audio_eval_route.py
 
-from fastapi import APIRouter, UploadFile, Form, Depends, Request
-from fastapi.responses import JSONResponse
-import os
-from sqlalchemy.orm import Session
-from openai import OpenAI
+import contextlib
 import json
+import os
+
+from fastapi import APIRouter, Depends, Form, Request, UploadFile
+from fastapi.responses import JSONResponse
+from openai import OpenAI
+from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.models.listening_model import ListeningAttempt
@@ -13,6 +15,7 @@ from app.models.listening_model import ListeningAttempt
 router = APIRouter(prefix="/listening", tags=["Listening Evaluation"])
 
 client = OpenAI()
+
 
 def get_whisper_model(request: Request):
     return request.app.state.whisper_model
@@ -42,8 +45,7 @@ Return STRICT JSON in this format:
 """
 
     resp = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
+        model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}]
     )
 
     # Safe JSON parsing
@@ -51,11 +53,7 @@ Return STRICT JSON in this format:
         data = json.loads(resp.choices[0].message.content)
         return data
     except Exception:
-        return {
-            "relevance": 0,
-            "correctness": 0,
-            "feedback": "Model returned invalid JSON"
-        }
+        return {"relevance": 0, "correctness": 0, "feedback": "Model returned invalid JSON"}
 
 
 # ---------------------------------------------
@@ -65,8 +63,8 @@ Return STRICT JSON in this format:
 async def evaluate_listening_audio(
     question_text: str = Form(...),
     file: UploadFile = None,
-    model = Depends(get_whisper_model),
-    db: Session = Depends(get_db)
+    model=Depends(get_whisper_model),
+    db: Session = Depends(get_db),
 ):
     if file is None:
         return JSONResponse({"error": "No audio file uploaded"}, status_code=400)
@@ -101,10 +99,8 @@ async def evaluate_listening_audio(
     db.refresh(attempt)
 
     # Delete temp file
-    try:
+    with contextlib.suppress(BaseException):
         os.remove(temp_path)
-    except:
-        pass
 
     # Response
     return {
@@ -112,5 +108,5 @@ async def evaluate_listening_audio(
         "user_transcript": user_transcript,
         "relevance": semantic["relevance"],
         "correctness": semantic["correctness"],
-        "feedback": semantic["feedback"]
+        "feedback": semantic["feedback"],
     }

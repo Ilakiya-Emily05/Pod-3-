@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.utils.auth import get_current_user 
+from app.models.user import User
 from app.schemas.passage_schema import (
     PassageAnswerRequest,
     PassageAnswerResponse,
@@ -13,8 +13,7 @@ from app.schemas.passage_schema import (
 )
 from app.services.passage_service import PassageService
 from app.services.user_activity_service import UserActivityService
-from app.models.user import User
-
+from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/reading", tags=["Reading"])
 

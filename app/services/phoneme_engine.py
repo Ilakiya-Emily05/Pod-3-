@@ -1,16 +1,13 @@
-
-
 # pronunciation_engine.py
-import os
 import json
+import os
 import re
+
 from dotenv import load_dotenv
 from openai import OpenAI
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-
 
 
 # -------------------------------
@@ -32,13 +29,12 @@ TEXT:
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=200,
-            temperature=0.0
+            temperature=0.0,
         )
         ipa = res.choices[0].message.content.strip()
         ipa = ipa.replace("/", "").replace("[", "").replace("]", "")
         return ipa
-    except Exception as e:
-       
+    except Exception:
         return ""
 
 
@@ -72,7 +68,7 @@ Each element must be:
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
-            max_tokens=300
+            max_tokens=300,
         )
 
         content = res.choices[0].message.content.strip()
@@ -81,8 +77,7 @@ Each element must be:
             return []
 
         return json.loads(match.group(0))
-    except Exception as e:
-       
+    except Exception:
         return []
 
 
@@ -112,7 +107,7 @@ Return ONLY a JSON list of strings.
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
-            max_tokens=120
+            max_tokens=120,
         )
 
         content = res.choices[0].message.content.strip()
@@ -150,7 +145,7 @@ def levenshtein(a: str, b: str) -> int:
         curr = [i]
         for j, cb in enumerate(b, 1):
             cost = 0 if ca == cb else 1
-            curr.append(min(prev[j] + 1, curr[j-1] + 1, prev[j-1] + cost))
+            curr.append(min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost))
         prev = curr
     return prev[-1]
 
@@ -211,5 +206,5 @@ def compute_pronunciation_scores(reference_text: str, transcript: str):
         "phoneme_score": phoneme_score,
         "fluency_score": fluency_score,
         "mistakes": mistakes,
-        "tips": tips
+        "tips": tips,
     }

@@ -119,7 +119,7 @@ class DeleteResponse(BaseModel):
 # ── Conversion helpers ────────────────────────────────────────────────────────
 
 
-def resume_to_detail(r) -> ResumeDetail:  # noqa: ANN001
+def resume_to_detail(r) -> ResumeDetail:
     """Convert SQLAlchemy Resume row → ResumeDetail schema."""
     return ResumeDetail(
         id=r.id,
@@ -154,7 +154,7 @@ def resume_to_detail(r) -> ResumeDetail:  # noqa: ANN001
     )
 
 
-def resume_to_summary(r) -> ResumeSummary:  # noqa: ANN001
+def resume_to_summary(r) -> ResumeSummary:
     return ResumeSummary(
         id=r.id,
         filename=r.filename,

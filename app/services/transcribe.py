@@ -1,7 +1,9 @@
 import os
 import tempfile
-from pydub import AudioSegment
+
 from openai import OpenAI
+from pydub import AudioSegment
+
 from app.config.settings import settings
 
 
@@ -25,10 +27,7 @@ async def transcribe_audio(file_path: str) -> str:
 
     try:
         with open(compressed_path, "rb") as f:
-            response = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=f
-            )
+            response = client.audio.transcriptions.create(model="whisper-1", file=f)
     finally:
         if os.path.exists(compressed_path):
             os.remove(compressed_path)

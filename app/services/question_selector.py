@@ -1,7 +1,8 @@
 # services/question_selector.py
 import random
-from typing import Dict
+
 from app.data.questions import QUESTIONS
+
 
 class QuestionGenerationService:
     """
@@ -23,7 +24,7 @@ class QuestionGenerationService:
             return "advanced"
         return "very_difficult"
 
-    def generate_question(self, score: float) -> Dict[str, str]:
+    def generate_question(self, score: float) -> dict[str, str]:
         """
         Returns a dictionary with:
           - difficulty: str
@@ -32,5 +33,7 @@ class QuestionGenerationService:
         normalized = score / 100.0
         difficulty = self.get_difficulty(normalized)
         question_list = QUESTIONS.get(difficulty, [])
-        question_data = random.choice(question_list) if question_list else {"text": "Practice reading aloud."}
+        question_data = (
+            random.choice(question_list) if question_list else {"text": "Practice reading aloud."}
+        )
         return {"difficulty": difficulty, "question": question_data["text"]}

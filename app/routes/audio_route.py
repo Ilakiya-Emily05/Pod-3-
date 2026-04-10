@@ -15,6 +15,7 @@ from app.utils.auth import get_current_user_id
 
 router = APIRouter(prefix="/test", tags=["pronunciation"])
 
+
 @router.post("/analyze")
 async def analyze_audio(
     request: Request,
@@ -42,11 +43,7 @@ async def analyze_audio(
         transcript = transcribe_audio(wav_path)
 
         # Pronunciation scoring
-        result = compute_pronunciation_scores(
-            reference_text,
-            transcript
-           
-        )
+        result = compute_pronunciation_scores(reference_text, transcript)
 
         phoneme_score = result.get("phoneme_score", 0)
         fluency_score = result.get("fluency_score", 0)
@@ -67,7 +64,7 @@ async def analyze_audio(
         save_pronunciation_result(db, db_data)
 
         # Next question
-        next_q = generate_pronunciation_question(phoneme_score)
+        generate_pronunciation_question(phoneme_score)
 
         # Final output
         return {
@@ -82,5 +79,5 @@ async def analyze_audio(
     except Exception as e:
         return {
             "error": str(e),
-            "message": "Failed to process audio. Ensure the file is valid and in a compatible audio format."
+            "message": "Failed to process audio. Ensure the file is valid and in a compatible audio format.",
         }

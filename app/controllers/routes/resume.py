@@ -1,8 +1,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,7 +31,7 @@ async def upload_resume(
     file: UploadFile = File(..., description="Resume PDF file"),
     user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, object] | JSONResponse:
+) -> dict:
     """
     Upload and parse resume. Requires JWT authentication.
     The user_id is extracted from the authenticated JWT token.
@@ -40,21 +39,15 @@ async def upload_resume(
 
     try:
         if not file.filename.lower().endswith(".pdf"):
-            return JSONResponse(
-                status_code=400,
-                content={"error": "Only PDF files are supported"},
-            )
+            raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
         file_bytes = await file.read()
         if len(file_bytes) > MAX_BYTES:
-            return JSONResponse(status_code=413, content={"error": "File too large"})
+            raise HTTPException(status_code=413, detail="File too large")
 
         raw_text = extract_text(file_bytes, file.filename)
         if not raw_text.strip():
-            return JSONResponse(
-                status_code=422,
-                content={"error": "Could not extract text"},
-            )
+            raise HTTPException(status_code=422, detail="Could not extract text")
 
         parsed = parse_resume(raw_text)
 
@@ -85,19 +78,18 @@ async def upload_resume(
             gap_areas=parsed.get("gap_areas", []),
             parse_status="success",
         )
+
         db.add(resume)
         await db.commit()
         await db.refresh(resume)
 
-        # TRIGGER UNIFIED FLOW: Ingest keywords for testing
-        # We use interview_topics or skills for question generation
+        # Trigger keyword ingestion + question generation
         keywords_to_ingest = resume.interview_topics or resume.skills
         if keywords_to_ingest:
-            # TRIGGER UNIFIED FLOW: Ingest keywords for testing
             await ingest_keywords_and_generate(
                 db,
                 user_id=user_id,
-                keywords=keywords_to_ingest[:5],  # limit to 5 main topics for performance
+                keywords=keywords_to_ingest[:5],  # limit for performance
             )
 
         return {
@@ -106,26 +98,37 @@ async def upload_resume(
             "resume": resume_to_detail(resume),
         }
 
+    except HTTPException:
+        # Re-raise FastAPI exceptions directly
+        raise
+
     except Exception as e:
         log.error(f"Upload failed: {e}", exc_info=True)
         await db.rollback()
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/parse/{resume_id}", summary="Get parsed resume data")
+@router.get(
+    "/parse/{resume_id}",
+    response_model=ResumeDetail,
+    summary="Get parsed resume data",
+)
 async def get_parsed_resume(
     resume_id: str,
     user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> ResumeDetail | JSONResponse:
+):
     """Get resume data. User can only access their own resumes."""
+
     stmt = select(Resume).filter(
         Resume.id == resume_id,
         Resume.user_id == str(user_id),
     )
+
     result = await db.execute(stmt)
     resume = result.scalar_one_or_none()
 
     if not resume:
-        return JSONResponse(status_code=404, content={"error": "Resume not found"})
+        raise HTTPException(status_code=404, detail="Resume not found")
+
     return resume_to_detail(resume)

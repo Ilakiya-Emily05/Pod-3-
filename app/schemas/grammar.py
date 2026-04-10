@@ -1,14 +1,10 @@
-from datetime import datetime, timezone
-
-UTC = timezone.utc
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-
 from app.models.assessment_status import AttemptStatus, CEFRLevel
 from app.utils.validators import validate_cefr_result_level
-
+UTC = UTC
 
 class GrammarQuestionOptionBase(BaseModel):
     option_text: str = Field(min_length=1)

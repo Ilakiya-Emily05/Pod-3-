@@ -26,7 +26,7 @@ class UserProgress(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     score: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
-    
+
     # HEXACO traits (for behavioral module tracking)
     honesty_humility: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
     emotionality: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
@@ -50,4 +50,4 @@ class UserProgress(Base):
     user = relationship("User", back_populates="progress_records")
 
     def __repr__(self) -> str:
-        return f"<UserProgress(user_id={self.user_id}, module={self.module_type}, status={self.status})>"  # noqa: E501
+        return f"<UserProgress(user_id={self.user_id}, module={self.module_type}, status={self.status})>"

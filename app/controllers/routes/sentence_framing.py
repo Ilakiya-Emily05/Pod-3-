@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import get_db
 from app.schemas.sentence_framing import (
-    CategoryRead,
     SentenceFramingRead,
     SentenceGenerateRequest,
     SentenceSubmissionCreate,
@@ -19,9 +18,7 @@ router = APIRouter(prefix="/sentence-framing", tags=["sentence-framing"])
 logger = logging.getLogger(__name__)
 
 
-
-@router.get("/exercises", response_model=dict[str, list[CategoryRead]])
-
+@router.get("/exercises", response_model=None)
 async def list_sentence_categories(
     db: AsyncSession = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id),

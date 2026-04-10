@@ -10,12 +10,11 @@ class Base(DeclarativeBase):
 
 
 engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=False,  # Disable echo to reduce noise
+    settings.database_url,
+    echo=False,
     future=True,
-    poolclass=NullPool,  # Use NullPool to avoid connection pooling issues
+    poolclass=NullPool,
 )
-
 
 async_session_factory = async_sessionmaker(
     bind=engine,
@@ -26,10 +25,18 @@ async_session_factory = async_sessionmaker(
 )
 
 
-async def get_db():  # noqa: ANN201
+async def get_db() -> AsyncSession:
     """Dependency for providing a database session."""
     async with async_session_factory() as session:
         try:
             yield session
         finally:
             await session.close()
+
+
+async def init_db() -> None:
+    """Create all tables on startup."""
+    import app.models  # noqa: F401
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)

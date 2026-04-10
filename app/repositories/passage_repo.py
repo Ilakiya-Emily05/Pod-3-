@@ -8,7 +8,7 @@ from app.models.passage_session import PassageSession
 
 
 class PassageRepository:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session) -> None:
         self.db = db
 
     def create_passage(self, text: str) -> Passage:
@@ -63,7 +63,14 @@ class PassageRepository:
     def get_passage_session(self, session_id: int) -> PassageSession | None:
         return self.db.query(PassageSession).filter(PassageSession.id == session_id).first()
 
-    def create_passage_question(self, passage_id: int, question_text: str, options: dict, correct_answer: str, difficulty: str) -> ComprehensionQuestion:
+    def create_passage_question(
+        self,
+        passage_id: int,
+        question_text: str,
+        options: dict,
+        correct_answer: str,
+        difficulty: str,
+    ) -> ComprehensionQuestion:
         question = ComprehensionQuestion(
             passage_id=passage_id,
             question=question_text,
@@ -76,23 +83,50 @@ class PassageRepository:
         self.db.refresh(question)
         return question
 
-    def get_questions_by_passage(self, passage_id: int, limit: int = 5) -> list[ComprehensionQuestion]:
-        return self.db.query(ComprehensionQuestion).filter(ComprehensionQuestion.passage_id == passage_id).order_by(func.random()).limit(limit).all()
+    def get_questions_by_passage(
+        self, passage_id: int, limit: int = 5
+    ) -> list[ComprehensionQuestion]:
+        return (
+            self.db.query(ComprehensionQuestion)
+            .filter(ComprehensionQuestion.passage_id == passage_id)
+            .order_by(func.random())
+            .limit(limit)
+            .all()
+        )
 
     def count_questions_by_passage(self, passage_id: int) -> int:
-        return self.db.query(ComprehensionQuestion).filter(ComprehensionQuestion.passage_id == passage_id).count()
+        return (
+            self.db.query(ComprehensionQuestion)
+            .filter(ComprehensionQuestion.passage_id == passage_id)
+            .count()
+        )
 
     def get_all_question_texts(self, passage_id: int) -> list[str]:
-        results = self.db.query(ComprehensionQuestion.question).filter(ComprehensionQuestion.passage_id == passage_id).all()
+        results = (
+            self.db.query(ComprehensionQuestion.question)
+            .filter(ComprehensionQuestion.passage_id == passage_id)
+            .all()
+        )
         return [r[0] for r in results]
 
     def get_question_by_id(self, question_id: int) -> ComprehensionQuestion | None:
-        return self.db.query(ComprehensionQuestion).filter(ComprehensionQuestion.id == question_id).first()
+        return (
+            self.db.query(ComprehensionQuestion)
+            .filter(ComprehensionQuestion.id == question_id)
+            .first()
+        )
 
     def question_text_exists(self, question_text: str) -> bool:
-        return self.db.query(ComprehensionQuestion).filter(ComprehensionQuestion.question == question_text).first() is not None
+        return (
+            self.db.query(ComprehensionQuestion)
+            .filter(ComprehensionQuestion.question == question_text)
+            .first()
+            is not None
+        )
 
-    def create_passage_answer(self, session_id: int, question_id: int, selected_answer: str, is_correct: bool) -> PassageAnswer:
+    def create_passage_answer(
+        self, session_id: int, question_id: int, selected_answer: str, is_correct: bool
+    ) -> PassageAnswer:
         answer = PassageAnswer(
             session_id=session_id,
             question_id=question_id,
@@ -108,4 +142,12 @@ class PassageRepository:
         return self.db.query(PassageAnswer).filter(PassageAnswer.session_id == session_id).all()
 
     def count_attempted_questions(self, session_id: int, passage_id: int) -> int:
-        return self.db.query(PassageAnswer).join(ComprehensionQuestion, ComprehensionQuestion.id == PassageAnswer.question_id).filter(PassageAnswer.session_id == session_id, ComprehensionQuestion.passage_id == passage_id).count()
+        return (
+            self.db.query(PassageAnswer)
+            .join(ComprehensionQuestion, ComprehensionQuestion.id == PassageAnswer.question_id)
+            .filter(
+                PassageAnswer.session_id == session_id,
+                ComprehensionQuestion.passage_id == passage_id,
+            )
+            .count()
+        )
