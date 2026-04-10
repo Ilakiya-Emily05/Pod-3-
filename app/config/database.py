@@ -31,6 +31,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     from app.models import user  # noqa: F401
+
     async with engine.begin() as connection:
         try:
             await connection.run_sync(Base.metadata.create_all)

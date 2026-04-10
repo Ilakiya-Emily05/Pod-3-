@@ -10,7 +10,7 @@ from app.models.passage_session import PassageSession
 
 
 class PassageRepository:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
     async def create_passage(self, text: str) -> Passage:
@@ -115,7 +115,9 @@ class PassageRepository:
 
     async def get_all_question_texts(self, passage_id: UUID) -> list[str]:
         result = await self.db.execute(
-            select(ComprehensionQuestion.question).where(ComprehensionQuestion.passage_id == passage_id)
+            select(ComprehensionQuestion.question).where(
+                ComprehensionQuestion.passage_id == passage_id
+            )
         )
         return list(result.scalars().all())
 

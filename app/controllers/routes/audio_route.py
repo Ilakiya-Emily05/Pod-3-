@@ -64,7 +64,7 @@ async def analyze_audio(
         save_pronunciation_result(db, db_data)
 
         # Next question
-        next_q = generate_pronunciation_question(phoneme_score)
+        generate_pronunciation_question(phoneme_score)
 
         # Final output
         return {

@@ -72,7 +72,7 @@ class QuestionAgent:
                 break
 
             batch_unique = []
-                existing = set(await self.question_repo.get_all_question_texts()) | {
+            existing = set(await self.question_repo.get_all_question_texts()) | {
                 str(q.get("question")) for q in all_new if q.get("question") is not None
             }
             for q in batch:

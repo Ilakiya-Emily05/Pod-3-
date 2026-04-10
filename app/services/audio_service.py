@@ -6,7 +6,7 @@ from pydub import AudioSegment
 # Set the path to your FFmpeg binary
 
 
-def convert_to_wav(file_path, audio_format: str = None) -> Path:
+def convert_to_wav(file_path, audio_format: str | None = None) -> Path:
     """
     Convert an audio file to WAV format using pydub.
 

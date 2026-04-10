@@ -7,7 +7,7 @@ from app.models.test_session import TestSession
 
 
 class TestSessionRepository:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
     async def create_session(self, user_id: UUID, topic: str, subtopic: str) -> TestSession:

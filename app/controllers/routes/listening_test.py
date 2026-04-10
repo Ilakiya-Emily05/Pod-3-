@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 from pathlib import Path
@@ -109,12 +110,10 @@ async def evaluate_listening_answers(
         logger.exception("evaluate_listening_answers failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Evaluation failed due to an internal error.",
+            detail="Evaluation failed due to an internal error.",
         )
     finally:
         for path in temp_files:
             if path.exists():
-                try:
+                with contextlib.suppress(OSError):
                     path.unlink()
-                except OSError:
-                    pass

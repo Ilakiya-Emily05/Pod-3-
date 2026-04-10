@@ -1,25 +1,23 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import List, Tuple
-from uuid import UUID
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.Vocab.vocabulary_word import VocabularyWord
-from app.models.Vocab.user_vocabulary import UserVocabulary
 from app.repositories.vocabulary_repo import VocabularyRepository
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.models.Vocab.user_vocabulary import UserVocabulary
+    from app.models.Vocab.vocabulary_word import VocabularyWord
 
 
 # =========================
 # SM-2 (UPGRADED 🔥)
 # =========================
-def calculate_sm2(
-    quality: int,
-    easiness: float,
-    repetitions: int,
-    interval: int
-):
+def calculate_sm2(quality: int, easiness: float, repetitions: int, interval: int):
     quality = max(0, min(5, quality))
 
     # FAILURE
@@ -45,9 +43,7 @@ def calculate_sm2(
         new_interval = round(new_interval * 1.3)
 
     # EF UPDATE
-    new_easiness = easiness + (
-        0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)
-    )
+    new_easiness = easiness + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
 
     new_easiness = max(1.3, min(new_easiness, 3.0))
 
@@ -77,7 +73,7 @@ def map_response_to_quality(response: str) -> int:
 # SERVICE
 # =========================
 class VocabularyService:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.repo = VocabularyRepository(db)
 
@@ -89,7 +85,7 @@ class VocabularyService:
     # =========================
     # AI GENERATION (THRESHOLD)
     # =========================
-    async def _generate_words_if_needed(self, cefr_level: str = "A1"):
+    async def _generate_words_if_needed(self, cefr_level: str = "A1") -> None:
         MIN_WORDS = 50
 
         count = await self.repo.count_words_by_level(cefr_level)
@@ -101,11 +97,7 @@ class VocabularyService:
 
         ai = AIContentService()
 
-        generated_words = await ai.generate_words(
-            industry="IT",
-            cefr_level=cefr_level,
-            count=20
-        )
+        generated_words = await ai.generate_words(industry="IT", cefr_level=cefr_level, count=20)
 
         await self.repo.insert_words(generated_words, cefr_level)
         await self.repo.commit()
@@ -114,12 +106,12 @@ class VocabularyService:
     # GET WORDS
     # =========================
     async def get_words(self, user_id: UUID, limit: int = 10):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # 1. DUE WORDS
         due_words = await self.repo.get_due_words(user_id, now, limit)
 
-        words: List[Tuple[UserVocabulary, VocabularyWord]] = []
+        words: list[tuple[UserVocabulary, VocabularyWord]] = []
 
         for uv in due_words:
             vw = await self.repo.get_word_by_id(uv.word_id)
@@ -166,7 +158,7 @@ class VocabularyService:
         word_id: UUID,
         response: str,
     ):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         session = await self.repo.get_session(session_id)
         if not session:
@@ -183,10 +175,7 @@ class VocabularyService:
 
         # SM-2
         new_e, new_r, new_i = calculate_sm2(
-            quality,
-            uv.retention_score,
-            uv.repetition_count,
-            uv.interval_days
+            quality, uv.retention_score, uv.repetition_count, uv.interval_days
         )
 
         uv.retention_score = new_e
@@ -216,7 +205,7 @@ class VocabularyService:
             "new_retention_score": uv.retention_score,
             "next_review_date": uv.next_review_date,
             "interval_days": uv.interval_days,
-            "feedback": f"You selected '{response}'"
+            "feedback": f"You selected '{response}'",
         }
 
     # =========================

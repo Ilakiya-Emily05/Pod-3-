@@ -98,7 +98,9 @@ class ProgressController:
     async def get_user_progress_summary(self, user_id: UUID) -> dict:
         """Get summarized progress for a user."""
         # Total modules started
-        total_query = select(func.count(UserProgress.id)).where(UserProgress.user_id == str(user_id))
+        total_query = select(func.count(UserProgress.id)).where(
+            UserProgress.user_id == str(user_id)
+        )
         total_result = await self.db.execute(total_query)
         total_started = total_result.scalar() or 0
 

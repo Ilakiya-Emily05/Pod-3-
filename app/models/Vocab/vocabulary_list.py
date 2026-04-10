@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.config.database import Base
 
+
 class VocabularyList(Base):
     __tablename__ = "vocabulary_lists"
 

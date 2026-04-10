@@ -9,7 +9,7 @@ from app.models.user_answer import UserAnswer
 
 
 class UserAnswerRepository:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
     async def create_user_answer(

@@ -6,6 +6,7 @@ Create Date: 2026-04-08 18:26:45.126146
 
 """
 
+import contextlib
 from collections.abc import Sequence
 
 from alembic import op
@@ -20,14 +21,10 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     """Upgrade schema - convert questions and user_responses to native UUID type."""
     # Drop any existing foreign key constraints first
-    try:
+    with contextlib.suppress(BaseException):
         op.drop_constraint("user_responses_question_id_fkey", "user_responses", type_="foreignkey")
-    except:
-        pass
-    try:
+    with contextlib.suppress(BaseException):
         op.drop_constraint("user_responses_session_id_fkey", "user_responses", type_="foreignkey")
-    except:
-        pass
 
     # Alter questions.id column type to UUID
     op.execute("ALTER TABLE questions ALTER COLUMN id TYPE uuid USING (id::uuid)")

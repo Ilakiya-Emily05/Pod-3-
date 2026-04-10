@@ -16,10 +16,7 @@ class UserVocabulary(Base):
     user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
 
     word_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("vocabulary_words.word_id"),
-        nullable=False,
-        index=True
+        PG_UUID(as_uuid=True), ForeignKey("vocabulary_words.word_id"), nullable=False, index=True
     )
 
     retention_score: Mapped[float] = mapped_column(Float, default=2.5)  # easiness factor
@@ -37,6 +34,4 @@ class UserVocabulary(Base):
 
     last_response_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "word_id", name="uq_user_word"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "word_id", name="uq_user_word"),)

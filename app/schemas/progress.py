@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime
-from decimal import Decimal
-from typing import Optional, Dict
-from uuid import UUID
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from datetime import datetime
+    from decimal import Decimal
+    from uuid import UUID
 
 
 class ProgressStart(BaseModel):
@@ -15,9 +17,9 @@ class ProgressStart(BaseModel):
 
 
 class ProgressComplete(BaseModel):
-    score: Optional[Decimal] = None
-    total_questions: Optional[int] = None
-    correct_answers: Optional[int] = None
+    score: Decimal | None = None
+    total_questions: int | None = None
+    correct_answers: int | None = None
 
 
 class ProgressResponse(BaseModel):
@@ -26,20 +28,20 @@ class ProgressResponse(BaseModel):
     module_type: str
     module_id: UUID
     status: str
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
-    score: Optional[Decimal]
-    total_questions: Optional[int]
-    correct_answers: Optional[int]
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    started_at: datetime | None
+    completed_at: datetime | None
+    score: Decimal | None
+    total_questions: int | None
+    correct_answers: int | None
+    created_at: datetime | None
+    updated_at: datetime | None
 
 
 class UserProgressSummary(BaseModel):
     total_modules_started: int
     total_modules_completed: int
-    average_score: Optional[Decimal]
-    modules_by_type: Dict[str, int]
+    average_score: Decimal | None
+    modules_by_type: dict[str, int]
 
 
-__all__ = ["ProgressStart", "ProgressComplete", "ProgressResponse", "UserProgressSummary"]
+__all__ = ["ProgressComplete", "ProgressResponse", "ProgressStart", "UserProgressSummary"]

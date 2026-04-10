@@ -1,6 +1,7 @@
+from uuid import uuid4
+
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from uuid import uuid4
 
 from app.config.database import Base
 

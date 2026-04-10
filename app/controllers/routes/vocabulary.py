@@ -1,23 +1,21 @@
-from fastapi import APIRouter, Depends
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.config.database import get_session
-from app.services.vocabulary_service import VocabularyService
-from app.utils.auth import get_current_user_id
 from app.schemas.vocabulary_schema import (
-    WordsResponse,
-    WordItem,
     ResponseRecord,
     ResponseResult,
     VocabularyStats,
+    WordItem,
+    WordsResponse,
 )
+from app.services.vocabulary_service import VocabularyService
+from app.utils.auth import get_current_user_id
 
-router = APIRouter(
-    prefix="/api/v1/vocabulary",
-    tags=["vocabulary"]
-)
+router = APIRouter(prefix="/api/v1/vocabulary", tags=["vocabulary"])
+
 
 @router.get("/words/{user_id}", response_model=WordsResponse)
 async def get_words(
@@ -60,6 +58,7 @@ async def get_words(
         total_words_in_session=len(words),
     )
 
+
 @router.post("/response", response_model=ResponseResult)
 async def record_response(
     payload: ResponseRecord,
@@ -88,6 +87,7 @@ async def record_response(
         interval_days=result["interval_days"],
         feedback=result["feedback"],
     )
+
 
 @router.get("/stats/{user_id}", response_model=VocabularyStats)
 async def get_stats(

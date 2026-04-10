@@ -1,11 +1,8 @@
-<<<<<<< HEAD
 from uuid import uuid4
-=======
-from sqlalchemy import JSON, Column, Integer, String
->>>>>>> origin/development
 
-from sqlalchemy import Column, String, JSON
+from sqlalchemy import JSON, Column, String
 from sqlalchemy.dialects.postgresql import UUID
+
 from app.config.database import Base
 
 

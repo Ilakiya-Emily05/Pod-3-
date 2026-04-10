@@ -4,14 +4,13 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.Vocab.user_vocabulary import UserVocabulary
 from app.models.Vocab.vocabulary_session import VocabularySession
 from app.models.Vocab.vocabulary_word import VocabularyWord
-from app.models.Vocab.user_vocabulary import UserVocabulary
 
 
 class VocabularyRepository:
-
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
     # =========================
@@ -38,18 +37,13 @@ class VocabularyRepository:
     async def get_user_vocab(self, user_id: UUID, word_id: UUID):
         result = await self.db.execute(
             select(UserVocabulary).where(
-                UserVocabulary.user_id == user_id,
-                UserVocabulary.word_id == word_id
+                UserVocabulary.user_id == user_id, UserVocabulary.word_id == word_id
             )
         )
         return result.scalar_one_or_none()
 
     async def create_user_vocab(self, user_id: UUID, word_id: UUID, now: datetime):
-        uv = UserVocabulary(
-            user_id=user_id,
-            word_id=word_id,
-            next_review_date=now
-        )
+        uv = UserVocabulary(user_id=user_id, word_id=word_id, next_review_date=now)
         self.db.add(uv)
         return uv
 
@@ -57,14 +51,10 @@ class VocabularyRepository:
     # VOCAB WORDS
     # =========================
     async def get_new_words(self, user_id: UUID, limit: int):
-        subquery = select(UserVocabulary.word_id).where(
-            UserVocabulary.user_id == user_id
-        )
+        subquery = select(UserVocabulary.word_id).where(UserVocabulary.user_id == user_id)
 
         result = await self.db.execute(
-            select(VocabularyWord)
-            .where(VocabularyWord.word_id.not_in(subquery))
-            .limit(limit)
+            select(VocabularyWord).where(VocabularyWord.word_id.not_in(subquery)).limit(limit)
         )
         return result.scalars().all()
 
@@ -73,12 +63,13 @@ class VocabularyRepository:
 
     async def count_words_by_level(self, cefr_level: str):
         result = await self.db.execute(
-            select(func.count(VocabularyWord.word_id))
-            .where(VocabularyWord.cefr_level == cefr_level)
+            select(func.count(VocabularyWord.word_id)).where(
+                VocabularyWord.cefr_level == cefr_level
+            )
         )
         return result.scalar()
 
-    async def insert_words(self, words: list[dict], cefr_level: str):
+    async def insert_words(self, words: list[dict], cefr_level: str) -> None:
         for w in words:
             if not w.get("word") or not w.get("definition"):
                 continue
@@ -104,5 +95,5 @@ class VocabularyRepository:
     # =========================
     # COMMIT
     # =========================
-    async def commit(self):
+    async def commit(self) -> None:
         await self.db.commit()

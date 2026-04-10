@@ -1,11 +1,12 @@
 from datetime import date, timedelta
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.user_progress_repository import UserProgressRepository
-from app.models.analytics.user_progress import UserModuleProgress as UserProgress
-from app.models.analytics.user_streaks import UserStreaks
+
+if TYPE_CHECKING:
+    from app.models.analytics.user_progress import UserModuleProgress as UserProgress
 
 
 def calculate_mastery(total_attempts: int, accuracy_pct: float, correct_streak: int = 0) -> bool:
@@ -13,20 +14,38 @@ def calculate_mastery(total_attempts: int, accuracy_pct: float, correct_streak: 
 
 
 class ProgressService:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.repo = UserProgressRepository(db)
 
-    async def record_progress(self, user_id: str, module: str, topic: str, subtopic: str, is_correct: bool, time_spent_secs: int) -> dict:
+    async def record_progress(
+        self,
+        user_id: str,
+        module: str,
+        topic: str,
+        subtopic: str,
+        is_correct: bool,
+        time_spent_secs: int,
+    ) -> dict:
         # fetch existing record
-        record: Optional[UserProgress] = await self.repo.get_by_user_topic(user_id, module, topic, subtopic)
+        record: UserProgress | None = await self.repo.get_by_user_topic(
+            user_id, module, topic, subtopic
+        )
 
         if record:
             record.total_attempts = (record.total_attempts or 0) + 1
             record.correct_attempts = (record.correct_attempts or 0) + (1 if is_correct else 0)
             record.time_spent_secs = (record.time_spent_secs or 0) + (time_spent_secs or 0)
         else:
-            record = await self.repo.create(user_id=user_id, module=module, topic=topic, subtopic=subtopic, total_attempts=1, correct_attempts=(1 if is_correct else 0), time_spent_secs=(time_spent_secs or 0))
+            record = await self.repo.create(
+                user_id=user_id,
+                module=module,
+                topic=topic,
+                subtopic=subtopic,
+                total_attempts=1,
+                correct_attempts=(1 if is_correct else 0),
+                time_spent_secs=(time_spent_secs or 0),
+            )
 
         # recalc accuracy
         total = record.total_attempts or 0
@@ -63,7 +82,9 @@ class ProgressService:
             streak.last_activity_date = today
             await self.repo.save_streak(streak)
         else:
-            await self.repo.create_streak(user_id=user_id, current_streak=1, longest_streak=1, last_activity_date=today)
+            await self.repo.create_streak(
+                user_id=user_id, current_streak=1, longest_streak=1, last_activity_date=today
+            )
 
         return {
             "user_id": user_id,
@@ -120,7 +141,9 @@ class ProgressService:
             streak.last_activity_date = today
             await self.repo.save_streak(streak)
         else:
-            await self.repo.create_streak(user_id=user_id, current_streak=1, longest_streak=1, last_activity_date=today)
+            await self.repo.create_streak(
+                user_id=user_id, current_streak=1, longest_streak=1, last_activity_date=today
+            )
 
     async def get_summary(self, user_id: str) -> dict:
         # gather grammar and behavioral summaries
@@ -130,10 +153,14 @@ class ProgressService:
         def summarize(records):
             if not records:
                 return None
-            topics = set(r.topic for r in records)
+            topics = {r.topic for r in records}
             total_topics = len(topics)
             completed_topics = len([r for r in records if r.mastery_achieved])
-            avg_accuracy = round(sum((float(r.accuracy_pct or 0) for r in records)) / len(records), 1) if records else 0.0
+            avg_accuracy = (
+                round(sum(float(r.accuracy_pct or 0) for r in records) / len(records), 1)
+                if records
+                else 0.0
+            )
             total_time_secs = sum((r.time_spent_secs or 0) for r in records)
             time_spent_mins = int(total_time_secs / 60)
             if avg_accuracy >= 90:
@@ -146,11 +173,15 @@ class ProgressService:
             return {
                 "total_topics": total_topics,
                 "completed_topics": completed_topics,
-                "completion_pct": round((completed_topics / total_topics) * 100, 1) if total_topics else 0.0,
+                "completion_pct": round((completed_topics / total_topics) * 100, 1)
+                if total_topics
+                else 0.0,
                 "avg_accuracy": avg_accuracy,
                 "time_spent_mins": time_spent_mins,
                 "mastery_level": mastery_level,
-                "last_activity": records[-1].last_attempt_at.isoformat() if records and records[-1].last_attempt_at else None,
+                "last_activity": records[-1].last_attempt_at.isoformat()
+                if records and records[-1].last_attempt_at
+                else None,
             }
 
         grammar_summary = summarize(grammar_recs) or {}
@@ -159,7 +190,14 @@ class ProgressService:
         # overall
         overall_completion = 0.0
         if grammar_summary and reading_summary:
-            overall_completion = round((grammar_summary.get("completion_pct", 0) + reading_summary.get("completion_pct", 0)) / 2, 1)
+            overall_completion = round(
+                (
+                    grammar_summary.get("completion_pct", 0)
+                    + reading_summary.get("completion_pct", 0)
+                )
+                / 2,
+                1,
+            )
         elif grammar_summary:
             overall_completion = grammar_summary.get("completion_pct", 0)
         elif reading_summary:
@@ -186,5 +224,7 @@ class ProgressService:
             "user_id": user_id,
             "current_streak": streak.current_streak,
             "longest_streak": streak.longest_streak,
-            "last_activity_date": streak.last_activity_date.isoformat() if streak.last_activity_date else None,
+            "last_activity_date": streak.last_activity_date.isoformat()
+            if streak.last_activity_date
+            else None,
         }

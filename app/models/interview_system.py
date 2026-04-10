@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.config.database import Base
 
 
-class DifficultyLevel(str, enum.Enum):
+class DifficultyLevel(enum.StrEnum):
     EASY = "easy"
     MEDIUM = "medium"
     HARD = "hard"
@@ -24,7 +24,9 @@ class KeySkill(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relationship to questions generated for this skill
-    questions = relationship("InterviewQuestion", back_populates="skill", cascade="all, delete-orphan")
+    questions = relationship(
+        "InterviewQuestion", back_populates="skill", cascade="all, delete-orphan"
+    )
 
 
 class InterviewQuestion(Base):
@@ -58,17 +60,11 @@ class InterviewSession(Base):
 class UserResponse(Base):
     __tablename__ = "user_responses"
 
-<<<<<<< HEAD
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    session_id: Mapped[UUID | None] = mapped_column(ForeignKey("interview_sessions.id"), nullable=True)
-    question_id: Mapped[UUID] = mapped_column(ForeignKey("interview_questions.id"))
-=======
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     session_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("interview_sessions.id"), nullable=True
     )
     question_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("questions.id"))
->>>>>>> origin/development
     user_answer: Mapped[str] = mapped_column(Text)
     confidence_score: Mapped[float | None] = mapped_column(nullable=True)
     audio_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)

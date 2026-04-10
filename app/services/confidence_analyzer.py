@@ -76,4 +76,4 @@ def compute_confidence(features: dict) -> int:
     weight_sum += 1
 
     confidence = score / weight_sum
-    return int(round(confidence))
+    return round(confidence)

@@ -4,14 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import get_db
-from app.utils.auth import get_current_user_id
 from app.schemas.progress_schema import (
+    ModuleDetailsResponse,
     ProgressRecordRequest,
     ProgressRecordResponse,
-    ModuleDetailsResponse,
     SummaryResponse,
 )
 from app.services.progress_service import ProgressService
+from app.utils.auth import get_current_user_id
 
 router = APIRouter(prefix="/api/v1/progress", tags=["progress"])
 

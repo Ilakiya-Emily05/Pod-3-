@@ -43,7 +43,7 @@ def generate_questions_from_passage(passage: str, num_questions: int = 3):
         "{num_listening}", str(num_questions)
     )
 
-    for attempt in range(2):  # try twice before fallback
+    for _attempt in range(2):  # try twice before fallback
         try:
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",

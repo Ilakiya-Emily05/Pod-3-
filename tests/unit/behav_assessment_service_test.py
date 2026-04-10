@@ -108,15 +108,8 @@ async def test_submit_bulk_answers_integration_logic() -> None:
         def __init__(self, q_id, opt_key):
             self.question_id = q_id
             self.option_key = opt_key
-<<<<<<< HEAD
-            
-    q1 = uuid.uuid4()
-    q2 = uuid.uuid4()
-    answers = [MockAns(q1, "A"), MockAns(q2, "B")]
-=======
 
     answers = [MockAns(1, "A"), MockAns(2, "B")]
->>>>>>> origin/development
 
     # Mock attempt
     mock_attempt = MagicMock()

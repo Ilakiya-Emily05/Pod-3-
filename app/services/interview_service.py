@@ -28,8 +28,10 @@ from app.models.interview_system import (
     DifficultyLevel,
     InterviewSession,
     KeySkill,
-    InterviewQuestion as Question,
     UserResponse,
+)
+from app.models.interview_system import (
+    InterviewQuestion as Question,
 )
 from app.services.ai_service import generate_narrative_ai  # GPT-4o-mini wrapper
 from app.services.confidence_analyzer import compute_confidence, extract_audio_features

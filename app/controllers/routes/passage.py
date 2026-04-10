@@ -4,7 +4,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import get_session
-from app.utils.auth import CurrentUser, get_current_user
 from app.schemas.passage_schema import (
     PassageAnswerRequest,
     PassageAnswerResponse,
@@ -15,6 +14,7 @@ from app.schemas.passage_schema import (
 )
 from app.services.passage_service import PassageService
 from app.services.user_activity_service import UserActivityService
+from app.utils.auth import CurrentUser, get_current_user
 
 router = APIRouter(prefix="/reading", tags=["Reading"])
 

@@ -5,17 +5,19 @@ Revises: 885eb5deac10
 Create Date: 2026-04-05 22:15:38.324061
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
+
 # revision identifiers, used by Alembic.
-revision: str = '297ec505f124'
-down_revision: Union[str, Sequence[str], None] = '885eb5deac10'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+revision: str = "297ec505f124"
+down_revision: str | Sequence[str] | None = "885eb5deac10"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -58,14 +60,20 @@ def upgrade() -> None:
         sa.Column("last_reviewed_at", sa.DateTime(), nullable=True),
         sa.Column("times_correct", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("times_incorrect", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("status", sa.String(length=20), nullable=False, server_default=sa.text("'learning'")),
+        sa.Column(
+            "status", sa.String(length=20), nullable=False, server_default=sa.text("'learning'")
+        ),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.ForeignKeyConstraint(["word_id"], ["vocabulary_words.word_id"]),
         sa.PrimaryKeyConstraint("id"),
     )
 
-    op.create_index(op.f("ix_user_vocabulary_user_id"), "user_vocabulary", ["user_id"], unique=False)
-    op.create_index(op.f("ix_user_vocabulary_word_id"), "user_vocabulary", ["word_id"], unique=False)
+    op.create_index(
+        op.f("ix_user_vocabulary_user_id"), "user_vocabulary", ["user_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_user_vocabulary_word_id"), "user_vocabulary", ["word_id"], unique=False
+    )
 
 
 def downgrade() -> None:

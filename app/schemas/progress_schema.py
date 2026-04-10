@@ -1,6 +1,6 @@
-from pydantic import BaseModel
-from typing import Optional, List
 from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class ProgressRecordRequest(BaseModel):
@@ -9,7 +9,7 @@ class ProgressRecordRequest(BaseModel):
     topic: str
     subtopic: str
     is_correct: bool
-    time_spent_secs: Optional[int] = 0
+    time_spent_secs: int | None = 0
 
 
 class ProgressRecordResponse(BaseModel):
@@ -35,7 +35,7 @@ class ModuleDetailItem(BaseModel):
 class ModuleDetailsResponse(BaseModel):
     user_id: UUID
     module: str
-    data: List[ModuleDetailItem]
+    data: list[ModuleDetailItem]
 
 
 class SummaryResponse(BaseModel):

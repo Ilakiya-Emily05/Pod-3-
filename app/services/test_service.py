@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.ai_generator import AIGeneratorService
 from app.agents.question_agent import QuestionAgent
@@ -15,6 +13,10 @@ from app.schemas.question_schema import QuestionResponse
 from app.schemas.test_session_schema import AnswerResponse, TestSessionResponse
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from app.models.question import Question
     from app.models.test_session import TestSession
 
@@ -47,7 +49,7 @@ class TestService:
         return await self.question_repo.get_by_topic(topic, subtopic, self.LIMIT)
 
     async def start_test(self, user_id: UUID) -> TestSessionResponse:
-        first_topic = list(GRAMMAR_FLOW.keys())[0]
+        first_topic = next(iter(GRAMMAR_FLOW.keys()))
         first_subtopic = GRAMMAR_FLOW[first_topic][0]
 
         session = await self.session_repo.create_session(

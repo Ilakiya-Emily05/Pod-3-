@@ -16,7 +16,7 @@ class VocabularyWord(Base):
     word: Mapped[str] = mapped_column(String(100), nullable=False)
     definition: Mapped[str] = mapped_column(Text, nullable=False)
     part_of_speech: Mapped[str | None] = mapped_column(String(20))
-    
+
     # ✅ CEFR instead of basic/intermediate
     cefr_level: Mapped[str] = mapped_column(String(5))  # A1, A2, B1...
 

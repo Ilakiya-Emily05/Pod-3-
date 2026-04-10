@@ -25,7 +25,7 @@ from app.services.passage_pool import (
 class PassageService:
     QUESTIONS_PER_PASSAGE = 5
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.repo = PassageRepository(db)
 

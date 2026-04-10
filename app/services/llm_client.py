@@ -1,6 +1,8 @@
-from openai import AzureOpenAI
 import logging
+
 from langchain_openai import AzureChatOpenAI
+from openai import AzureOpenAI
+
 from app.config.settings import get_settings
 
 logger = logging.getLogger(__name__)

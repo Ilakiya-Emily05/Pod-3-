@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import time
 import uuid
@@ -149,12 +150,10 @@ async def analyze_audio(
         logger.exception("[%s] analyze_audio failed: %s", request_id, exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Analysis failed due to an internal error.",
+            detail="Analysis failed due to an internal error.",
         ) from exc
     finally:
         for path in (temp_path, wav_path):
             if path and path.exists():
-                try:
+                with contextlib.suppress(OSError):
                     path.unlink()
-                except OSError:
-                    pass
