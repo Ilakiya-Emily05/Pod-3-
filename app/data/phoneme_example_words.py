@@ -47,6 +47,4 @@ PHONEME_EXAMPLE_WORDS: dict[str, str] = {
     "dʒ": "judge",
     # Flap
     "ɾ": "butter",
-    "r": "red",
-    "aɪ": "kite",
 }

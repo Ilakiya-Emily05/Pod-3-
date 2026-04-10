@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter
 
 from app.controllers.routes.admin import router as admin_router

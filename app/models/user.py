@@ -1,11 +1,15 @@
 import uuid
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Date, DateTime, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.config.database import Base
+
+if TYPE_CHECKING:
+    from app.models.analytics.user_progress import UserModuleProgress
 
 
 class User(Base):
@@ -28,8 +32,8 @@ class User(Base):
         primaryjoin="User.id==foreign(UserProfile.user_id)",
         viewonly=True,
     )
-    progress_records: Mapped[list["UserProgress"]] = relationship(
-        "UserProgress", back_populates="user", cascade="all, delete-orphan"
+    progress_records: Mapped[list["UserModuleProgress"]] = relationship(
+        "UserModuleProgress", back_populates="user", cascade="all, delete-orphan"
     )
 
 

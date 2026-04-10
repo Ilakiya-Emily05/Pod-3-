@@ -1,11 +1,15 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import DECIMAL, Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class UserModuleProgress(Base):
@@ -29,6 +33,9 @@ class UserModuleProgress(Base):
 
     last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationship back to User
+    user: Mapped["User"] = relationship("User", back_populates="progress_records")
 
     __table_args__ = (
         UniqueConstraint("user_id", "module_name", "topic", "subtopic", name="uq_user_module"),
