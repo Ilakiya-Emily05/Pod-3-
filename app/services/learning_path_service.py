@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.learning_path import LearningPath, ModuleUnlock
 from app.schemas.learning_path import AssessmentResults
 
-
 CEFR_BANDS: list[tuple[int, str]] = [
     (20, "A1"),
     (40, "A2"),
@@ -87,7 +86,9 @@ def compute_learning_path(assessment: AssessmentResults, user_goal: str) -> Comp
     ) / 4
     cefr_level = map_score_to_cefr(avg_score)
 
-    weak_areas = [module for module, score in scores.items() if module != "pronunciation" and score < 65]
+    weak_areas = [
+        module for module, score in scores.items() if module != "pronunciation" and score < 65
+    ]
     weak_areas = sorted(weak_areas, key=lambda module: scores[module])
 
     ordered_modules: list[str] = []
@@ -136,7 +137,9 @@ class LearningPathService:
     ) -> dict:
         computed = compute_learning_path(assessment, user_goal)
 
-        existing = await self.db.execute(select(LearningPath).where(LearningPath.user_id == user_id))
+        existing = await self.db.execute(
+            select(LearningPath).where(LearningPath.user_id == user_id)
+        )
         path = existing.scalar_one_or_none()
 
         if path is None:
@@ -177,15 +180,22 @@ class LearningPathService:
         result = await self.db.execute(select(LearningPath).where(LearningPath.user_id == user_id))
         path = result.scalar_one_or_none()
         if path is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Learning path not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Learning path not found",
+            )
 
-        unlocks_result = await self.db.execute(select(ModuleUnlock).where(ModuleUnlock.user_id == user_id))
+        unlocks_result = await self.db.execute(
+            select(ModuleUnlock).where(ModuleUnlock.user_id == user_id)
+        )
         unlocks = unlocks_result.scalars().all()
 
         recommended_path = path.assigned_modules or []
         total_modules = len(recommended_path)
         unlocked_modules = len(unlocks)
-        completion_pct = round((unlocked_modules / total_modules) * 100, 2) if total_modules else 0.0
+        completion_pct = (
+            round((unlocked_modules / total_modules) * 100, 2) if total_modules else 0.0
+        )
 
         weak_areas = [
             item["module"]
@@ -213,10 +223,19 @@ class LearningPathService:
         assessment: AssessmentResults,
         user_goal: str | None = None,
     ) -> dict:
-        existing = await self.db.execute(select(LearningPath).where(LearningPath.user_id == user_id))
+        existing = await self.db.execute(
+            select(LearningPath).where(LearningPath.user_id == user_id)
+        )
         path = existing.scalar_one_or_none()
         if path is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Learning path not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Learning path not found",
+            )
 
         goal = user_goal or path.user_goal
-        return await self.assign_learning_path(user_id=user_id, assessment=assessment, user_goal=goal)
+        return await self.assign_learning_path(
+            user_id=user_id,
+            assessment=assessment,
+            user_goal=goal,
+        )
