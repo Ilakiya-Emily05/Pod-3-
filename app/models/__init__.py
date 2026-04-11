@@ -17,6 +17,7 @@ from app.models.listening import (
     ListeningQuestionOption,
 )
 from app.models.listening1 import ListeningSession
+from app.models.learning_path import LearningPath, ModuleUnlock
 from app.models.passage_session import PassageSession
 from app.models.reading import (
     ReadingAssessment,
@@ -46,6 +47,8 @@ __all__ = [
     "ListeningQuestion",
     "ListeningQuestionOption",
     "ListeningSession",
+    "LearningPath",
+    "ModuleUnlock",
     "PassageSession",
     "ReadingAssessment",
     "ReadingAttempt",
