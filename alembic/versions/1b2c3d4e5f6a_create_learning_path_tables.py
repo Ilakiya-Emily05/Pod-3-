@@ -4,6 +4,9 @@ Revision ID: 1b2c3d4e5f6a
 Revises: 9a0b1c2d3e4f, a268bfa65a15
 Create Date: 2026-04-11 17:05:00.000000
 
+This migration is the learning-path table change expected by
+`uv run alembic revision --autogenerate -m "add learning path table"`.
+
 """
 
 from collections.abc import Sequence
