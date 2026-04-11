@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from app.services.llm_client import azure_openai_client
+from app.services.llm_client import get_azure_openai_client
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ def transcribe_audio(file_path: str | Path) -> str:
         return ""
 
     try:
+        azure_openai_client = get_azure_openai_client()
         with path.open("rb") as audio_file:
             response = azure_openai_client.audio.transcriptions.create(
                 model="whisper-1",

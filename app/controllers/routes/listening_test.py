@@ -1,6 +1,8 @@
+import contextlib
 import json
 import logging
 from pathlib import Path
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -19,7 +21,7 @@ settings = get_settings()
 
 @router.post("/evaluate", summary="Evaluate all 3 spoken answers for a listening session")
 async def evaluate_listening_answers(
-    session_id: str = Form(..., description="session_id from /module response"),
+    session_id: UUID = Form(..., description="session_id from /module response"),
     audio_1: UploadFile = File(...),
     audio_2: UploadFile = File(...),
     audio_3: UploadFile = File(...),
@@ -42,7 +44,7 @@ async def evaluate_listening_answers(
             detail=f"Session has {len(questions or [])} questions, expected 3.",
         )
 
-    temp_dir = Path(settings.TEMP_DIR)
+    temp_dir = Path(settings.temp_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
     temp_files = []
 
@@ -108,12 +110,10 @@ async def evaluate_listening_answers(
         logger.exception("evaluate_listening_answers failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Evaluation failed: {exc}",
+            detail="Evaluation failed due to an internal error.",
         )
     finally:
         for path in temp_files:
             if path.exists():
-                try:
+                with contextlib.suppress(OSError):
                     path.unlink()
-                except OSError:
-                    pass

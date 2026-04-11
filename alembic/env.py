@@ -22,6 +22,10 @@ database_url = os.getenv("DATABASE_URL_SYNC") or os.getenv("DATABASE_URL") or se
 if database_url and "+asyncpg" in database_url:
     database_url = database_url.replace("+asyncpg", "+psycopg2")
 if database_url:
+    # Runtime uses asyncpg (ssl=require) while Alembic uses psycopg2 (sslmode=require).
+    database_url = database_url.replace("?ssl=require", "?sslmode=require")
+    database_url = database_url.replace("&ssl=require", "&sslmode=require")
+if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 
 target_metadata = Base.metadata

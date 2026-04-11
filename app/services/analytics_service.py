@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
-from uuid import UUID
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Float, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.assessment_status import AttemptStatus
 from app.models.behav_assessment_model import AttemptStatus as BehavAttemptStatus
@@ -27,6 +26,11 @@ from app.schemas.analytics import (
     TrendPoint,
 )
 
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
 COMPLETED_ATTEMPT_STATUSES = (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED)
 
 
@@ -39,7 +43,7 @@ def _attempt_score_expr(
 
 
 class AnalyticsService:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
     async def get_progress(self, user_id: UUID) -> AnalyticsProgressResponse:

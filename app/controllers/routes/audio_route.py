@@ -5,8 +5,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, UploadFile
 from sqlalchemy.orm import Session
 
-from app.database.session import get_db
-from app.repository.pronounciation_repo import save_pronunciation_result
+from app.config.database import get_db
+from app.repositories.pronounciation_repo import save_pronunciation_result
 from app.services.audio_service import convert_to_wav
 from app.services.phoneme_engine import compute_pronunciation_scores
 from app.services.question_service import generate_pronunciation_question
@@ -64,7 +64,7 @@ async def analyze_audio(
         save_pronunciation_result(db, db_data)
 
         # Next question
-        next_q = generate_pronunciation_question(phoneme_score)
+        generate_pronunciation_question(phoneme_score)
 
         # Final output
         return {

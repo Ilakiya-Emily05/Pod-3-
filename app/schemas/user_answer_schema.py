@@ -1,13 +1,15 @@
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict
 
 
 class UserAnswerCreate(BaseModel):
-    question_id: int
+    question_id: UUID
     selected_answer: str
 
 
 class UserAnswerResponse(BaseModel):
-    question_id: int
+    question_id: UUID
     selected_answer: str
     is_correct: bool
 

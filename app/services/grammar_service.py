@@ -45,7 +45,7 @@ class GrammarService(BaseAssessmentService):
         result = await self.db.execute(
             select(GrammarAttempt)
             .options(selectinload(GrammarAttempt.answers))
-            .where(GrammarAttempt.id == attempt_id, GrammarAttempt.user_id == user_id)
+            .where(GrammarAttempt.id == attempt_id, GrammarAttempt.user_id == str(user_id))
         )
         return result.scalar_one_or_none()
 
@@ -131,7 +131,7 @@ class GrammarService(BaseAssessmentService):
 
         attempt = GrammarAttempt(
             assessment_id=payload.assessment_id,
-            user_id=payload.user_id,
+            user_id=str(payload.user_id),
             user_email=payload.user_email,
             started_at=payload.started_at,
             status=AttemptStatus.IN_PROGRESS,
@@ -166,7 +166,7 @@ class GrammarService(BaseAssessmentService):
                 .selectinload(GrammarAssessment.questions)
                 .selectinload(GrammarQuestion.options),
             )
-            .where(GrammarAttempt.id == attempt_id, GrammarAttempt.user_id == user_id)
+            .where(GrammarAttempt.id == attempt_id, GrammarAttempt.user_id == str(user_id))
         )
         attempt = result.scalar_one_or_none()
         if attempt is None:

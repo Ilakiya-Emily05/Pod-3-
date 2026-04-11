@@ -1,4 +1,7 @@
-from sqlalchemy import JSON, Column, Integer, String
+from uuid import uuid4
+
+from sqlalchemy import JSON, Column, String
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.config.database import Base
 
@@ -6,7 +9,7 @@ from app.config.database import Base
 class Question(Base):
     __tablename__ = "questions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, index=True)
     question_text = Column(String, nullable=False)
     topic = Column(String, nullable=False)
     subtopic = Column(String, nullable=False)

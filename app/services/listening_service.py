@@ -45,7 +45,7 @@ class ListeningService(BaseAssessmentService):
         result = await self.db.execute(
             select(ListeningAttempt)
             .options(selectinload(ListeningAttempt.answers))
-            .where(ListeningAttempt.id == attempt_id, ListeningAttempt.user_id == user_id)
+            .where(ListeningAttempt.id == attempt_id, ListeningAttempt.user_id == str(user_id))
         )
         return result.scalar_one_or_none()
 
@@ -132,7 +132,7 @@ class ListeningService(BaseAssessmentService):
 
         attempt = ListeningAttempt(
             assessment_id=payload.assessment_id,
-            user_id=payload.user_id,
+            user_id=str(payload.user_id),
             user_email=payload.user_email,
             started_at=payload.started_at,
             status=AttemptStatus.IN_PROGRESS,
@@ -167,7 +167,7 @@ class ListeningService(BaseAssessmentService):
                 .selectinload(ListeningAssessment.questions)
                 .selectinload(ListeningQuestion.options),
             )
-            .where(ListeningAttempt.id == attempt_id, ListeningAttempt.user_id == user_id)
+            .where(ListeningAttempt.id == attempt_id, ListeningAttempt.user_id == str(user_id))
         )
         attempt = result.scalar_one_or_none()
         if attempt is None:

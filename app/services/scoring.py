@@ -247,7 +247,7 @@ def extract_mistakes(reference: str, transcript: str) -> list[dict]:
             # Pair up words where possible; remainder treated as missing/extra
             ref_chunk = ref_words[i1:i2]
             spk_chunk = spoken_words[j1:j2]
-            for exp, spk in zip(ref_chunk, spk_chunk):
+            for exp, spk in zip(ref_chunk, spk_chunk, strict=False):
                 mistakes.append({"expected": exp, "spoken": spk, "type": "wrong"})
             # Handle length mismatch within a replace block
             for exp in ref_chunk[len(spk_chunk) :]:

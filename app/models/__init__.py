@@ -1,26 +1,13 @@
-from app.models.assessment_status import AttemptStatus, CEFRLevel
+from app.models.analytics.user_progress import UserModuleProgress
+from app.models.analytics.user_streaks import UserStreaks
+from app.models.assessment_status import AttemptStatus
 from app.models.base import Base, TimestampMixin
-from app.models.behav_assessment_model import (
-    BehavAttempt,
-    BehavOption,
-    BehavOptionScore,
-    BehavQuestion,
-    BehavUserAnswer,
-)
-from app.models.final_reports import FinalReport
 from app.models.grammar import (
     GrammarAssessment,
     GrammarAttempt,
     GrammarAttemptAnswer,
     GrammarQuestion,
     GrammarQuestionOption,
-)
-from app.models.interview_system import (
-    DifficultyLevel,
-    InterviewSession,
-    KeySkill,
-    Question,
-    UserResponse,
 )
 from app.models.listening import (
     ListeningAssessment,
@@ -29,8 +16,9 @@ from app.models.listening import (
     ListeningQuestion,
     ListeningQuestionOption,
 )
-from app.models.progress import UserProgress
-from app.models.pronunciation_model import PronunciationResult
+from app.models.listening1 import ListeningSession
+from app.models.learning_path import LearningPath, ModuleUnlock
+from app.models.passage_session import PassageSession
 from app.models.reading import (
     ReadingAssessment,
     ReadingAttempt,
@@ -38,47 +26,43 @@ from app.models.reading import (
     ReadingQuestion,
     ReadingQuestionOption,
 )
-from app.models.resume import Resume
-from app.models.sentence_framing import SentenceExercise, SentenceSubmission
-from app.models.user import AdminUser, User, UserProfile
+from app.models.test_session import TestSession
+from app.models.user import User, UserProfile
+from app.models.Vocab.user_vocabulary import UserVocabulary
+from app.models.Vocab.vocabulary_list import VocabularyList
+from app.models.Vocab.vocabulary_session import VocabularySession
+from app.models.Vocab.vocabulary_word import VocabularyWord
 
 __all__ = [
-    "AdminUser",
     "AttemptStatus",
     "Base",
-    "BehavAttempt",
-    "BehavOption",
-    "BehavOptionScore",
-    "BehavQuestion",
-    "BehavUserAnswer",
-    "CEFRLevel",
-    "DifficultyLevel",
-    "FinalReport",
     "GrammarAssessment",
     "GrammarAttempt",
     "GrammarAttemptAnswer",
     "GrammarQuestion",
     "GrammarQuestionOption",
-    "InterviewSession",
-    "KeySkill",
     "ListeningAssessment",
     "ListeningAttempt",
     "ListeningAttemptAnswer",
     "ListeningQuestion",
     "ListeningQuestionOption",
-    "PronunciationResult",
-    "Question",
+    "ListeningSession",
+    "LearningPath",
+    "ModuleUnlock",
+    "PassageSession",
     "ReadingAssessment",
     "ReadingAttempt",
     "ReadingAttemptAnswer",
     "ReadingQuestion",
     "ReadingQuestionOption",
-    "Resume",
-    "SentenceExercise",
-    "SentenceSubmission",
+    "TestSession",
     "TimestampMixin",
     "User",
+    "UserModuleProgress",
     "UserProfile",
-    "UserProgress",
-    "UserResponse",
+    "UserStreaks",
+    "UserVocabulary",
+    "VocabularyList",
+    "VocabularySession",
+    "VocabularyWord",
 ]

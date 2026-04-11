@@ -1,18 +1,26 @@
-from datetime import datetime
+from __future__ import annotations
 
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String
+from uuid import UUID, uuid4
 
-from app.config.database import Base
+from sqlalchemy import JSON, ForeignKey, String
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.models.base import Base, TimestampMixin
 
 
-class ComprehensionQuestion(Base):
+class ComprehensionQuestion(Base, TimestampMixin):
     __tablename__ = "comprehension_questions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    passage_id = Column(Integer, ForeignKey("passages.id"), nullable=False)
-    question = Column(String, nullable=False)
-    options = Column(JSON, nullable=False)
-    correct_answer = Column(String, nullable=False)
-    difficulty = Column(String, index=True)
-    explanation = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    passage_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("passages.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    question: Mapped[str] = mapped_column(String, nullable=False)
+    options: Mapped[dict] = mapped_column(JSON, nullable=False)
+    correct_answer: Mapped[str] = mapped_column(String, nullable=False)
+    difficulty: Mapped[str | None] = mapped_column(String, index=True, nullable=True)
+    explanation: Mapped[str | None] = mapped_column(String, nullable=True)

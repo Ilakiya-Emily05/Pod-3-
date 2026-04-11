@@ -1,5 +1,6 @@
 # app/routes/listening_audio_eval_route.py
 
+import contextlib
 import json
 import os
 
@@ -98,10 +99,8 @@ async def evaluate_listening_audio(
     db.refresh(attempt)
 
     # Delete temp file
-    try:
+    with contextlib.suppress(BaseException):
         os.remove(temp_path)
-    except:
-        pass
 
     # Response
     return {

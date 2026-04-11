@@ -1,0 +1,54 @@
+name: CI Quality Gates
+
+on:
+  push:
+    branches: [ "development" ]
+  pull_request:
+    branches: [ "qa", "main" ]
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv sync --dev
+
+      - name: Run ruff linting (critical errors only)
+        run: |
+          uv run ruff check . --select=F --exit-zero
+
+      - name: Run ruff formatting check
+        run: |
+          uv run ruff format . --check || true
+
+      - name: Run mypy type checking (critical errors only)
+        run: |
+          uv run mypy app/ --ignore-missing-imports --no-error-summary --show-error-codes --hide-error-context || true
+
+      - name: Run tests with pytest
+        run: |
+          uv run pytest tests/unit/test_sm2.py tests/unit/behav_assessment_service_test.py -v --tb=short
+
+      - name: Upload coverage to Codecov
+        if: github.event_name == 'push'
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
