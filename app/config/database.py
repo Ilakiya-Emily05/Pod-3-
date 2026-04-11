@@ -7,7 +7,12 @@ from app.config.settings import get_settings
 
 settings = get_settings()
 
-engine = create_async_engine(settings.database_url, echo=settings.debug, future=True)
+engine_kwargs = {"echo": settings.debug, "future": True}
+if "+asyncpg" in settings.database_url:
+    # Cosmos/PgBouncer can reject reused prepared statements from asyncpg's default cache.
+    engine_kwargs["connect_args"] = {"statement_cache_size": 0}
+
+engine = create_async_engine(settings.database_url, **engine_kwargs)
 AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 
