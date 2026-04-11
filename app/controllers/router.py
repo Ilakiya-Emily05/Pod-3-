@@ -18,7 +18,7 @@ from app.controllers.routes.reading import router as reading_router
 from app.controllers.routes.resume import router as resume_router
 from app.controllers.routes.test import router as tests_router
 from app.controllers.routes.vocabulary import router as vocabulary_router
-
+from app.controllers.routes.assessment_session import router as assessment_session_router
 api_router = APIRouter()
 from app.controllers.routes.progress1 import router as progress1_router
 from app.controllers.routes.pronun_profile import router as pronun_profile_router
@@ -50,3 +50,4 @@ api_router.include_router(learning_path_router)
 api_router.include_router(interview_router)
 api_router.include_router(practice_router)
 api_router.include_router(resume_router)
+api_router.include_router(assessment_session_router)
