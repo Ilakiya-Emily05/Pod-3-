@@ -11,6 +11,7 @@ from app.schemas.onboarding import OnboardingRequest, OnboardingResponse
 async def complete_onboarding(
     user_id: UUID, db: AsyncSession, onboarding_payload: OnboardingRequest
 ) -> OnboardingResponse:
+    user_id_str = str(user_id)
     user_stmt = select(User).where(User.id == user_id)
     user = await db.scalar(user_stmt)
 
@@ -20,7 +21,7 @@ async def complete_onboarding(
             detail="User not found",
         )
 
-    existing_profile_stmt = select(UserProfile).where(UserProfile.user_id == user_id)
+    existing_profile_stmt = select(UserProfile).where(UserProfile.user_id == user_id_str)
     existing_profile = await db.scalar(existing_profile_stmt)
 
     if existing_profile:
@@ -30,7 +31,7 @@ async def complete_onboarding(
         existing_profile.college = onboarding_payload.college
     else:
         existing_profile = UserProfile(
-            user_id=user_id,
+            user_id=user_id_str,
             name=onboarding_payload.name,
             mobile=onboarding_payload.mobile,
             dob=onboarding_payload.dob,
