@@ -48,6 +48,7 @@ class ModuleRecommendation(BaseModel):
     module: str
     reason: str
     priority: str
+    difficulty: str = "basic"  # Default level for backward compatibility
 
 
 class BehavioralCompleteRequest(BaseModel):

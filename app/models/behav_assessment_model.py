@@ -69,7 +69,9 @@ class BehavAttempt(Base):
     overall_report: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     scores: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), default=datetime.now
+    )
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     answers: Mapped[list["BehavUserAnswer"]] = relationship(
@@ -93,7 +95,9 @@ class BehavUserAnswer(Base):
         PG_UUID(as_uuid=True), index=True
     )  # Kept for backward compatibility
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), default=datetime.now
+    )
 
     attempt: Mapped["BehavAttempt"] = relationship("BehavAttempt", back_populates="answers")
 
@@ -112,4 +116,6 @@ class BehavProfile(Base):
     recommended_modules: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
     strengths: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
     development_areas: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
-    completed_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    completed_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), default=datetime.now
+    )
