@@ -40,7 +40,7 @@ async def get_dynamic_questions(db: AsyncSession, user_id: UUID) -> dict[str, An
     4. Returns the attempt_id and the newly generated questions.
     """
     # 1. Create a new attempt
-    attempt = BehavAttempt(user_id=str(user_id), status=AttemptStatus.IN_PROGRESS)
+    attempt = BehavAttempt(user_id=user_id, status=AttemptStatus.IN_PROGRESS)
     db.add(attempt)
     await db.flush()
 

@@ -62,7 +62,7 @@ class BehavAttempt(Base):
     __table_args__ = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[str] = mapped_column(String, index=True)
+    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), index=True)
     status: Mapped[AttemptStatus] = mapped_column(String, default=AttemptStatus.IN_PROGRESS)
 
     # Store finalized results
