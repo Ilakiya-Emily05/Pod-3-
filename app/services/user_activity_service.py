@@ -1,8 +1,11 @@
+from uuid import UUID
+
+from sqlalchemy.orm import Session
+
+
 class UserActivityService:
-    def __init__(self, db):
+    def __init__(self, db: Session) -> None:
         self.db = db
 
     def record_activity(self, user_id: UUID) -> None:
-        # Minimal implementation: placeholder for recording user activity.
-        # Extend to persist activity events as needed.
         return None

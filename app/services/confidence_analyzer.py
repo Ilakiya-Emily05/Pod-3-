@@ -1,15 +1,18 @@
+import re
+
 import librosa
 import numpy as np
-import re
 
 FILLER_WORDS = ["um", "uh", "like", "so", "you know", "actually"]
 
+
 def compute_clarity(y):
     y_harmonic, y_percussive = librosa.effects.hpss(y)
-    signal_power = np.mean(y_harmonic ** 2)
-    noise_power = np.mean(y_percussive ** 2) + 1e-6
+    signal_power = np.mean(y_harmonic**2)
+    noise_power = np.mean(y_percussive**2) + 1e-6
     snr = signal_power / noise_power
     return min(1.0, snr / 10)
+
 
 def extract_audio_features(audio_path: str, transcript: str) -> dict:
     y, sr = librosa.load(audio_path, sr=16000)
@@ -34,8 +37,9 @@ def extract_audio_features(audio_path: str, transcript: str) -> dict:
         "pauses": float(pauses),
         "filler_words": filler_dict,
         "volume_consistency": float(volume_std),
-        "clarity": float(clarity)
+        "clarity": float(clarity),
     }
+
 
 def compute_confidence(features: dict) -> int:
     score = 0
@@ -72,4 +76,4 @@ def compute_confidence(features: dict) -> int:
     weight_sum += 1
 
     confidence = score / weight_sum
-    return int(round(confidence))
+    return round(confidence)

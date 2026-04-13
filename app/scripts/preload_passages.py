@@ -1,6 +1,7 @@
+import contextlib
+
 from app.config.database import get_db
 from app.services.passage_service import PassageService
-
 
 TARGET_POOL = 50
 
@@ -16,10 +17,8 @@ def main() -> None:
         after = service.repo.count_passages()
         print(f"Passage preload complete. Before={before}, After={after}, Added={after - before}")
     finally:
-        try:
+        with contextlib.suppress(StopIteration):
             next(db_gen)
-        except StopIteration:
-            pass
 
 
 if __name__ == "__main__":

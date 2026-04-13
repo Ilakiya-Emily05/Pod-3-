@@ -1,5 +1,4 @@
 import logging
-from typing import List, Optional
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import ToolCallLimitMiddleware
@@ -21,7 +20,7 @@ passage_limiter = ToolCallLimitMiddleware(
 
 
 class QuestionOutput(BaseModel):
-    passage: Optional[str] = None
+    passage: str | None = None
     question: str
     options: dict[str, str]
     correct_answer: str
@@ -29,10 +28,10 @@ class QuestionOutput(BaseModel):
 
 
 class AgentOutput(BaseModel):
-    questions: List[QuestionOutput]
+    questions: list[QuestionOutput]
 
 
-def build_agent():
+def build_agent() -> object:
     llm = ChatOpenAI(
         model=get_settings().OPENAI_MODEL,
         api_key=get_settings().OPENAI_API_KEY,
@@ -46,13 +45,13 @@ def build_agent():
     )
 
 
-def run_agent():
+def run_agent() -> dict[str, object]:
     try:
         agent = build_agent()
         result = agent.invoke({"messages": [{"role": "user", "content": PASSAGE_AGENT_PROMPT}]})
         structured: AgentOutput = result["structured_response"]
-        logger.info(f"Generated passage with {len(structured.questions)} questions")
+        logger.info("Generated passage with %s questions", len(structured.questions))
         return {"questions": [question.model_dump() for question in structured.questions]}
-    except Exception as e:
-        logger.error(f"Passage generation failed: {type(e).__name__}: {str(e)}")
+    except Exception as err:
+        logger.exception("Passage generation failed: %s", err)
         raise

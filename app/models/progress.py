@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
@@ -14,7 +15,7 @@ class UserProgress(Base):
 
     __tablename__ = "user_progress"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=UUID)
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
@@ -26,7 +27,7 @@ class UserProgress(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     score: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
-    
+
     # HEXACO traits (for behavioral module tracking)
     honesty_humility: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)
     emotionality: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2), nullable=True)

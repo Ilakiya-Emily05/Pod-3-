@@ -1,51 +1,49 @@
-from uuid import UUID
-
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
-from sqlalchemy.ext.asyncio import AsyncSession
 import os
 import tempfile
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import get_db
 from app.models.interview_system import DifficultyLevel
 from app.schemas.interview import (
     PracticeAnswerFeedback,
     QuestionOut,
-    SubmitPracticeAnswer,
 )
 from app.services.interview_service import get_practice_question, submit_practice_answer
+from app.utils.auth import get_current_user_id
 
 router = APIRouter(prefix="/practice", tags=["practice"])
 
 
 @router.get("/questions/start", response_model=QuestionOut)
 async def start_practice(
-    user_id: UUID,
+    user_id: UUID = Depends(get_current_user_id),
     difficulty: DifficultyLevel | None = None,
     db: AsyncSession = Depends(get_db),
-):
+) -> QuestionOut:
     """
     Section 1: AI Practice.
-    Starts the practice section by fetching a question for the user.
+    Starts the practice section by fetching a question for the authenticated user.
     If no difficulty is provided, it is determined by performance.
     """
     question = await get_practice_question(db, user_id, difficulty)
     if not question:
-        raise HTTPException(
-            status_code=404, detail="No questions found for this user."
-        )
+        raise HTTPException(status_code=404, detail="No questions found for this user.")
     return question
 
 
 @router.post("/answer", response_model=PracticeAnswerFeedback)
 async def submit_answer(
-    user_id: UUID = Form(...),
     question_id: UUID = Form(...),
     file: UploadFile = File(...),
+    user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-):
+) -> PracticeAnswerFeedback:
     """
     Section 1: AI Practice.
-    Submits an answer (Audio only).
+    Submits an answer (Audio only) for the authenticated user.
     """
     tmp_path = None
     suffix = os.path.splitext(file.filename)[1].lower()
@@ -54,9 +52,7 @@ async def submit_answer(
         tmp_path = tmp.name
 
     try:
-        result = await submit_practice_answer(
-            db, user_id, question_id, audio_path=tmp_path
-        )
+        result = await submit_practice_answer(db, user_id, question_id, audio_path=tmp_path)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
         return result

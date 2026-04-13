@@ -1,4 +1,4 @@
-from typing import Dict
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
@@ -7,7 +7,7 @@ class QuestionBase(BaseModel):
     topic: str
     subtopic: str
     question_text: str
-    options: Dict[str, str]
+    options: dict[str, str]
     correct_answer: str
 
 
@@ -16,10 +16,10 @@ class QuestionCreate(QuestionBase):
 
 
 class QuestionResponse(BaseModel):
-    id: int
+    id: UUID
     topic: str
     subtopic: str
     question_text: str
-    options: Dict[str, str]
+    options: dict[str, str]
 
     model_config = ConfigDict(from_attributes=True)

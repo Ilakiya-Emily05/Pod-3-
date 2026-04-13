@@ -1,14 +1,16 @@
-from sqlalchemy.orm import Session
 from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.test_session import TestSession
 
 
 class TestSessionRepository:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    def create_session(self, user_id: UUID, topic: str, subtopic: str) -> TestSession:
+    async def create_session(self, user_id: UUID, topic: str, subtopic: str) -> TestSession:
         session = TestSession(
             user_id=user_id,
             current_topic=topic,
@@ -19,17 +21,24 @@ class TestSessionRepository:
             status="IN_PROGRESS",
         )
         self.db.add(session)
-        self.db.commit()
-        self.db.refresh(session)
+        await self.db.commit()
+        await self.db.refresh(session)
         return session
 
-    def get_by_id(self, session_id: int) -> TestSession | None:
-        return self.db.query(TestSession).filter(TestSession.id == session_id).first()
+    async def get_by_id(self, session_id: UUID) -> TestSession | None:
+        result = await self.db.execute(select(TestSession).where(TestSession.id == session_id))
+        return result.scalar_one_or_none()
 
-    def get_active_session(self, user_id: UUID) -> TestSession | None:
-        return self.db.query(TestSession).filter(TestSession.user_id == user_id, TestSession.status == "IN_PROGRESS").first()
+    async def get_active_session(self, user_id: UUID) -> TestSession | None:
+        result = await self.db.execute(
+            select(TestSession).where(
+                TestSession.user_id == user_id,
+                TestSession.status == "IN_PROGRESS",
+            )
+        )
+        return result.scalar_one_or_none()
 
-    def update(self, session: TestSession) -> TestSession:
-        self.db.commit()
-        self.db.refresh(session)
+    async def update(self, session: TestSession) -> TestSession:
+        await self.db.commit()
+        await self.db.refresh(session)
         return session

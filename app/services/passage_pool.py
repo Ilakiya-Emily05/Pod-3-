@@ -8,7 +8,6 @@ from app.agents.tools.passage_tool import generate_passage_with_questions
 from app.config.database import get_db
 from app.repositories.passage_repo import PassageRepository
 
-
 MIN_POOL = 10
 LOW_BUFFER = 5
 MAX_POOL = 50
@@ -58,11 +57,11 @@ def take_random_passage_id() -> int | None:
         return passage_id
 
 
-def _seed_from_existing_passages(db: Session, limit: int) -> int:
+async def _seed_from_existing_passages(db: Session, limit: int) -> int:
     repo = PassageRepository(db)
     seeded_ids: list[int] = []
 
-    for passage in repo.get_eligible_passages(limit=limit):
+    for passage in await repo.get_eligible_passages(limit=limit):
         if passage.id in READING_POOL_SET:
             continue
         seeded_ids.append(passage.id)
@@ -83,7 +82,7 @@ async def _generate_batch(batch_size: int, topic_hint: str | None = None) -> lis
     return [result for result in results if not isinstance(result, Exception)]
 
 
-def _store_generated_result(repo: PassageRepository, result: dict) -> int | None:
+async def _store_generated_result(repo: PassageRepository, result: dict) -> int | None:
     passage_text = result.get("passage")
     questions = result.get("questions", [])
 
@@ -108,9 +107,9 @@ def _store_generated_result(repo: PassageRepository, result: dict) -> int | None
     if not _validate_distribution(unique_questions):
         return None
 
-    passage = repo.create_passage(passage_text)
+    passage = await repo.create_passage(passage_text)
     for question in unique_questions:
-        repo.create_passage_question(
+        await repo.create_passage_question(
             passage_id=passage.id,
             question_text=question["question"],
             options=question["options"],
@@ -123,7 +122,7 @@ def _store_generated_result(repo: PassageRepository, result: dict) -> int | None
 
 async def fill_pool(target_size: int) -> None:
     db_gen = get_db()
-    db = next(db_gen)
+    db = await anext(db_gen)
     repo = PassageRepository(db)
 
     try:
@@ -138,37 +137,35 @@ async def fill_pool(target_size: int) -> None:
 
         while len(generated_ids) < missing and attempts < max_attempts:
             attempts += 1
-            if repo.count_passages() >= MAX_POOL:
+            if await repo.count_passages() >= MAX_POOL:
                 break
 
-            batch_size = min(CONCURRENCY, missing - len(generated_ids), MAX_POOL - repo.count_passages())
+            batch_size = min(
+                CONCURRENCY,
+                missing - len(generated_ids),
+                MAX_POOL - await repo.count_passages(),
+            )
             if batch_size <= 0:
                 break
 
             for result in await _generate_batch(batch_size):
-                passage_id = _store_generated_result(repo, result)
+                passage_id = await _store_generated_result(repo, result)
                 if passage_id:
                     generated_ids.append(passage_id)
 
         _push_passage_ids(generated_ids)
     finally:
-        try:
-            next(db_gen)
-        except StopIteration:
-            pass
+        await db_gen.aclose()
 
 
 async def preload_initial_pool() -> None:
     db_gen = get_db()
-    db = next(db_gen)
+    db = await anext(db_gen)
     try:
-        _seed_from_existing_passages(db, MIN_POOL)
+        await _seed_from_existing_passages(db, MIN_POOL)
         await fill_pool(MIN_POOL)
     finally:
-        try:
-            next(db_gen)
-        except StopIteration:
-            pass
+        await db_gen.aclose()
 
 
 async def refill_pool_loop() -> None:

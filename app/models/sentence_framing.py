@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
@@ -10,6 +11,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.assessment_status import CEFRLevel
 from app.models.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class SentenceExercise(Base, TimestampMixin):

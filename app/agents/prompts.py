@@ -67,5 +67,17 @@ Constraints:
 - No duplicate questions
 - Each question must include options a, b, c, d and exactly one correct answer
 - Include a short explanation for each answer
- - Return valid JSON only that matches the schema: {"passage": str, "questions": [{"question": str, "options": {"a": str, "b": str, "c": str, "d": str}, "correct_answer": "a|b|c|d", "difficulty": "easy|medium|hard", "explanation": str}]}
+- Return valid JSON only that matches the schema:
+  {
+    "passage": str,
+    "questions": [
+      {
+        "question": str,
+        "options": {"a": str, "b": str, "c": str, "d": str},
+        "correct_answer": "a|b|c|d",
+        "difficulty": "easy|medium|hard",
+        "explanation": str
+      }
+    ]
+  }
 """

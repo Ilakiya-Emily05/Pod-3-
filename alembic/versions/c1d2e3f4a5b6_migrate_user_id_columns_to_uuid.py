@@ -6,12 +6,12 @@ Create Date: 2026-04-02 18:30:00.000000
 
 """
 
-from typing import Sequence
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import context, op
 
 # revision identifiers, used by Alembic.
 revision: str = "c1d2e3f4a5b6"
@@ -20,9 +20,16 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _get_inspector():
+    if context.is_offline_mode():
+        return None
+    return sa.inspect(op.get_bind())
+
+
 def _drop_fk_if_exists(table_name: str, column_name: str) -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
+    inspector = _get_inspector()
+    if inspector is None:
+        return
     for fk in inspector.get_foreign_keys(table_name):
         constrained = fk.get("constrained_columns", [])
         name = fk.get("name")
@@ -43,8 +50,9 @@ def _int_to_uuid_using_expr(column_name: str) -> str:
 
 
 def _convert_user_id_column_to_uuid(table_name: str, nullable: bool) -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
+    inspector = _get_inspector()
+    if inspector is None:
+        return
 
     if table_name not in inspector.get_table_names():
         return
@@ -86,8 +94,9 @@ def _convert_user_id_column_to_uuid(table_name: str, nullable: bool) -> None:
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
+    inspector = _get_inspector()
+    if inspector is None:
+        return
 
     # Ensure pronunciation_results exists in Alembic-managed schema.
     if "pronunciation_results" not in inspector.get_table_names():
@@ -114,8 +123,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
+    inspector = _get_inspector()
+    if inspector is None:
+        return
 
     for table_name, nullable in (
         ("passage_sessions", False),

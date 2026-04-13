@@ -1,16 +1,23 @@
-from datetime import datetime
+from __future__ import annotations
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from uuid import UUID, uuid4
 
-from app.config.database import Base
+from sqlalchemy import Boolean, ForeignKey, String
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.models.base import Base, TimestampMixin
 
 
-class PassageAnswer(Base):
+class PassageAnswer(Base, TimestampMixin):
     __tablename__ = "passage_answers"
 
-    id = Column(Integer, primary_key=True, index=True)
-    session_id = Column(Integer, ForeignKey("passage_sessions.id"), nullable=False)
-    question_id = Column(Integer, ForeignKey("comprehension_questions.id"), nullable=False)
-    selected_answer = Column(String, nullable=False)
-    is_correct = Column(Boolean, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("passage_sessions.id"), nullable=False, index=True
+    )
+    question_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("comprehension_questions.id"), nullable=False, index=True
+    )
+    selected_answer: Mapped[str] = mapped_column(String, nullable=False)
+    is_correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
