@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -232,7 +232,7 @@ async def calculate_result(
 
     # Persist in BehavAttempt
     attempt.status = AttemptStatus.SUBMITTED
-    attempt.submitted_at = datetime.now()
+    attempt.submitted_at = datetime.now(timezone.utc).replace(tzinfo=None)
     attempt.scores = full_results
     attempt.overall_report = ai_report_json
     await db.commit()

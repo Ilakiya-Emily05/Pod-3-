@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
-from uuid import UUID
-
+from uuid import UUID, uuid4
 from fastapi import BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.learning_path import ModuleUnlock
 
 try:
     from app.services.progress_service import ProgressService
@@ -194,11 +194,22 @@ class BehavioralLearningService:
 
             # --- POPULATE MODULES ---
             for mod_info in target_modules:
+                # Map priority/logic to standardized difficulty levels (basic, intermediate, advanced)
+                # Absolute Low < 60 -> basic
+                # Comparative Low -> intermediate
+                # Very High -> advanced
+                recommendation_difficulty = "basic"
+                if score > VERY_HIGH_THRESHOLD:
+                    recommendation_difficulty = "advanced"
+                elif score >= ABS_LOW_THRESHOLD:
+                    recommendation_difficulty = "intermediate"
+
                 recommendations.append(
                     ModuleRecommendation(
                         module=mod_info["name"],
                         reason=f"{mod_info['reason']} {reason_suffix}",
                         priority=priority,
+                        difficulty=recommendation_difficulty,
                     )
                 )
 
@@ -245,22 +256,22 @@ class BehavioralLearningService:
         return sum(scores) / len(traits) if traits else 0.0
 
     async def update_learning_path(
-        self, user_id: UUID, recommendations: list[ModuleRecommendation]
+        self, db: AsyncSession, user_id: UUID, recommendations: list[ModuleRecommendation]
     ) -> None:
-        # Call Learning Path Service (Vaaheesan)
-        # Note: Vaaheesan should plug in learning_path_client here.
-        [
-            {
-                "name": r.module,
-                "source": "behavioral_assessment",
-                "priority": r.priority,
-                "reason": r.reason,
-            }
-            for r in recommendations
-        ]
-
-        # await learning_path_client.add_modules(user_id=user_id, modules=payload)
-        pass
+        """Persist recommendations as ModuleUnlock entries in the Learning Path system."""
+        for r in recommendations:
+            # We create a new ModuleUnlock for each recommendation.
+            # If a module already exists for the user, Vaheesan's service handles it during path reassignment,
+            # but here we ensure the 'unlock' record is present.
+            unlock = ModuleUnlock(
+                id=uuid4(),
+                user_id=user_id,
+                module_name=r.module,
+                unlocked_level=r.difficulty,
+            )
+            db.add(unlock)
+        
+        # We don't commit here as this is usually part of a larger transaction in process_assessment_completion
 
     async def report_completion(
         self, db: AsyncSession, user_id: UUID, profile_scores: dict[str, float]
@@ -281,14 +292,15 @@ class BehavioralLearningService:
 
         svc = ProgressService(db)
         try:
-            await svc.record_progress(
-                str(user_id),
-                module="behavioral",
-                topic="hexaco_assessment",
-                subtopic="overall",
-                is_correct=is_mastery,
-                time_spent_secs=0,
-            )
+            async with db.begin_nested():
+                await svc.record_progress(
+                    str(user_id),
+                    module="behavioral",
+                    topic="hexaco_assessment",
+                    subtopic="overall",
+                    is_correct=is_mastery,
+                    time_spent_secs=0,
+                )
         except Exception:
             # Do not raise on reporting failure; it's non-critical for assessment completion.
             return
@@ -319,7 +331,7 @@ class BehavioralLearningService:
         recommendations = self.generate_recommendations(hexaco_profile)
 
         # 5. Update learning path
-        await self.update_learning_path(user_id, recommendations)
+        await self.update_learning_path(db, user_id, recommendations)
 
         # 6. Report to progress tracking
         await self.report_completion(db, user_id, hexaco_profile)
@@ -346,7 +358,7 @@ class BehavioralLearningService:
                 recommended_modules=[r.model_dump() for r in recommendations],
                 strengths=strengths,
                 development_areas=development_areas,
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.now(timezone.utc).replace(tzinfo=None),
             )
             db.add(profile)
         else:
@@ -356,7 +368,7 @@ class BehavioralLearningService:
             profile.recommended_modules = [r.model_dump() for r in recommendations]
             profile.strengths = strengths
             profile.development_areas = development_areas
-            profile.completed_at = datetime.utcnow()
+            profile.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
         await db.commit()
 

@@ -1,5 +1,6 @@
 import sys
 import uuid
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # Mock problematic modules that are out of scope but break app startup during collection
@@ -51,7 +52,7 @@ async def client() -> AsyncClient:
     ):
         # Create a mock question object
         mock_q = MagicMock()
-        mock_q.id = 1
+        mock_q.id = uuid.uuid4()
         mock_q.question_text = "Test question?"
         mock_q.trait_type = "Honesty-Humility"
         mock_q.options = [MagicMock(option_key="A", option_text="Text")]
@@ -99,8 +100,8 @@ async def test_submit_questions_valid(client: AsyncClient) -> None:
     payload = {
         "attempt_id": str(attempt_id),
         "answers": [
-            {"attempt_id": str(attempt_id), "question_id": 1, "option_key": "A"},
-            {"attempt_id": str(attempt_id), "question_id": 2, "option_key": "B"},
+            {"attempt_id": str(attempt_id), "question_id": str(uuid.uuid4()), "option_key": "A"},
+            {"attempt_id": str(attempt_id), "question_id": str(uuid.uuid4()), "option_key": "B"},
         ],
     }
     with patch(
@@ -118,7 +119,7 @@ async def test_submit_answer_validation(client: AsyncClient) -> None:
     Test submitting an answer with invalid schema (passing a single object instead of bulk list).
     """
     response = await client.post(
-        "/api/v1/behavioral/answer", json={"question_id": 1, "option_key": "A"}
+        "/api/v1/behavioral/answer", json={"question_id": str(uuid.uuid4()), "option_key": "A"}
     )
     assert response.status_code == 422
 
@@ -147,7 +148,7 @@ async def test_complete_assessment(client: AsyncClient) -> None:
             personality_summary="Creative",
             recommended_modules=[
                 ModuleRecommendation(
-                    module="creative_thinking", reason="High openness", priority="medium"
+                    module="creative_thinking", reason="High openness", priority="medium", difficulty="intermediate"
                 )
             ],
             learning_path_updated=True,
@@ -174,7 +175,7 @@ async def test_get_profile(client: AsyncClient) -> None:
 
         mock_profile.return_value = BehavioralProfileResponse(
             user_id=user_id,
-            completed_at="2026-03-30T10:00:00",
+            completed_at=datetime.now(),
             hexaco_scores={"openness": TraitScore(score=88.0, level="high")},
             strengths=["Creativity"],
             development_areas=[],
@@ -201,7 +202,7 @@ async def test_get_recommendations(client: AsyncClient) -> None:
 
         mock_recs.return_value = [
             ModuleRecommendation(
-                module="creative_thinking", reason="Strategic necessity", priority="medium"
+                module="creative_thinking", reason="Strategic necessity", priority="medium", difficulty="intermediate"
             )
         ]
 
