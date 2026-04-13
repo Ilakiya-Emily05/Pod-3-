@@ -16,9 +16,22 @@ from app.controllers.routes.progress import router as progress_router
 
 from app.controllers.routes.reading import router as reading_router
 from app.controllers.routes.resume import router as resume_router
+
 from app.controllers.routes.test import router as tests_router
 from app.controllers.routes.vocabulary import router as vocabulary_router
 from app.controllers.routes.sentence_framing import router as sentence_framing_router
+
+
+from app.routes.audio_route import router as audio_router
+from app.routes.listening_route import router as listening_module_router
+from app.routes.listening_test_route import router as listening_test_router
+from app.routes.question_route import router as question_router
+
+
+from app.controllers.routes.test import router as tests_router
+from app.controllers.routes.vocabulary import router as vocabulary_router
+from app.controllers.routes.sentence_framing import router as sentence_framing_router
+
 
 api_router = APIRouter()
 
@@ -47,9 +60,12 @@ api_router.include_router(auth_router)
 api_router.include_router(onboarding_router)
 api_router.include_router(reading_router)
 api_router.include_router(grammar_router)
+
 api_router.include_router(listening_assessment_router)
 api_router.include_router(progress_router)
 api_router.include_router(behav_assessment_router)
+
+api_router.include_router(listening_router)
 api_router.include_router(tests_router)
 api_router.include_router(passage_router)
 api_router.include_router(vocabulary_router)
@@ -58,7 +74,24 @@ api_router.include_router(recommendations_router)
 api_router.include_router(audio_router)
 api_router.include_router(listening_module_router)
 api_router.include_router(listening_test_router)
+
 api_router.include_router(question_router)
+
+
+api_router.include_router(listening_assessment_router)
+api_router.include_router(progress_router)
+api_router.include_router(behav_assessment_router)
+api_router.include_router(practice_router, prefix="/v1")
+api_router.include_router(interview_router, prefix="/v1")
+api_router.include_router(resume_router, prefix="/resume", tags=["Resume Parser"])
+
+
+api_router.include_router(audio_router)
+api_router.include_router(listening_module_router)
+api_router.include_router(listening_test_router)
+
+api_router.include_router(question_router)
+
 api_router.include_router(learning_path_router)
 
 api_router.include_router(progress1_router)
@@ -73,4 +106,5 @@ api_router.include_router(resume_router, prefix="/resume", tags=["Resume Parser"
 api_router.include_router(interview_router)
 api_router.include_router(practice_router)
 api_router.include_router(resume_router)
+
 api_router.include_router(sentence_framing_router)
