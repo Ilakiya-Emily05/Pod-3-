@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -15,6 +15,7 @@ from app.models.behav_assessment_model import (
     BehavQuestion,
     BehavUserAnswer,
 )
+from app.schemas.behav_assessment_schemas import SingleAnswer
 from app.services.behav_ai_service import (
     generate_adaptive_questions,
     generate_assessment_questions,
@@ -40,7 +41,7 @@ async def get_dynamic_questions(db: AsyncSession, user_id: UUID) -> dict[str, An
     4. Returns the attempt_id and the newly generated questions.
     """
     # 1. Create a new attempt
-    attempt = BehavAttempt(user_id=str(user_id), status=AttemptStatus.IN_PROGRESS)
+    attempt = BehavAttempt(user_id=user_id, status=AttemptStatus.IN_PROGRESS)
     db.add(attempt)
     await db.flush()
 
@@ -92,7 +93,9 @@ async def submit_answer(
     await db.commit()
 
 
-async def submit_bulk_answers(db: AsyncSession, attempt_id: UUID, answers: list[Any]) -> None:
+async def submit_bulk_answers(
+    db: AsyncSession, attempt_id: UUID, answers: list[SingleAnswer]
+) -> None:
     # Verify attempt
     attempt_stmt = select(BehavAttempt).where(BehavAttempt.id == attempt_id)
     attempt_result = await db.execute(attempt_stmt)
@@ -139,12 +142,13 @@ async def calculate_result(
 
     # If already submitted, return stored results
     if attempt.status == AttemptStatus.SUBMITTED and attempt.overall_report and attempt.scores:
+        scores = attempt.scores or {}
         return {
             "attempt_id": attempt.id,
             "status": attempt.status,
-            **attempt.scores,
+            **scores,
             "ai_analysis": attempt.overall_report,
-            "needs_adaptive_test": len(attempt.scores.get("weak_traits", [])) > 0,
+            "needs_adaptive_test": len(scores.get("weak_traits", [])) > 0,
         }
 
     answers = attempt.answers
@@ -232,7 +236,7 @@ async def calculate_result(
 
     # Persist in BehavAttempt
     attempt.status = AttemptStatus.SUBMITTED
-    attempt.submitted_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    attempt.submitted_at = datetime.now(UTC).replace(tzinfo=None)
     attempt.scores = full_results
     attempt.overall_report = ai_report_json
     await db.commit()

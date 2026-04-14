@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, ClassVar
 from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, func
@@ -18,7 +18,7 @@ class AttemptStatus(StrEnum):
 
 class BehavQuestion(Base):
     __tablename__ = "behav_questions"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = {"extend_existing": True}  # ruff: noqa: RUF012
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     question_text: Mapped[str] = mapped_column(Text)
@@ -29,7 +29,7 @@ class BehavQuestion(Base):
 
 class BehavOption(Base):
     __tablename__ = "behav_options"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = {"extend_existing": True}  # ruff: noqa: RUF012
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     question_id: Mapped[UUID] = mapped_column(
@@ -46,7 +46,7 @@ class BehavOption(Base):
 
 class BehavOptionScore(Base):
     __tablename__ = "behav_option_scores"
-    __table_args__ = {"extend_existing": True}
+    __table_args__: ClassVar[dict[str, Any]] = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     option_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("behav_options.id"))
@@ -59,10 +59,10 @@ class BehavOptionScore(Base):
 
 class BehavAttempt(Base):
     __tablename__ = "behav_attempts"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = {"extend_existing": True}  # ruff: noqa: RUF012
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[str] = mapped_column(String, index=True)
+    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), index=True)
     status: Mapped[AttemptStatus] = mapped_column(String, default=AttemptStatus.IN_PROGRESS)
 
     # Store finalized results
@@ -81,7 +81,7 @@ class BehavAttempt(Base):
 
 class BehavUserAnswer(Base):
     __tablename__ = "behav_user_answers"
-    __table_args__ = {"extend_existing": True}
+    __table_args__: ClassVar[dict[str, Any]] = {"extend_existing": True}
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     attempt_id: Mapped[UUID | None] = mapped_column(
@@ -104,7 +104,7 @@ class BehavUserAnswer(Base):
 
 class BehavProfile(Base):
     __tablename__ = "behavioral_profiles"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = {"extend_existing": True}  # ruff: noqa: RUF012
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(

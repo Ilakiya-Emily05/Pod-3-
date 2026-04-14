@@ -9,7 +9,7 @@ from app.services.sentence_framing_service import SentenceFramingService
 
 
 @pytest.mark.unit
-async def test_get_categories_dynamic():
+async def test_get_categories_dynamic() -> None:
     db = AsyncMock()
 
     # Mock row results for categories/subcategories as a tuple (consistent with .all() return)
@@ -29,7 +29,7 @@ async def test_get_categories_dynamic():
 
 
 @pytest.mark.unit
-async def test_get_exercises_by_subcategory():
+async def test_get_exercises_by_subcategory() -> None:
     db = AsyncMock()
 
     mock_ex = MagicMock(spec=SentenceExercise)
@@ -48,7 +48,7 @@ async def test_get_exercises_by_subcategory():
 
 
 @pytest.mark.unit
-async def test_submit_response_success():
+async def test_submit_response_success() -> None:
     db = AsyncMock()
     db.add = MagicMock()
     db.commit = AsyncMock()
@@ -116,7 +116,7 @@ async def test_submit_response_success():
 
 
 @pytest.mark.unit
-async def test_submit_response_exercise_not_found():
+async def test_submit_response_exercise_not_found() -> None:
     db = AsyncMock()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
@@ -132,7 +132,7 @@ async def test_submit_response_exercise_not_found():
 
 
 @pytest.mark.unit
-async def test_get_user_progress():
+async def test_get_user_progress() -> None:
     db = AsyncMock()
 
     mock_sub = MagicMock(spec=SentenceSubmission)

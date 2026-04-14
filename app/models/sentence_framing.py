@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
@@ -33,7 +33,7 @@ class SentenceExercise(Base, TimestampMixin):
     difficulty_score: Mapped[float | None] = mapped_column(NUMERIC(6, 2), nullable=True)
     industry: Mapped[str | None] = mapped_column(String(50), nullable=True)
     scenario: Mapped[str] = mapped_column(Text, nullable=False)
-    context: Mapped[dict] = mapped_column(
+    context: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False
     )  # stores sender_role, recipient, tone
     template: Mapped[str | None] = mapped_column(
@@ -74,7 +74,7 @@ class SentenceSubmission(Base, TimestampMixin):
     content_score: Mapped[int] = mapped_column(Integer, nullable=False)
     cefr_level: Mapped[str | None] = mapped_column(String(3), nullable=True)
     ability_score: Mapped[float | None] = mapped_column(NUMERIC(6, 4), nullable=True)
-    ai_feedback: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    ai_feedback: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     time_taken_secs: Mapped[int] = mapped_column(Integer, nullable=False)
     submitted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
