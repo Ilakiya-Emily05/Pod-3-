@@ -87,7 +87,8 @@ async def generate_sentence_exercise(
                     "4. Scenario must be realistic and professional. "
                     "Avoid placeholders like [Name].\n"
                     "5. PROFESSIONAL STRUCTURE: If the scenario involves an email, the 'template' "
-                    "MUST include a 'Subject:' line, a professional salutation (e.g., 'Dear Team,'), "
+                    "MUST include a 'Subject:' line, a professional salutation "
+                    "(e.g., 'Dear Team,'), \n"
                     "Even for short messages, ensure the tone and format are "
                     "appropriate for a professional setting.\n"
                     "6. NO BRACKETS: Do NOT use brackets like [Your Name] or [Company]. "
@@ -99,7 +100,10 @@ async def generate_sentence_exercise(
     )
 
     chain = prompt | llm.with_structured_output(SentenceFramingQuestion)
-    return await chain.ainvoke({})
+    result = await chain.ainvoke({})
+    if result is not None and not isinstance(result, SentenceFramingQuestion):
+        raise ValueError("AI failed to generate a valid sentence framing question.")
+    return result
 
 
 async def evaluate_sentence_response(
@@ -158,4 +162,7 @@ async def evaluate_sentence_response(
     )
 
     chain = prompt | llm.with_structured_output(SentenceFramingEvaluation)
-    return await chain.ainvoke({})
+    result = await chain.ainvoke({})
+    if result is not None and not isinstance(result, SentenceFramingEvaluation):
+        raise ValueError("AI failed to generate a valid sentence framing evaluation.")
+    return result

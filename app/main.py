@@ -1,3 +1,4 @@
+from typing import Any, AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -32,7 +33,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["30/minute"])
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup: Initialize database (run migrations/create tables)
     await init_db()
     yield
@@ -96,7 +97,7 @@ def create_app() -> FastAPI:
         )
 
     # ── OpenAPI schema override (adds servers block) ─────────────────────────
-    def custom_openapi() -> dict:
+    def custom_openapi() -> dict[str, Any]:
         if app.openapi_schema:
             return app.openapi_schema
         schema = get_openapi(

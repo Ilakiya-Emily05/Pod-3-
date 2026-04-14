@@ -1,4 +1,5 @@
 import logging
+from typing import Any, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -29,7 +30,7 @@ async def list_sentence_categories(
     Each subcategory includes an 'exercise_id' trigger for dynamic generation.
     """
     service = SentenceFramingService(db)
-    return {"categories": await service.get_categories()}
+    return {"categories": cast("list[CategoryRead]", await service.get_categories())}
 
 
 @router.get("/exercise/{exercise_id}", response_model=SentenceFramingRead)
@@ -99,7 +100,7 @@ async def get_sentence_progress(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: UUID = Depends(get_current_user_id),
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """
     Returns user progress for the Sentence Framing module.
     """

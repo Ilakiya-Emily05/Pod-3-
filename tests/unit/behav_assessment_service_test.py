@@ -3,11 +3,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.schemas.behav_assessment_schemas import SingleAnswer
 from app.services import behav_assessment_service
 
 
 @pytest.mark.unit
-async def test_get_adaptive_questions_for_attempt():
+async def test_get_adaptive_questions_for_attempt() -> None:
     db = AsyncMock()
     db.add = MagicMock()
     attempt_id = uuid.uuid4()
@@ -34,7 +35,7 @@ async def test_get_adaptive_questions_for_attempt():
 
 
 @pytest.mark.unit
-async def test_calculate_result_already_submitted():
+async def test_calculate_result_already_submitted() -> None:
     db = AsyncMock()
     attempt_id = uuid.uuid4()
 
@@ -104,12 +105,10 @@ async def test_submit_bulk_answers_integration_logic() -> None:
     db.add = MagicMock()
     attempt_id = uuid.uuid4()
 
-    class MockAns:
-        def __init__(self, q_id, opt_key):
-            self.question_id = q_id
-            self.option_key = opt_key
-
-    answers = [MockAns(1, "A"), MockAns(2, "B")]
+    answers = [
+        SingleAnswer(attempt_id=attempt_id, question_id=uuid.uuid4(), option_key="A"),
+        SingleAnswer(attempt_id=attempt_id, question_id=uuid.uuid4(), option_key="B"),
+    ]
 
     # Mock attempt
     mock_attempt = MagicMock()
@@ -241,10 +240,11 @@ async def test_save_questions_bulk() -> None:
 
     mock_result = MagicMock()
     mock_result.unique.return_value = mock_result
-    mock_result.scalars().all.return_value = ["mock_question"]
+    mock_question = MagicMock()
+    mock_result.scalars().all.return_value = [mock_question]
     db.execute.return_value = mock_result
 
     result = await behav_assessment_service.save_questions_bulk(db, [q_data])
 
-    assert result == ["mock_question"]
+    assert result == [mock_question]
     assert db.add.call_count == 5  # 1 question + 2 options + 2 scores

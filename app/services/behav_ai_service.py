@@ -92,6 +92,8 @@ async def generate_personality_report(hexaco_scores: dict[str, float]) -> dict[s
 
     chain = prompt | llm.with_structured_output(AIAnalysisReport)
     report = await chain.ainvoke({"scores": scores_str})
+    if not isinstance(report, AIAnalysisReport):
+        raise ValueError("AI failed to generate a valid personality report.")
     return report.model_dump()
 
 
@@ -126,8 +128,10 @@ async def generate_assessment_questions() -> list[AIQuestion]:
                     "specific profession, subculture, or unique obscure situation from anywhere "
                     "in the world.\n"
                     "2. Base the scenario strictly on realistic daily challenges of that context.\n"
-                    "3. Ensure novelty: it must not sound like a generic psychological assessment.\n"
-                    "- Each question: 4 options with scores (1, 2, 4, 5). Likert or situational.\n"
+                    "3. Ensure novelty: it must not sound like a generic "
+                    "psychological assessment.\n"
+                    "- Each question: 4 options with scores (1, 2, 4, 5). "
+                    "Likert or situational.\n"
                     "- Do not mention trait names in question text."
                 ),
             ),
@@ -142,6 +146,8 @@ async def generate_assessment_questions() -> list[AIQuestion]:
 
     chain = prompt | llm.with_structured_output(HEXACOQuestionList)
     result = await chain.ainvoke({"traits": ", ".join(traits)})
+    if not isinstance(result, HEXACOQuestionList):
+        raise ValueError("AI failed to generate valid assessment questions.")
     return result.questions
 
 
@@ -168,7 +174,8 @@ async def generate_adaptive_questions(traits: list[str]) -> list[AIQuestion]:
                     "specific profession, subculture, or unique obscure situation from anywhere "
                     "in the world.\n"
                     "2. Base the scenario strictly on realistic daily challenges of that context.\n"
-                    "3. Ensure novelty: it must not sound like a generic psychological assessment.\n"
+                    "3. Ensure novelty: it must not sound like a generic "
+                    "psychological assessment.\n"
                     "- Each question: 4 options with scores (1, 2, 4, 5).\n"
                     "- Do not mention trait names in question text."
                 ),
@@ -184,4 +191,6 @@ async def generate_adaptive_questions(traits: list[str]) -> list[AIQuestion]:
 
     chain = prompt | llm.with_structured_output(HEXACOQuestionList)
     result = await chain.ainvoke({"traits": ", ".join(traits), "count": len(traits) * 3})
+    if not isinstance(result, HEXACOQuestionList):
+        raise ValueError("AI failed to generate adaptive questions.")
     return result.questions

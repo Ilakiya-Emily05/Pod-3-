@@ -28,8 +28,11 @@ with (
     from app.utils.auth import get_current_user_id
 
 
+from collections.abc import AsyncGenerator
+
+
 @pytest.fixture
-async def client() -> AsyncClient:
+async def client() -> AsyncGenerator[AsyncClient, None]:
     app = create_app()
 
     # Mock DB dependency
