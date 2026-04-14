@@ -104,5 +104,10 @@ async def get_sentence_progress(
     """
     Returns user progress for the Sentence Framing module.
     """
+    if user_id != current_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to access this user's progress",
+        )
     service = SentenceFramingService(db)
     return await service.get_user_progress(user_id)

@@ -86,6 +86,11 @@ async def complete_behavioral_assessment(
     """
     Triggered on assessment finish to analyze personality and recommend learning modules.
     """
+    if request.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to complete assessment for this user",
+        )
     return await behav_learning_service.process_assessment_completion(
         db, request.user_id, request.session_id, background_tasks=background_tasks
     )
@@ -100,6 +105,11 @@ async def get_behavioral_profile(
     """
     Returns user's behavioral profile for dashboard display.
     """
+    if user_id != current_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to access this user's profile",
+        )
     return await behav_learning_service.get_user_profile(db, user_id)
 
 
@@ -112,4 +122,9 @@ async def get_behavioral_recommendations(
     """
     Returns behavioral-based module recommendations.
     """
+    if user_id != current_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to access this user's recommendations",
+        )
     return await behav_learning_service.get_recommendations(db, user_id)
