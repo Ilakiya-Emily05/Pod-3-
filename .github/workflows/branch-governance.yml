@@ -38,6 +38,7 @@ jobs:
              [[ "$BRANCH" =~ ^chore\/.* ]] || \
              [[ "$BRANCH" == "qa" ]] || \
              [[ "$BRANCH" == "QA" ]] || \
+             [[ "$BRANCH" == "dev" ]] || \
              [[ "$BRANCH" == "development" ]] || \
              [[ "$BRANCH" == "main" ]]; then
             echo "Branch name valid"
@@ -55,14 +56,14 @@ jobs:
 
           echo "PR Flow: $HEAD -> $BASE"
 
-          # development target
-          if [[ "$BASE" == "development" ]]; then
+          # dev target
+          if [[ "$BASE" == "dev" ]]; then
             if [[ ! "$HEAD" =~ ^feature\/.* ]] && \
                [[ ! "$HEAD" =~ ^feat\/.* ]] && \
                [[ ! "$HEAD" =~ ^bugfix\/.* ]] && \
                [[ ! "$HEAD" =~ ^hotfix\/.* ]] && \
                [[ ! "$HEAD" =~ ^chore\/.* ]]; then
-              echo "Only feature/bugfix/hotfix/chore branches can merge into development"
+              echo "Only feature/bugfix/hotfix/chore branches can merge into dev"
               exit 1
             fi
           fi
