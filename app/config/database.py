@@ -36,6 +36,8 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     from app.models import user  # noqa: F401
+    from app.models.assessment_session import AssessmentSession  # noqa: F401
+    from app.models.final_reports import FinalReport  # noqa: F401
 
     async with engine.begin() as connection:
         try:

@@ -10,7 +10,7 @@ class AssessmentResults(BaseModel):
     speaking_score: int = Field(ge=0, le=100)
 
 
-class AssignLearningPathRequest(BaseModel):
+class LearningPathCreate(BaseModel):
     user_id: UUID
     assessment_results: AssessmentResults
     user_goal: str = Field(pattern="^(placement_prep|promotion|entrepreneurship)$")
@@ -35,10 +35,15 @@ class LearningPathProgress(BaseModel):
     completion_pct: float
 
 
-class LearningPathResponse(BaseModel):
+class LearningPathRead(BaseModel):
     user_id: UUID
     cefr_level: str
     recommended_path: list[ModuleRecommendation]
     weak_areas: list[str]
     estimated_completion_weeks: int
     progress: LearningPathProgress | None = None
+
+
+# Backward-compatible aliases for existing imports.
+AssignLearningPathRequest = LearningPathCreate
+LearningPathResponse = LearningPathRead

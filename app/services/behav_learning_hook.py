@@ -1,15 +1,17 @@
-from datetime import datetime
-from typing import Any
-from uuid import UUID
+from datetime import UTC, datetime
+from typing import Any, ClassVar, cast
+from uuid import UUID, uuid4
 
 from fastapi import BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.learning_path import ModuleUnlock
+
 try:
     from app.services.progress_service import ProgressService
 except ImportError:
-    ProgressService = None
+    ProgressService = None  # type: ignore[assignment]
 
 from app.models.behav_assessment_model import BehavProfile
 from app.schemas.behav_assessment_schemas import (
@@ -24,7 +26,8 @@ from app.services import behav_assessment_service
 class BehavioralLearningService:
     TRAIT_THRESHOLD = 50  # Below this suggests development need
 
-    MODULE_MAPPING = {
+    MODULE_MAPPING: ClassVar[dict[str, Any]] = {
+
         "honesty_humility": {
             "name": "Honesty-Humility",
             "low_modules": [
@@ -34,7 +37,8 @@ class BehavioralLearningService:
                 },
                 {
                     "name": "client_trust",
-                    "reason": "Learn strategies for building and maintaining long-term client trust.",
+                    "reason": "Learn strategies for building and maintaining "
+                    "long-term client trust.",
                 },
             ],
         },
@@ -66,15 +70,18 @@ class BehavioralLearningService:
             "low_modules": [
                 {
                     "name": "networking_skills",
-                    "reason": "Building confidence and strategy for effective professional networking.",
+                    "reason": "Building confidence and strategy for effective "
+                    "professional networking.",
                 },
                 {
                     "name": "gd_preparation",
-                    "reason": "Improving group discussion performance and social leadership.",
+                    "reason": "Improving group discussion performance "
+                    "and social leadership.",
                 },
                 {
                     "name": "public_speaking",
-                    "reason": "Developing authoritative and engaging presentation skills.",
+                    "reason": "Developing authoritative and engaging "
+                    "presentation skills.",
                 },
             ],
         },
@@ -104,7 +111,8 @@ class BehavioralLearningService:
                 },
                 {
                     "name": "goal_setting",
-                    "reason": "Learning systematic approaches to achieving long-term objectives.",
+                    "reason": "Learning systematic approaches to "
+                    "achieving long-term objectives.",
                 },
             ],
         },
@@ -117,7 +125,8 @@ class BehavioralLearningService:
                 },
                 {
                     "name": "feedback_reception",
-                    "reason": "Developing a constructive approach to receiving and utilizing critique.",
+                    "reason": "Developing a constructive approach to "
+                    "receiving and utilizing critique.",
                 },
                 {
                     "name": "creative_thinking",
@@ -142,7 +151,7 @@ class BehavioralLearningService:
 
     def calculate_hexaco_profile(self, scores_result: dict[str, Any]) -> dict[str, float]:
         # 2. Calculate HEXACO profile
-        return scores_result["hexaco_scores"]
+        return cast("dict[str, float]", scores_result["hexaco_scores"])
 
     def generate_recommendations(self, profile: dict[str, float]) -> list[ModuleRecommendation]:
         # 4. Map to recommended modules using Comparative and Absolute logic
@@ -153,9 +162,9 @@ class BehavioralLearningService:
         min_score = min(profile.values()) if profile else 100
 
         # Absolute Score Definitions
-        ABS_LOW_THRESHOLD = 60
-        CRITICAL_LOW = 40
-        VERY_HIGH_THRESHOLD = 85
+        abs_low_threshold = 60
+        critical_low = 40
+        very_high_threshold = 85
 
         for trait, score in profile.items():
             if trait not in self.MODULE_MAPPING:
@@ -169,16 +178,16 @@ class BehavioralLearningService:
             reason_suffix = ""
 
             # --- LOGIC SELECTION ---
-            if score > VERY_HIGH_THRESHOLD and "high_modules" in mapping:
+            if score > very_high_threshold and "high_modules" in mapping:
                 # 1. Very High - Priority Medium (Balance Needed)
                 target_modules = mapping.get("high_modules", [])
                 priority = "medium"
                 reason_suffix = f"This is recommended to balance your very high {trait_name} score."
 
-            elif score < ABS_LOW_THRESHOLD:
+            elif score < abs_low_threshold:
                 # 2. Absolute Low - Priority High/Medium (Remedial)
                 target_modules = mapping.get("low_modules", [])
-                priority = "high" if score < CRITICAL_LOW else "medium"
+                priority = "high" if score < critical_low else "medium"
                 reason_suffix = (
                     f"This is Identified as a primary development area for {trait_name}."
                 )
@@ -194,11 +203,23 @@ class BehavioralLearningService:
 
             # --- POPULATE MODULES ---
             for mod_info in target_modules:
+                # Map priority/logic to standardized difficulty levels
+                # (basic, intermediate, advanced)
+                # Absolute Low < 60 -> basic
+                # Comparative Low -> intermediate
+                # Very High -> advanced
+                recommendation_difficulty = "basic"
+                if score > very_high_threshold:
+                    recommendation_difficulty = "advanced"
+                elif score >= abs_low_threshold:
+                    recommendation_difficulty = "intermediate"
+
                 recommendations.append(
                     ModuleRecommendation(
                         module=mod_info["name"],
                         reason=f"{mod_info['reason']} {reason_suffix}",
                         priority=priority,
+                        difficulty=recommendation_difficulty,
                     )
                 )
 
@@ -245,21 +266,24 @@ class BehavioralLearningService:
         return sum(scores) / len(traits) if traits else 0.0
 
     async def update_learning_path(
-        self, user_id: UUID, recommendations: list[ModuleRecommendation]
+        self, db: AsyncSession, user_id: UUID, recommendations: list[ModuleRecommendation]
     ) -> None:
-        # Call Learning Path Service (Vaaheesan)
-        # Note: Vaaheesan should plug in learning_path_client here.
-        [
-            {
-                "name": r.module,
-                "source": "behavioral_assessment",
-                "priority": r.priority,
-                "reason": r.reason,
-            }
-            for r in recommendations
-        ]
+        """Persist recommendations as ModuleUnlock entries in the Learning Path system."""
+        for r in recommendations:
+            # We create a new ModuleUnlock for each recommendation.
+            # If a module already exists for the user, Vaheesan's service handles it
+            # during path reassignment,
+            # but here we ensure the 'unlock' record is present.
+            unlock = ModuleUnlock(
+                id=uuid4(),
+                user_id=user_id,
+                module_name=r.module,
+                unlocked_level=r.difficulty,
+            )
+            db.add(unlock)
 
-        # await learning_path_client.add_modules(user_id=user_id, modules=payload)
+        # We don't commit here as this is usually part of a larger
+        # transaction in process_assessment_completion
         pass
 
     async def report_completion(
@@ -281,14 +305,15 @@ class BehavioralLearningService:
 
         svc = ProgressService(db)
         try:
-            await svc.record_progress(
-                str(user_id),
-                module="behavioral",
-                topic="hexaco_assessment",
-                subtopic="overall",
-                is_correct=is_mastery,
-                time_spent_secs=0,
-            )
+            async with db.begin_nested():
+                await svc.record_progress(
+                    str(user_id),
+                    module="behavioral",
+                    topic="hexaco_assessment",
+                    subtopic="overall",
+                    is_correct=is_mastery,
+                    time_spent_secs=0,
+                )
         except Exception:
             # Do not raise on reporting failure; it's non-critical for assessment completion.
             return
@@ -302,9 +327,11 @@ class BehavioralLearningService:
         background_tasks: BackgroundTasks | None = None,
     ) -> BehavioralCompleteResponse:
 
-        # 1. Fetch scores from session, but avoid re-triggering the same hook if we're already in it.
         scores_result = await self.get_session_scores(
-            db, session_id, trigger_hooks=not internal_call, background_tasks=background_tasks
+            db,
+            session_id,
+            trigger_hooks=not internal_call,
+            background_tasks=background_tasks,
         )
 
         # 2. Calculate HEXACO profile
@@ -319,7 +346,7 @@ class BehavioralLearningService:
         recommendations = self.generate_recommendations(hexaco_profile)
 
         # 5. Update learning path
-        await self.update_learning_path(user_id, recommendations)
+        await self.update_learning_path(db, user_id, recommendations)
 
         # 6. Report to progress tracking
         await self.report_completion(db, user_id, hexaco_profile)
@@ -346,7 +373,7 @@ class BehavioralLearningService:
                 recommended_modules=[r.model_dump() for r in recommendations],
                 strengths=strengths,
                 development_areas=development_areas,
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.now(UTC).replace(tzinfo=None),
             )
             db.add(profile)
         else:
@@ -356,7 +383,7 @@ class BehavioralLearningService:
             profile.recommended_modules = [r.model_dump() for r in recommendations]
             profile.strengths = strengths
             profile.development_areas = development_areas
-            profile.completed_at = datetime.utcnow()
+            profile.completed_at = datetime.now(UTC).replace(tzinfo=None)
 
         await db.commit()
 

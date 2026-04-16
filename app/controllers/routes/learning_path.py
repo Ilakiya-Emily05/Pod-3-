@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import get_db
 from app.schemas.learning_path import (
-    AssignLearningPathRequest,
-    LearningPathResponse,
+    LearningPathCreate,
+    LearningPathRead,
     RecalculateLearningPathRequest,
 )
 from app.services.learning_path_service import LearningPathService
@@ -15,12 +15,12 @@ from app.utils.auth import get_current_user_id
 router = APIRouter(prefix="/learning-path", tags=["learning-path"])
 
 
-@router.post("/assign", response_model=LearningPathResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/assign", response_model=LearningPathRead, status_code=status.HTTP_201_CREATED)
 async def assign_learning_path(
-    payload: AssignLearningPathRequest,
+    payload: LearningPathCreate,
     db: AsyncSession = Depends(get_db),
     current_user_id: UUID = Depends(get_current_user_id),
-) -> LearningPathResponse:
+) -> LearningPathRead:
     if payload.user_id != current_user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -33,15 +33,15 @@ async def assign_learning_path(
         assessment=payload.assessment_results,
         user_goal=payload.user_goal,
     )
-    return LearningPathResponse.model_validate(result)
+    return LearningPathRead.model_validate(result)
 
 
-@router.get("/{user_id}", response_model=LearningPathResponse)
+@router.get("/{user_id}", response_model=LearningPathRead)
 async def get_learning_path(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user_id: UUID = Depends(get_current_user_id),
-) -> LearningPathResponse:
+) -> LearningPathRead:
     if user_id != current_user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -50,16 +50,16 @@ async def get_learning_path(
 
     service = LearningPathService(db)
     result = await service.get_learning_path(user_id=user_id)
-    return LearningPathResponse.model_validate(result)
+    return LearningPathRead.model_validate(result)
 
 
-@router.put("/{user_id}/recalculate", response_model=LearningPathResponse)
+@router.put("/{user_id}/recalculate", response_model=LearningPathRead)
 async def recalculate_learning_path(
     user_id: UUID,
     payload: RecalculateLearningPathRequest,
     db: AsyncSession = Depends(get_db),
     current_user_id: UUID = Depends(get_current_user_id),
-) -> LearningPathResponse:
+) -> LearningPathRead:
     if user_id != current_user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -72,4 +72,4 @@ async def recalculate_learning_path(
         assessment=payload.assessment_results,
         user_goal=payload.user_goal,
     )
-    return LearningPathResponse.model_validate(result)
+    return LearningPathRead.model_validate(result)

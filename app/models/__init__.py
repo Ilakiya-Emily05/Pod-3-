@@ -9,6 +9,7 @@ from app.models.grammar import (
     GrammarQuestion,
     GrammarQuestionOption,
 )
+from app.models.learning_path import LearningPath, ModuleUnlock
 from app.models.listening import (
     ListeningAssessment,
     ListeningAttempt,
@@ -17,7 +18,6 @@ from app.models.listening import (
     ListeningQuestionOption,
 )
 from app.models.listening1 import ListeningSession
-from app.models.learning_path import LearningPath, ModuleUnlock
 from app.models.passage_session import PassageSession
 from app.models.reading import (
     ReadingAssessment,
@@ -41,13 +41,13 @@ __all__ = [
     "GrammarAttemptAnswer",
     "GrammarQuestion",
     "GrammarQuestionOption",
+    "LearningPath",
     "ListeningAssessment",
     "ListeningAttempt",
     "ListeningAttemptAnswer",
     "ListeningQuestion",
     "ListeningQuestionOption",
     "ListeningSession",
-    "LearningPath",
     "ModuleUnlock",
     "PassageSession",
     "ReadingAssessment",

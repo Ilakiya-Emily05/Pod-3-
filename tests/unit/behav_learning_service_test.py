@@ -7,12 +7,12 @@ from app.services.behav_learning_hook import BehavioralLearningService
 
 
 @pytest.fixture
-def service():
+def service() -> BehavioralLearningService:
     return BehavioralLearningService()
 
 
 @pytest.mark.unit
-def test_generate_recommendations_low_scores(service):
+def test_generate_recommendations_low_scores(service: BehavioralLearningService) -> None:
     # Test low scores triggering high priority recommendations
     profile = {
         "honesty_humility": 30.0,
@@ -36,7 +36,7 @@ def test_generate_recommendations_low_scores(service):
 
 
 @pytest.mark.unit
-def test_generate_recommendations_high_emotionality(service):
+def test_generate_recommendations_high_emotionality(service: BehavioralLearningService) -> None:
     # Test high emotionality triggering stress management
     profile = {"emotionality": 90.0}
 
@@ -47,7 +47,7 @@ def test_generate_recommendations_high_emotionality(service):
 
 
 @pytest.mark.unit
-def test_generate_recommendations_comparative_low(service):
+def test_generate_recommendations_comparative_low(service: BehavioralLearningService) -> None:
     # Test that even high scores trigger recommendations if they are the lowest in profile
     profile = {
         "honesty_humility": 100.0,
@@ -64,7 +64,7 @@ def test_generate_recommendations_comparative_low(service):
 
 
 @pytest.mark.unit
-async def test_process_assessment_completion(service):
+async def test_process_assessment_completion(service: BehavioralLearningService) -> None:
     db = AsyncMock()
     db.add = MagicMock()
     user_id = uuid.uuid4()
@@ -100,7 +100,7 @@ async def test_process_assessment_completion(service):
 
 
 @pytest.mark.unit
-async def test_get_user_profile_not_found(service):
+async def test_get_user_profile_not_found(service: BehavioralLearningService) -> None:
     db = AsyncMock()
     user_id = uuid.uuid4()
 

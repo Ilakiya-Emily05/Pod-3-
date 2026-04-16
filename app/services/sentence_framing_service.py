@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import select
 
@@ -104,7 +104,7 @@ class SentenceFramingService(BaseAssessmentService):
         super().__init__(db)
         self.grading_service = CEFRGradingService()
 
-    async def get_categories(self) -> list[dict]:
+    async def get_categories(self) -> list[dict[str, Any]]:
         """Return the static list of categories and subcategories."""
         return SENTENCE_CATEGORIES_REGISTRY
 
@@ -120,8 +120,8 @@ class SentenceFramingService(BaseAssessmentService):
         str_id = str(exercise_id)
         for cat in SENTENCE_CATEGORIES_REGISTRY:
             for sub in cat["subcategories"]:
-                if sub["id"] == str_id:
-                    return cat["name"], sub["name"]
+                if cast("str", sub["id"]) == str_id:
+                    return cast("str", cat["name"]), cast("str", sub["name"])
         return None
 
     async def get_exercise(
@@ -266,7 +266,7 @@ class SentenceFramingService(BaseAssessmentService):
 
         return submission
 
-    async def _get_user_submission_history(self, user_id: UUID) -> list[dict]:
+    async def _get_user_submission_history(self, user_id: UUID) -> list[dict[str, Any]]:
         stmt = (
             select(SentenceSubmission, SentenceExercise)
             .join(SentenceExercise)
@@ -286,7 +286,7 @@ class SentenceFramingService(BaseAssessmentService):
             )
         return history
 
-    async def get_user_progress(self, user_id: UUID) -> dict:
+    async def get_user_progress(self, user_id: UUID) -> dict[str, Any]:
         result = await self.db.execute(
             select(SentenceSubmission)
             .where(SentenceSubmission.user_id == user_id)
