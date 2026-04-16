@@ -1,13 +1,11 @@
-name: CI Quality Gates
+name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [ "development" ]
   pull_request:
-    branches: [ "qa", "main" ]
+    branches: [ "dev" ]
 
 jobs:
-  quality-gates:
+  backend-ci:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,26 +24,26 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --dev
+          uv sync
 
-      - name: Run ruff linting (critical errors only)
+      - name: Run ruff linting
         run: |
-          uv run ruff check . --select=F --exit-zero
+          uv run ruff check .
 
       - name: Run ruff formatting check
         run: |
-          uv run ruff format . --check || true
+          uv run ruff format . --check
 
-      - name: Run mypy type checking (critical errors only)
+      - name: Run mypy type checking
         run: |
-          uv run mypy app/ --ignore-missing-imports --no-error-summary --show-error-codes --hide-error-context || true
+          uv run mypy app/
 
-      - name: Run tests with pytest
+      - name: Run tests with coverage
         run: |
-          uv run pytest tests/unit/test_sm2.py tests/unit/behav_assessment_service_test.py -v --tb=short
+          uv run pytest tests/unit/ -v --cov=app/services --cov-fail-under=80
 
       - name: Upload coverage to Codecov
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
