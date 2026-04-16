@@ -2,9 +2,9 @@ import uuid
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, DateTime, Integer, String, func
+from sqlalchemy import Boolean, Date, DateTime, Integer, String, cast, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from app.config.database import Base
 
@@ -37,7 +37,7 @@ class User(Base):
         "UserProfile",
         back_populates="user",
         uselist=False,
-        primaryjoin="User.id==foreign(UserProfile.user_id)",
+        primaryjoin=lambda: User.id == cast(foreign(UserProfile.user_id), UUID(as_uuid=True)),
         viewonly=True,
     )
     progress_records: Mapped[list["UserModuleProgress"]] = relationship(
@@ -77,6 +77,6 @@ class UserProfile(Base):
     user: Mapped["User"] = relationship(
         "User",
         back_populates="profile",
-        primaryjoin="foreign(UserProfile.user_id)==User.id",
+        primaryjoin=lambda: cast(foreign(UserProfile.user_id), UUID(as_uuid=True)) == User.id,
         viewonly=True,
     )
