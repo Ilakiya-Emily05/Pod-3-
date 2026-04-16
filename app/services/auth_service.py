@@ -1,6 +1,6 @@
 import hashlib
-from contextlib import suppress
-from datetime import UTC, date, datetime, timedelta
+import logging
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 from fastapi import HTTPException, status
@@ -21,6 +21,7 @@ from app.services.analytics_service import AnalyticsService
 from app.utils.auth import CurrentUser
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 def hash_password(password: str) -> str:
@@ -158,7 +159,7 @@ async def login_user(db: AsyncSession, payload: UserLogin) -> AuthLoginResponse:
             detail="Invalid email or password",
         )
 
-    user.last_active_date = date.today()
+    user.last_active_date = datetime.now(UTC).date()
     await db.commit()
     await db.refresh(user)
 
@@ -186,9 +187,14 @@ async def get_current_user_profile(db: AsyncSession, current_user: CurrentUser) 
 
 async def _build_user_read(db: AsyncSession, user: User) -> UserRead:
     cefr_level: str | None = None
-    with suppress(Exception):
+    try:
         progress = await AnalyticsService(db).get_progress(user.id)
         cefr_level = progress.cefr_level
+    except Exception:
+        logger.exception(
+            "Failed to fetch CEFR level for user profile",
+            extra={"user_id": str(user.id)},
+        )
 
     return UserRead(
         id=user.id,
