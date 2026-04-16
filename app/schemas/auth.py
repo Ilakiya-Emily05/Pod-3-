@@ -12,6 +12,7 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=72)
+    remember_me: bool = False  # Controls refresh token lifetime
 
 
 class UserRead(BaseModel):
@@ -29,7 +30,8 @@ class UserRead(BaseModel):
 
 class AuthRegisterResponse(BaseModel):
     user_id: UUID
-    token: str
+    access_token: str
+    refresh_token: str
 
 
 class AuthLoginResponse(BaseModel):

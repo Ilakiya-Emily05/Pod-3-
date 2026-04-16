@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, DateTime, Integer, String, cast, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, cast, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
@@ -62,8 +62,14 @@ class UserProfile(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     # Store user_id as string for legacy auth DB compatibility.
-    # Avoids a foreign key constraint against users.id in older databases.
-    user_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    # References users.id which may be UUID; FK constraint ensures referential integrity.
+    user_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     mobile: Mapped[str] = mapped_column(String(20), nullable=False)
     dob: Mapped[date] = mapped_column(Date, nullable=False)

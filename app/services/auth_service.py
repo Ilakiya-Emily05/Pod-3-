@@ -1,5 +1,4 @@
 import hashlib
-import logging
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
@@ -17,11 +16,9 @@ from app.schemas.auth import (
     UserLogin,
     UserRead,
 )
-from app.services.analytics_service import AnalyticsService
 from app.utils.auth import CurrentUser
 
 settings = get_settings()
-logger = logging.getLogger(__name__)
 
 
 def hash_password(password: str) -> str:
@@ -76,15 +73,11 @@ def _encode_token(
 def create_access_token(
     subject: str,
     email: str,
-    remember_me: bool,
     name: str | None = None,
     role: str = "student",
 ) -> tuple[str, int]:
-    expiration_delta = (
-        timedelta(days=settings.refresh_token_expire_days)
-        if remember_me
-        else timedelta(minutes=settings.access_token_expire_minutes)
-    )
+    # Access tokens are always short-lived for security
+    expiration_delta = timedelta(minutes=settings.access_token_expire_minutes)
     expires_in = int(expiration_delta.total_seconds())
     access_label = "access"
     token = _encode_token(
@@ -103,8 +96,14 @@ def create_refresh_token(
     email: str,
     name: str | None = None,
     role: str = "student",
+    remember_me: bool = False,
 ) -> tuple[str, int]:
-    expiration_delta = timedelta(days=settings.refresh_token_expire_days)
+    # remember_me flag controls refresh token lifetime
+    expiration_delta = (
+        timedelta(days=settings.refresh_token_expire_days * 4)  # Extended for remember_me
+        if remember_me
+        else timedelta(days=settings.refresh_token_expire_days)
+    )
     expires_in = int(expiration_delta.total_seconds())
     refresh_label = "refresh"
     token = _encode_token(
@@ -139,8 +138,13 @@ async def register_user(db: AsyncSession, payload: UserCreate) -> AuthRegisterRe
     await db.commit()
     await db.refresh(user)
 
-    token, _ = create_access_token(str(user.id), user.email, remember_me=False, name=user.name)
-    return AuthRegisterResponse(user_id=user.id, token=token)
+    access_token, _ = create_access_token(str(user.id), user.email, name=user.name)
+    refresh_token, _ = create_refresh_token(
+        str(user.id), user.email, name=user.name, remember_me=False
+    )
+    return AuthRegisterResponse(
+        user_id=user.id, access_token=access_token, refresh_token=refresh_token
+    )
 
 
 async def login_user(db: AsyncSession, payload: UserLogin) -> AuthLoginResponse:
@@ -161,15 +165,15 @@ async def login_user(db: AsyncSession, payload: UserLogin) -> AuthLoginResponse:
 
     user.last_active_date = datetime.now(UTC).date()
     await db.commit()
-    await db.refresh(user)
 
     access_token, _ = create_access_token(
         str(user.id),
         user.email,
-        remember_me=False,
         name=user.name,
     )
-    refresh_token, _ = create_refresh_token(str(user.id), user.email, name=user.name)
+    refresh_token, _ = create_refresh_token(
+        str(user.id), user.email, name=user.name, remember_me=payload.remember_me
+    )
     return AuthLoginResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -186,21 +190,13 @@ async def get_current_user_profile(db: AsyncSession, current_user: CurrentUser) 
 
 
 async def _build_user_read(db: AsyncSession, user: User) -> UserRead:
-    cefr_level: str | None = None
-    try:
-        progress = await AnalyticsService(db).get_progress(user.id)
-        cefr_level = progress.cefr_level
-    except Exception:
-        logger.exception(
-            "Failed to fetch CEFR level for user profile",
-            extra={"user_id": str(user.id)},
-        )
-
+    # Note: CEFR level is not fetched on every /me call to avoid performance degradation.
+    # Consider caching this value on the User model if frequently accessed.
     return UserRead(
         id=user.id,
         email=user.email,
         name=user.name,
-        cefr_level=cefr_level,
+        cefr_level=None,  # Avoid expensive AnalyticsService.get_progress() call
         learning_goal=user.learning_goal,
         learning_frequency=user.learning_frequency,
         streak_count=int(user.streak_count or 0),
