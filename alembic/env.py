@@ -3,10 +3,43 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
-import app.models  # noqa: F401
 from alembic import context
 from app.config.database import Base
 from app.config.settings import get_settings
+from app.models.analytics.user_progress import UserModuleProgress  # noqa: F401
+from app.models.analytics.user_streaks import UserStreaks  # noqa: F401
+from app.models.assessment_status import AttemptStatus  # noqa: F401
+from app.models.base import TimestampMixin  # noqa: F401
+from app.models.grammar import (  # noqa: F401
+    GrammarAssessment,
+    GrammarAttempt,
+    GrammarAttemptAnswer,
+    GrammarQuestion,
+    GrammarQuestionOption,
+)
+from app.models.learning_path import LearningPath, ModuleUnlock  # noqa: F401
+from app.models.listening import (  # noqa: F401
+    ListeningAssessment,
+    ListeningAttempt,
+    ListeningAttemptAnswer,
+    ListeningQuestion,
+    ListeningQuestionOption,
+)
+from app.models.listening1 import ListeningSession  # noqa: F401
+from app.models.passage_session import PassageSession  # noqa: F401
+from app.models.reading import (  # noqa: F401
+    ReadingAssessment,
+    ReadingAttempt,
+    ReadingAttemptAnswer,
+    ReadingQuestion,
+    ReadingQuestionOption,
+)
+from app.models.test_session import TestSession  # noqa: F401
+from app.models.user import User, UserProfile  # noqa: F401
+from app.models.Vocab.user_vocabulary import UserVocabulary  # noqa: F401
+from app.models.Vocab.vocabulary_list import VocabularyList  # noqa: F401
+from app.models.Vocab.vocabulary_session import VocabularySession  # noqa: F401
+from app.models.Vocab.vocabulary_word import VocabularyWord  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

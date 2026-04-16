@@ -27,10 +27,10 @@ from app.controllers.routes.assessment_session import router as assessment_sessi
 from app.controllers.routes.question import router as question_router
 
 # Import routers from the root routes directory (Pod 1/2)
-from app.routes.audio_route import router as audio_router
-from app.routes.listening_route import router as listening_module_router
-from app.routes.listening_test_route import router as listening_test_module_router
-from app.routes.question_route import router as question_module_router
+from app.controllers.routes.audio_route import router as audio_router
+from app.controllers.routes.listening_route import router as listening_module_router
+from app.controllers.routes.listening_test_route import router as listening_test_module_router
+from app.controllers.routes.question_route import router as question_module_router
 
 api_router = APIRouter()
 
