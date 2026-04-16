@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
-    database_url: str 
+    database_url: str = "postgresql+asyncpg://user:password@localhost:5432/powerup_db"
     database_url_sync: str | None = None
 
     azure_openai_endpoint: str | None = None
