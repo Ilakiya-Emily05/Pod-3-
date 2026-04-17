@@ -96,7 +96,6 @@ async def evaluate_listening_audio(
 
     db.add(attempt)
     await db.commit()
-    await db.refresh(attempt)
 
     # Delete temp file
     with contextlib.suppress(BaseException):
