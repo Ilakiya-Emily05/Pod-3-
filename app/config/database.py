@@ -1,9 +1,9 @@
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase
 
 from app.config.settings import get_settings
+from app.models.base import Base as DatabaseBase
 
 settings = get_settings()
 
@@ -15,9 +15,7 @@ if "+asyncpg" in settings.database_url:
 engine = create_async_engine(settings.database_url, **engine_kwargs)
 AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
-
-class Base(DeclarativeBase):
-    pass
+Base = DatabaseBase
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -36,6 +34,8 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     from app.models import user  # noqa: F401
+    from app.models.assessment_session import AssessmentSession  # noqa: F401
+    from app.models.final_reports import FinalReport  # noqa: F401
 
     async with engine.begin() as connection:
         try:

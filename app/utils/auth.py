@@ -20,6 +20,7 @@ class CurrentUser(NamedTuple):
 
 def _decode_jwt_payload(
     credentials: HTTPAuthorizationCredentials | None,
+    expected_token_type: str = "access",  # noqa: S107
 ) -> dict[str, object]:
     if credentials is None:
         raise HTTPException(
@@ -56,6 +57,7 @@ def _decode_jwt_payload(
         "sub": str,
         "email": str,
         "role": str,
+        "token_type": str,
         "iat": int,
         "exp": int,
     }
@@ -66,6 +68,14 @@ def _decode_jwt_payload(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Invalid token: missing or malformed '{claim}' claim",
             )
+
+    token_type = payload.get("token_type")
+    if token_type != expected_token_type:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid token type: expected '{expected_token_type}'",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     return payload
 

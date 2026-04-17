@@ -7,9 +7,9 @@ import os
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
 from fastapi.responses import JSONResponse
 from openai import OpenAI
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.session import get_db
+from app.config.database import get_db
 from app.models.listening_model import ListeningAttempt
 
 router = APIRouter(prefix="/listening", tags=["Listening Evaluation"])
@@ -64,7 +64,7 @@ async def evaluate_listening_audio(
     question_text: str = Form(...),
     file: UploadFile = None,
     model=Depends(get_whisper_model),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     if file is None:
         return JSONResponse({"error": "No audio file uploaded"}, status_code=400)
@@ -95,8 +95,7 @@ async def evaluate_listening_audio(
     )
 
     db.add(attempt)
-    db.commit()
-    db.refresh(attempt)
+    await db.commit()
 
     # Delete temp file
     with contextlib.suppress(BaseException):

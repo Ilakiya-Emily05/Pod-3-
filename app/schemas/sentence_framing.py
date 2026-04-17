@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from pydantic import AliasChoices, AliasPath, BaseModel, ConfigDict, Field
@@ -10,7 +11,7 @@ class SentenceExerciseBase(BaseModel):
     difficulty: str = Field(..., min_length=1, max_length=20)
     industry: str | None = Field(None, max_length=50)
     scenario: str = Field(..., min_length=1)
-    context: dict = Field(..., description="stores sender_role, recipient, tone")
+    context: dict[str, Any] = Field(..., description="stores sender_role, recipient, tone")
     template: str | None = None
     hints: list[str] = Field(default_factory=list)
     example_answer: str | None = None
@@ -28,7 +29,7 @@ class SentenceFramingRead(BaseModel):
     type: str = Field(validation_alias="exercise_type")
     category: str
     scenario: str
-    context: dict
+    context: dict[str, Any]
     cefr_level: str | None = None
     template: str | None = None
     hints: list[str]
