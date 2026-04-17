@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -88,7 +88,7 @@ class AssessmentSessionService:
             session.current_section = flow[current_index + 1]
         else:
             session.status = AssessmentSessionStatus.COMPLETED
-            session.completed_at = datetime.utcnow()
+            session.completed_at = datetime.now(UTC)
 
             # placeholder aggregation (replace later)
             session.composite_cefr_result = "B1"

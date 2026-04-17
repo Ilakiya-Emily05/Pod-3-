@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,7 @@ from app.models.assessment_session import AssessmentSection
 from app.utils.auth import get_current_user_id
 
 router = APIRouter(prefix="/assessment-sessions", tags=["Assessment Sessions"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -36,9 +38,10 @@ async def create_assessment_session(
         )
         return session
     except Exception as exc:
+        logger.exception("Failed to create assessment session", exc_info=exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail="Internal server error while creating assessment session",
         ) from exc
 
 
@@ -70,9 +73,12 @@ async def get_assessment_session(
             detail=str(exc),
         ) from exc
     except Exception as exc:
+        logger.exception(
+            "Failed to fetch assessment session %s", session_id, exc_info=exc
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail="Internal server error while fetching assessment session",
         ) from exc
 
 
@@ -110,9 +116,15 @@ async def submit_assessment_section(
             detail=str(exc),
         ) from exc
     except Exception as exc:
+        logger.exception(
+            "Failed to submit section %s for session %s",
+            section,
+            session_id,
+            exc_info=exc,
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail="Internal server error while submitting assessment section",
         ) from exc
 
 
@@ -146,7 +158,7 @@ async def get_assessment_session_result(
             composite_cefr_result=result.composite_cefr_result,
             started_at=result.started_at,
             completed_at=result.completed_at,
-            section_scores={},
+            section_scores=getattr(result, "section_scores", {}) or {},
         )
     except HTTPException:
         raise
@@ -156,7 +168,10 @@ async def get_assessment_session_result(
             detail=str(exc),
         ) from exc
     except Exception as exc:
+        logger.exception(
+            "Failed to fetch result for assessment session %s", session_id, exc_info=exc
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail="Internal server error while fetching assessment session result",
         ) from exc
