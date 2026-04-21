@@ -6,15 +6,14 @@ Orchestrates both:
   - Section 3: Final Report Generation (score breakdown, strengths, AI narrative, PDF download)
 
 All user input is audio — Whisper handles transcription before this service is called.
-No text fallback; audio_path is always expected.
-"""
-
+Supports audio input (preferred) and transcript fallback for testing."""
+from typing import Optional
 import json
 import random
 from datetime import datetime
 from io import BytesIO
 from uuid import UUID, uuid4
-
+from app.services.interview_scorer import evaluate_answer_with_gpt
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from reportlab.lib.pagesizes import letter
@@ -244,9 +243,147 @@ async def submit_practice_answer(
         "practice_complete": next_question is None,
     }
 
+async def fetch_next_question(user_id: UUID):
+    """
+    Wrapper for question service
+    """
+    from app.services.question_service import get_next_question as question_service_get_next_question
 
-# ── Section 2: Mock Interview ────────────────────────────────────────────────
+    return await question_service_get_next_question(user_id=user_id)
 
+# ── Section 2: Mock Interview (CLEAN FINAL VERSION) ─────────────────────────
+
+
+
+async def start_mock_session(db: AsyncSession, user_id: UUID) -> dict:
+    """
+    Start mock interview session (sequential flow).
+    """
+    skills = await _get_skills_for_user(db, user_id)
+    if not skills:
+        return {"error": "No skills found. Please ingest keywords first."}
+
+    session = InterviewSession(
+        user_id=user_id,
+        status="in_progress",
+        total_questions=8,
+        questions_answered=0,
+        total_score=0,
+    )
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+
+    first_question = await fetch_next_question(user_id)
+
+    if not first_question:
+        return {"error": "No questions available"}
+
+    return {
+        "session_id": session.id,
+        "question": {
+            "id": first_question["question_id"],
+            "text": first_question["question_text"],
+            "options": first_question.get("options", []),
+            "difficulty": first_question.get("difficulty", "medium"),
+        },
+    }
+
+
+async def submit_mock_answer(
+    db: AsyncSession,
+    session_id: UUID,
+    question_id: UUID,
+    audio_path: Optional[str] = None,
+    transcript: Optional[str] = None,
+) -> dict:
+    """
+    Spec-compliant flow:
+    audio/transcript → transcribe → GPT score → store → update → return
+    """
+
+    # 1. Validate session
+    result = await db.execute(
+        select(InterviewSession).where(InterviewSession.id == session_id)
+    )
+    session = result.scalar_one_or_none()
+
+    if not session or session.status != "in_progress":
+        return {"error": "Invalid or completed session"}
+
+    # 2. Get question
+    q_result = await db.execute(select(Question).where(Question.id == question_id))
+    question = q_result.scalar_one_or_none()
+
+    if not question:
+        return {"error": "Question not found"}
+
+    # 3. Input handling
+    if audio_path:
+        transcript = await transcribe_audio(audio_path)
+    elif transcript:
+        pass
+    else:
+        return {"error": "Either audio or transcript required"}
+
+    # 4. GPT scoring
+    score_result = await evaluate_answer_with_gpt(
+        question_text=question.text,
+        rubric=question.answer_key,
+        user_answer=transcript,
+    )
+
+    # 5. Store response
+    response = UserResponse(
+        session_id=session_id,
+        question_id=question_id,
+        question_order=session.questions_answered + 1,
+        user_answer=transcript,
+        score=score_result["score"],
+        score_breakdown=score_result.get("breakdown", {}),
+        feedback=score_result["feedback"],
+        answered_at=datetime.utcnow(),
+    )
+    db.add(response)
+
+    # 6. Update session
+    session.questions_answered += 1
+    session.total_score = (session.total_score or 0) + score_result["score"]
+
+    questions_remaining = session.total_questions - session.questions_answered
+
+    # 7. Completion
+    if session.questions_answered >= session.total_questions:
+        session.status = "completed"
+        session.completed_at = datetime.utcnow()
+
+        await db.commit()
+
+        return {
+            "score": score_result["score"],
+            "feedback": score_result["feedback"],
+            "questions_remaining": 0,
+            "message": "Interview completed. Fetch report.",
+        }
+
+    # 8. Next question
+    next_question = await fetch_next_question(session.user_id)
+
+    await db.commit()
+
+    return {
+        "score": score_result["score"],
+        "feedback": score_result["feedback"],
+        "questions_remaining": questions_remaining,
+        "next_question": {
+            "id": next_question["question_id"],
+            "text": next_question["question_text"],
+            "options": next_question.get("options", []),
+            "difficulty": next_question.get("difficulty", "medium"),
+        }
+        if next_question
+        else None,
+    }
 # ── Frontend List / Result Endpoints ─────────────────────────────────────────
 
 
@@ -298,17 +435,22 @@ async def get_session_result(db: AsyncSession, session_id: UUID) -> dict:
         {
             "question_text": row.Question.text,
             "user_answer": row.UserResponse.user_answer,
-            "confidence_score": row.UserResponse.confidence_score,
-            "is_correct": row.UserResponse.is_correct,
+            "score": row.UserResponse.score,
             "feedback": row.UserResponse.feedback,
         }
         for row in responses_result.all()
     ]
+    total_score = sum([r["score"] for r in responses]) if responses else 0
+    avg_score = total_score / len(responses) if responses else 0
+
 
     return {
         "session_id": session.id,
         "status": session.status,
         "gap_analysis": session.feedback,
+        "total_score": total_score,
+        "average_score": avg_score,
+        "grade": map_grade(avg_score),
         "responses": responses,
     }
 
@@ -512,7 +654,7 @@ async def aggregate_scores(responses: list[UserResponse]) -> tuple[int, dict[str
     for r in responses:
         category = getattr(r.question, "category", "technical_skills")
         if category in score_breakdown:
-            score_breakdown[category] += int(r.is_correct) * 100
+            score_breakdown[category] += int(r.score or 0) * 10
             counts[category] += 1
 
     for k in score_breakdown:
@@ -529,7 +671,7 @@ async def identify_strengths_improvements(
     for r in responses:
         skill_name = getattr(r.question, "skill_name", "General")
         user_ans = r.user_answer or ""
-        if r.is_correct:
+        if (r.score or 0) >= 7:
             strengths.append(
                 {
                     "area": skill_name,
@@ -684,3 +826,11 @@ async def download_report_pdf(report_id: UUID, db: AsyncSession) -> StreamingRes
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=interview_report_{report_id}.pdf"},
     )
+def map_grade(score: float) -> str:
+    if score < 4:
+        return "Needs Practice"
+    elif score < 6:
+        return "Good"
+    elif score < 8:
+        return "Very Good"
+    return "Excellent"

@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, DateTime, Enum, ForeignKey, String, Text, func
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,7 +23,6 @@ class KeySkill(Base):
     keyword: Mapped[str] = mapped_column(String, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
-    # Relationship to questions generated for this skill
     questions = relationship(
         "InterviewQuestion", back_populates="skill", cascade="all, delete-orphan"
     )
@@ -36,9 +35,7 @@ class InterviewQuestion(Base):
     skill_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("key_skills.id"))
     text: Mapped[str] = mapped_column(Text)
     options: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
-    answer_key: Mapped[str] = mapped_column(
-        Text
-    )  # The letter (A, B, C, D) or full text of the correct answer
+    answer_key: Mapped[str] = mapped_column(Text)
     difficulty: Mapped[DifficultyLevel] = mapped_column(Enum(DifficultyLevel))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -50,9 +47,26 @@ class InterviewSession(Base):
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column("uuid_user_id", PG_UUID(as_uuid=True), index=True)
-    status: Mapped[str] = mapped_column(String, default="active")  # active, completed
-    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)  # The final "Gap Analysis"
+
+    cefr_level: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    domain: Mapped[str] = mapped_column(
+        String(50), default="general", server_default="general"
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), default="active", server_default="active"
+    )
+    total_questions: Mapped[int] = mapped_column(
+        Integer, default=8, server_default="8"
+    )
+    questions_answered: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0"
+    )
+    total_score: Mapped[float | None] = mapped_column(
+        Numeric(5, 2), nullable=True
+    )
+    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     responses = relationship("UserResponse", back_populates="session", cascade="all, delete-orphan")
 
@@ -62,19 +76,31 @@ class UserResponse(Base):
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     session_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("interview_sessions.id"), nullable=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("interview_sessions.id"),
+        nullable=True,
     )
     question_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("interview_questions.id")
+        PG_UUID(as_uuid=True),
+        ForeignKey("interview_questions.id"),
     )
+
+    question_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    audio_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     user_answer: Mapped[str] = mapped_column(Text)
+    score: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    score_breakdown: Mapped[dict | None] = mapped_column(
+        JSON, nullable=True, server_default="{}"
+    )
+
     confidence_score: Mapped[float | None] = mapped_column(nullable=True)
     audio_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     is_correct: Mapped[bool | None] = mapped_column(nullable=True)
-    feedback: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )  # AI feedback for this specific answer
+    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    answered_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     session = relationship("InterviewSession", back_populates="responses")
     question = relationship("InterviewQuestion")
