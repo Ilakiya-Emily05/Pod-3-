@@ -8,6 +8,7 @@ Orchestrates both:
 All user input is audio — Whisper handles transcription before this service is called.
 Supports audio input (preferred) and transcript fallback for testing."""
 from typing import Optional
+from sqlalchemy import func
 import json
 import random
 from datetime import datetime
@@ -243,17 +244,6 @@ async def submit_practice_answer(
         "practice_complete": next_question is None,
     }
 
-async def fetch_next_question(user_id: UUID):
-    """
-    Wrapper for question service
-    """
-    from app.services.question_service import get_next_question as question_service_get_next_question
-
-    return await question_service_get_next_question(user_id=user_id)
-
-# ── Section 2: Mock Interview (CLEAN FINAL VERSION) ─────────────────────────
-
-
 
 async def start_mock_session(db: AsyncSession, user_id: UUID) -> dict:
     """
@@ -272,28 +262,37 @@ async def start_mock_session(db: AsyncSession, user_id: UUID) -> dict:
     )
     db.add(session)
     await db.commit()
-    await db.refresh(session)
 
-    first_question = await fetch_next_question(user_id)
+    # ✅ Fetch REAL question from DB (NOT generate, NOT uuid)
+    question = None
 
-    if not first_question:
+    for skill in skills:
+        question = await _fetch_question(
+            db,
+            skill.id,
+            DifficultyLevel.MEDIUM,
+            exclude_ids=[],
+        )
+        if question:
+            break
+
+    if not question:
         return {"error": "No questions available"}
 
     return {
         "session_id": session.id,
         "question": {
-            "id": first_question["question_id"],
-            "text": first_question["question_text"],
-            "options": first_question.get("options", []),
-            "difficulty": first_question.get("difficulty", "medium"),
+            "id": question.id,
+            "text": question.text,
+            "options": question.options,
+            "difficulty": question.difficulty,
         },
     }
-
-
 async def submit_mock_answer(
     db: AsyncSession,
     session_id: UUID,
     question_id: UUID,
+    user_id: UUID, 
     audio_path: Optional[str] = None,
     transcript: Optional[str] = None,
 ) -> dict:
@@ -302,38 +301,37 @@ async def submit_mock_answer(
     audio/transcript → transcribe → GPT score → store → update → return
     """
 
-    # 1. Validate session
     result = await db.execute(
-        select(InterviewSession).where(InterviewSession.id == session_id)
+        select(InterviewSession).where(
+            InterviewSession.id == session_id,
+            InterviewSession.user_id == user_id,
+        )
     )
     session = result.scalar_one_or_none()
 
     if not session or session.status != "in_progress":
         return {"error": "Invalid or completed session"}
 
-    # 2. Get question
+    # Get question
     q_result = await db.execute(select(Question).where(Question.id == question_id))
     question = q_result.scalar_one_or_none()
 
     if not question:
         return {"error": "Question not found"}
 
-    # 3. Input handling
+    # Input handling
     if audio_path:
         transcript = await transcribe_audio(audio_path)
-    elif transcript:
-        pass
-    else:
+    elif not transcript:
         return {"error": "Either audio or transcript required"}
 
-    # 4. GPT scoring
+    # GPT scoring
     score_result = await evaluate_answer_with_gpt(
         question_text=question.text,
         rubric=question.answer_key,
         user_answer=transcript,
     )
 
-    # 5. Store response
     response = UserResponse(
         session_id=session_id,
         question_id=question_id,
@@ -342,20 +340,20 @@ async def submit_mock_answer(
         score=score_result["score"],
         score_breakdown=score_result.get("breakdown", {}),
         feedback=score_result["feedback"],
-        answered_at=datetime.utcnow(),
+        answered_at=func.now(),
     )
     db.add(response)
 
-    # 6. Update session
+    # Update session
     session.questions_answered += 1
     session.total_score = (session.total_score or 0) + score_result["score"]
 
     questions_remaining = session.total_questions - session.questions_answered
 
-    # 7. Completion
+    # Completion
     if session.questions_answered >= session.total_questions:
         session.status = "completed"
-        session.completed_at = datetime.utcnow()
+        session.completed_at = func.now()
 
         await db.commit()
 
@@ -366,8 +364,20 @@ async def submit_mock_answer(
             "message": "Interview completed. Fetch report.",
         }
 
-    # 8. Next question
-    next_question = await fetch_next_question(session.user_id)
+    # ✅ Fetch next question from DB (NO generation, NO uuid)
+    skills = await _get_skills_for_user(db, session.user_id)
+
+    next_question = None
+
+    for skill in skills:
+        next_question = await _fetch_question(
+            db,
+            skill.id,
+            DifficultyLevel.MEDIUM,
+            exclude_ids=[question_id],
+        )
+        if next_question:
+            break
 
     await db.commit()
 
@@ -376,17 +386,12 @@ async def submit_mock_answer(
         "feedback": score_result["feedback"],
         "questions_remaining": questions_remaining,
         "next_question": {
-            "id": next_question["question_id"],
-            "text": next_question["question_text"],
-            "options": next_question.get("options", []),
-            "difficulty": next_question.get("difficulty", "medium"),
-        }
-        if next_question
-        else None,
+            "id": next_question.id,
+            "text": next_question.text,
+            "options": next_question.options,
+            "difficulty": next_question.difficulty,
+        } if next_question else None,
     }
-# ── Frontend List / Result Endpoints ─────────────────────────────────────────
-
-
 async def get_user_sessions(db: AsyncSession, user_id: UUID) -> list[dict]:
     """
     Return a list of all mock interview sessions for a user,
@@ -410,21 +415,27 @@ async def get_user_sessions(db: AsyncSession, user_id: UUID) -> list[dict]:
     ]
 
 
-async def get_session_result(db: AsyncSession, session_id: UUID) -> dict:
+async def get_session_result(
+    db: AsyncSession, session_id: UUID, user_id: UUID
+) -> dict:
     """
     Return the full result for a completed mock session:
     session metadata + gap analysis + all Q&A responses.
     """
+
     session_result = await db.execute(
-        select(InterviewSession).where(InterviewSession.id == session_id)
+        select(InterviewSession).where(
+            InterviewSession.id == session_id,
+            InterviewSession.user_id == user_id,
+        )
     )
     session = session_result.scalar_one_or_none()
-    if not session:
-        return {"error": "Session not found."}
-    if session.status != "completed":
-        return {"error": "Session is still active. Complete the interview first."}
 
-    # Fetch all responses joined with their questions
+    if not session:
+        return {"error": "Session not found or access denied."}
+
+    if session.status != "completed":
+        return {"error": "Session is still active. Complete the interview first."}    # Fetch all responses joined with their questions
     responses_result = await db.execute(
         select(UserResponse, Question)
         .join(Question, UserResponse.question_id == Question.id)
@@ -440,7 +451,7 @@ async def get_session_result(db: AsyncSession, session_id: UUID) -> dict:
         }
         for row in responses_result.all()
     ]
-    total_score = sum([r["score"] for r in responses]) if responses else 0
+    total_score = sum([r["score"] or 0 for r in responses]) if responses else 0
     avg_score = total_score / len(responses) if responses else 0
 
 
@@ -539,6 +550,7 @@ async def start_batch_interview(db: AsyncSession, user_id: UUID) -> dict:
 async def submit_batch_answer(
     db: AsyncSession,
     session_id: UUID,
+    user_id: UUID,
     audio_path: str,
 ) -> dict:
     """
@@ -564,7 +576,8 @@ async def submit_batch_answer(
         return {"error": f"Failed to check audio duration: {e!s}"}
 
     # Load session
-    result = await db.execute(select(InterviewSession).where(InterviewSession.id == session_id))
+    result = await db.execute(select(InterviewSession).where(InterviewSession.id == session_id)
+                              .where(InterviewSession.user_id == user_id))
     session = result.scalar_one_or_none()
     if not session or session.status != "active":
         return {"error": "Session not found or already completed."}
@@ -748,7 +761,7 @@ async def generate_report(session_id: UUID, db: AsyncSession) -> dict[str, objec
             ai_narrative=ai_narrative or "",
             next_steps=next_steps or [],
             peer_comparison={"percentile": 72, "message": "Better than 72% of peers"},
-            created_at=datetime.utcnow(),
+            created_at=func.now(),
         )
         db.add(report)
 
